@@ -1,5 +1,7 @@
 <?php
 
+use App\Jobs\AnalyzeMarketManipulationJob;
+use App\Jobs\FetchHypixelBazaarJob;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -13,5 +15,6 @@ Artisan::command('inspire', function () {
 | Scheduled Commands
 |--------------------------------------------------------------------------
 */
-Schedule::command('bazaar:fetch')->everyMinute()->withoutOverlapping();
 Schedule::command('bin:fetch')->everyFiveMinutes()->withoutOverlapping();
+Schedule::job(new FetchHypixelBazaarJob())->everyMinute()->withoutOverlapping();
+Schedule::job(new AnalyzeMarketManipulationJob())->everyFiveMinutes()->withoutOverlapping();

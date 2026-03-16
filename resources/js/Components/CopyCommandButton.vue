@@ -9,18 +9,9 @@ const props = defineProps({
 });
 
 const copied = ref(false);
-const mode = ref('buy'); // 'buy' or 'sell'
-
-function toggleMode() {
-    mode.value = mode.value === 'buy' ? 'sell' : 'buy';
-    copied.value = false;
-}
 
 function command() {
-    if (mode.value === 'buy') {
-        return `/bz buy ${props.productId}`;
-    }
-    return `/bz sell ${props.productId}`;
+    return `/bz buy "${props.productId}" 1`;
 }
 
 async function copyCommand() {
@@ -49,19 +40,7 @@ async function copyCommand() {
 </script>
 
 <template>
-    <div class="inline-flex items-center gap-0">
-        <!-- Mode toggle -->
-        <button
-            @click="toggleMode"
-            class="px-1.5 py-0.5 text-[10px] font-medium border border-border rounded-none"
-            :class="mode === 'buy'
-                ? 'bg-surface-700 text-rarity-uncommon border-r-0'
-                : 'bg-surface-700 text-loss border-r-0'"
-        >
-            {{ mode === 'buy' ? 'BUY' : 'SELL' }}
-        </button>
-
-        <!-- Copy button: flat gray → flat green on click -->
+    <div class="inline-flex items-center">
         <button
             @click="copyCommand"
             class="px-2 py-0.5 text-[10px] font-medium border border-border rounded-none transition-colors duration-0"

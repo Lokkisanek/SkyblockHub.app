@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\Api\SkyCryptProxyController;
+use App\Http\Controllers\Api\BazaarController as ApiBazaarController;
+use App\Http\Controllers\CraftingArbitrageController;
 use App\Http\Controllers\KarmaController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -28,3 +30,21 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/karma/vote', [KarmaController::class, 'vote'])->name('api.karma.vote');
     Route::get('/karma/{targetId}', [KarmaController::class, 'status'])->name('api.karma.status');
 });
+
+/*
+|--------------------------------------------------------------------------
+| Bazaar Intelligence API
+|--------------------------------------------------------------------------
+*/
+Route::prefix('v1/bazaar')->group(function () {
+    Route::get('/live', [ApiBazaarController::class, 'live']);
+    Route::get('/arbitrage/recipes', [ApiBazaarController::class, 'recipeArbitrage']);
+    Route::get('/history/{productId}', [ApiBazaarController::class, 'history']);
+});
+
+/*
+|--------------------------------------------------------------------------
+| Crafting Arbitrage API
+|--------------------------------------------------------------------------
+*/
+Route::get('/arbitrage/crafting', [CraftingArbitrageController::class, 'api']);

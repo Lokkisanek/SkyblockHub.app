@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\BinAlert;
 use App\Models\BinSnapshot;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -16,11 +17,12 @@ class BinSniperController extends Controller
         $sort = $request->input('sort', 'price');
         $direction = $request->input('direction', 'asc');
         $tier = $request->input('tier', '');
+        $likeOperator = DB::getDriverName() === 'pgsql' ? 'ilike' : 'like';
 
         $query = BinSnapshot::query();
 
         if ($search) {
-            $query->where('item_name', 'ilike', "%{$search}%");
+            $query->where('item_name', $likeOperator, "%{$search}%");
         }
 
         if ($tier) {

@@ -1,5 +1,5 @@
 <script setup>
-import { ref, reactive, computed, watch, onMounted, onUnmounted } from 'vue';
+import { ref, watch, onMounted, onUnmounted } from 'vue';
 import { router } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head } from '@inertiajs/vue3';
@@ -10,8 +10,20 @@ const props = defineProps({
     filters: Object,
 });
 
+const RARITY_COLORS = {
+    common: '#FFFFFF',
+    uncommon: '#55FF55',
+    rare: '#5555FF',
+    epic: '#AA00AA',
+    legendary: '#FFAA00',
+    mythic: '#FF55FF',
+    divine: '#55FFFF',
+    special: '#FF5555',
+};
+
 // Reactive copy of items data so we can mutate it from WebSocket events
 const liveItems = ref([...props.items.data]);
+const failedIcons = ref({});
 
 // Keep liveItems in sync when Inertia navigates (pagination, sorting, search)
 watch(() => props.items.data, (newData) => {
@@ -19,13 +31,17 @@ watch(() => props.items.data, (newData) => {
 });
 
 const search = ref(props.filters.search || '');
-const sortBy = ref(props.filters.sort || 'name');
-const sortDir = ref(props.filters.dir || 'asc');
+const sortBy = ref(props.filters.sort || 'profit_score');
+const sortDir = ref(props.filters.dir || 'desc');
+const minDailyVolume = ref(Number(props.filters.min_daily_volume ?? 1000));
+const maxBuyPrice = ref(props.filters.max_buy_price ?? '');
+const minTrueProfit = ref(props.filters.min_true_profit ?? '');
+const minMarginPercent = ref(props.filters.min_margin_percent ?? '');
 
 let debounceTimer = null;
 let echoChannel = null;
 
-watch(search, (val) => {
+watch([search, minDailyVolume, maxBuyPrice, minTrueProfit, minMarginPercent], () => {
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => {
         applyFilters();
@@ -52,6 +68,17 @@ onMounted(() => {
                         buy_orders: update.buy_orders,
                         sell_moving_week: update.sell_moving_week,
                         buy_moving_week: update.buy_moving_week,
+                        true_profit: trueProfit({
+                            ...item,
+                            sell_price: update.sell_price,
+                            buy_price: update.buy_price,
+                        }),
+                        profit_score: profitScore({
+                            ...item,
+                            sell_price: update.sell_price,
+                            buy_price: update.buy_price,
+                            sell_volume: update.sell_volume,
+                        }),
                     };
                 }
                 return item;
@@ -69,12 +96,22 @@ onUnmounted(() => {
 function applyFilters() {
     router.get(route('bazaar'), {
         search: search.value || undefined,
+        min_daily_volume: minDailyVolume.value > 0 ? minDailyVolume.value : 0,
+        max_buy_price: maxBuyPrice.value === '' ? undefined : maxBuyPrice.value,
+        min_true_profit: minTrueProfit.value === '' ? undefined : minTrueProfit.value,
+        min_margin_percent: minMarginPercent.value === '' ? undefined : minMarginPercent.value,
         sort: sortBy.value,
         dir: sortDir.value,
     }, {
         preserveState: true,
         preserveScroll: true,
     });
+}
+
+function findBestFlips() {
+    sortBy.value = 'profit_score';
+    sortDir.value = 'desc';
+    applyFilters();
 }
 
 function toggleSort(column) {
@@ -102,22 +139,54 @@ function formatCoins(n) {
     return Number(n).toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 }
 
-function margin(item) {
-    const m = Number(item.buy_price) - Number(item.sell_price);
-    return m;
+function trueProfit(item) {
+    return (Number(item.sell_price) * 0.9875) - Number(item.buy_price);
 }
 
-function marginPercent(item) {
+function profitPercent(item) {
     const sell = Number(item.sell_price);
     if (sell <= 0) return 0;
-    return ((margin(item) / sell) * 100);
+    return ((trueProfit(item) / sell) * 100);
 }
 
 function marginClass(item) {
-    const m = margin(item);
+    const m = trueProfit(item);
     if (m > 0) return 'text-profit';
     if (m < 0) return 'text-loss';
     return 'text-neutral';
+}
+
+function profitScore(item) {
+    return trueProfit(item) * Number(item.sell_volume || 0);
+}
+
+function rarityTier(item) {
+    const id = String(item.product_id || '').toUpperCase();
+    const name = String(item.name || '').toUpperCase();
+
+    if (id.includes('SPECIAL') || name.includes('SPECIAL')) return 'special';
+    if (id.includes('DIVINE') || name.includes('DIVINE')) return 'divine';
+    if (id.includes('MYTHIC') || name.includes('MYTHIC')) return 'mythic';
+    if (id.includes('LEGENDARY') || name.includes('LEGENDARY')) return 'legendary';
+    if (id.includes('EPIC') || name.includes('EPIC')) return 'epic';
+    if (id.includes('RARE') || name.includes('RARE')) return 'rare';
+    if (id.includes('UNCOMMON') || name.includes('UNCOMMON')) return 'uncommon';
+    return 'common';
+}
+
+function rarityColor(item) {
+    return RARITY_COLORS[rarityTier(item)] || RARITY_COLORS.common;
+}
+
+function iconUrl(productId) {
+    return `https://sky.shiiyu.moe/item/${encodeURIComponent(productId)}`;
+}
+
+function onIconError(productId) {
+    failedIcons.value = {
+        ...failedIcons.value,
+        [productId]: true,
+    };
 }
 </script>
 
@@ -131,14 +200,51 @@ function marginClass(item) {
 
         <div class="py-4">
             <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                <!-- Search Bar -->
-                <div class="mb-3">
+                <!-- Top Controls -->
+                <div class="mb-3 flex flex-wrap items-center gap-2">
                     <input
                         v-model="search"
                         type="text"
                         placeholder="Search items…"
-                        class="w-full max-w-xs bg-surface-800 border border-border rounded-none px-3 py-1.5 text-xs text-white placeholder-neutral focus:outline-none focus:border-border-light"
+                        class="w-full max-w-xs bg-surface-800 border border-[#303030] rounded-none px-3 py-1.5 text-xs text-white placeholder-neutral focus:outline-none focus:border-border-light"
                     />
+                    <input
+                        v-model.number="minDailyVolume"
+                        type="number"
+                        min="0"
+                        step="1"
+                        placeholder="Min Daily Volume"
+                        class="w-40 bg-surface-800 border border-[#303030] rounded-none px-3 py-1.5 text-xs text-white placeholder-neutral focus:outline-none focus:border-border-light"
+                    />
+                    <input
+                        v-model="maxBuyPrice"
+                        type="number"
+                        min="0"
+                        step="0.1"
+                        placeholder="Max Buy Price"
+                        class="w-40 bg-surface-800 border border-[#303030] rounded-none px-3 py-1.5 text-xs text-white placeholder-neutral focus:outline-none focus:border-border-light"
+                    />
+                    <input
+                        v-model="minTrueProfit"
+                        type="number"
+                        step="0.1"
+                        placeholder="Min True Profit"
+                        class="w-40 bg-surface-800 border border-[#303030] rounded-none px-3 py-1.5 text-xs text-white placeholder-neutral focus:outline-none focus:border-border-light"
+                    />
+                    <input
+                        v-model="minMarginPercent"
+                        type="number"
+                        step="0.1"
+                        placeholder="Min Margin %"
+                        class="w-36 bg-surface-800 border border-[#303030] rounded-none px-3 py-1.5 text-xs text-white placeholder-neutral focus:outline-none focus:border-border-light"
+                    />
+                    <button
+                        type="button"
+                        @click="findBestFlips"
+                        class="h-[30px] px-3 text-xs font-semibold uppercase tracking-wide bg-surface-700 border border-[#303030] text-white hover:text-rarity-uncommon"
+                    >
+                        Best Flips
+                    </button>
                 </div>
 
                 <!-- Table -->
@@ -155,11 +261,11 @@ function marginClass(item) {
                                 <th class="px-3 py-2 text-right border-b border-border cursor-pointer select-none" @click="toggleSort('sell_price')">
                                     Sell Price{{ sortIndicator('sell_price') }}
                                 </th>
-                                <th class="px-3 py-2 text-right border-b border-border">
-                                    Margin
+                                <th class="px-3 py-2 text-right border-b border-border cursor-pointer select-none" @click="toggleSort('true_profit')">
+                                    True Profit (Taxed){{ sortIndicator('true_profit') }}
                                 </th>
-                                <th class="px-3 py-2 text-right border-b border-border">
-                                    Margin %
+                                <th class="px-3 py-2 text-right border-b border-border cursor-pointer select-none" @click="toggleSort('margin_percent')">
+                                    Margin %{{ sortIndicator('margin_percent') }}
                                 </th>
                                 <th class="px-3 py-2 text-right border-b border-border cursor-pointer select-none" @click="toggleSort('buy_volume')">
                                     Buy Vol{{ sortIndicator('buy_volume') }}
@@ -167,8 +273,8 @@ function marginClass(item) {
                                 <th class="px-3 py-2 text-right border-b border-border cursor-pointer select-none" @click="toggleSort('sell_volume')">
                                     Sell Vol{{ sortIndicator('sell_volume') }}
                                 </th>
-                                <th class="px-3 py-2 text-right border-b border-border cursor-pointer select-none" @click="toggleSort('buy_moving_week')">
-                                    Buy/wk{{ sortIndicator('buy_moving_week') }}
+                                <th class="px-3 py-2 text-right border-b border-border cursor-pointer select-none" @click="toggleSort('buy_volume')">
+                                    Buy/wk{{ sortIndicator('buy_volume') }}
                                 </th>
                                 <th class="px-3 py-2 text-center border-b border-border">
                                     Action
@@ -181,8 +287,18 @@ function marginClass(item) {
                                 :key="item.id"
                                 class="border-b border-border hover:bg-surface-700"
                             >
-                                <td class="px-3 py-1.5 text-white font-medium whitespace-nowrap">
-                                    {{ item.name }}
+                                <td class="px-3 py-1.5 font-medium whitespace-nowrap">
+                                    <div class="flex items-center gap-2">
+                                        <img
+                                            v-if="!failedIcons[item.product_id]"
+                                            :src="iconUrl(item.product_id)"
+                                            :alt="item.name"
+                                            class="h-4 w-4 shrink-0"
+                                            loading="lazy"
+                                            @error="onIconError(item.product_id)"
+                                        >
+                                        <span :style="{ color: rarityColor(item) }">{{ item.name }}</span>
+                                    </div>
                                 </td>
                                 <td class="px-3 py-1.5 text-right text-rarity-legendary font-mono">
                                     {{ formatCoins(item.buy_price) }}
@@ -191,10 +307,10 @@ function marginClass(item) {
                                     {{ formatCoins(item.sell_price) }}
                                 </td>
                                 <td class="px-3 py-1.5 text-right font-mono" :class="marginClass(item)">
-                                    {{ formatCoins(margin(item)) }}
+                                    {{ formatCoins(trueProfit(item)) }}
                                 </td>
                                 <td class="px-3 py-1.5 text-right font-mono" :class="marginClass(item)">
-                                    {{ marginPercent(item).toFixed(1) }}%
+                                    {{ profitPercent(item).toFixed(1) }}%
                                 </td>
                                 <td class="px-3 py-1.5 text-right text-neutral font-mono">
                                     {{ formatNumber(item.buy_volume) }}
