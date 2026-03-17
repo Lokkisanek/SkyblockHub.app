@@ -45,7 +45,7 @@ Obsah
 
 
 
-[screenshot](public/img/screenshot.png)
+[screenshot](public/img/textures/screenshot.png)
 
 ---
 
