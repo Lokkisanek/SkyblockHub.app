@@ -1,118 +1,108 @@
 # SkyblockHub
 
-Webová aplikace pro hráče [Hypixel Skyblock](https://hypixel.net). Poskytuje nástroje pro sledování Bazaaru, správu portfolia, hledání dungeon party, crafting arbitráž a BIN sniper.
+SkyblockHub je moderní a svižný nástroj pro hráče Hypixel Skyblock, který šetří čas a peníze. S námi snadno:
 
-## Tech Stack
+- Sledujete ceny itemů na Bazaaru v reálném čase
+- Spravujete a analyzujete svoje investice v `Portfolio`
+- Najdete vhodné hráče do `Dungeon Party` během pár kliků
+- Využíváte crafting arbitráže k rychlému zisku
+- Dostáváte upozornění na výhodné BIN aukce pomocí `BIN Sniper`
 
-- **Backend:** [Laravel 11](https://laravel.com/docs/11.x) (PHP 8.2+)
-- **Frontend:** [Vue 3](https://vuejs.org/) + [Inertia.js](https://inertiajs.com/) + [Tailwind CSS](https://tailwindcss.com/)
-- **WebSockets:** [Laravel Reverb](https://reverb.laravel.com/)
-- **Databáze:** SQLite (výchozí)
-- **Build tool:** [Vite](https://vitejs.dev/)
-- **Přihlašování:** Discord OAuth přes [Laravel Socialite](https://laravel.com/docs/11.x/socialite)
+SkyblockHub kombinuje silný backend postavený na Laravelu s moderním Vue/Inertia frontendem — výsledkem je rychlá, responzivní aplikace ideální pro aktivní hráče i obchodníky.
 
-## Funkce
+**Hlavní výhody**
 
-| Stránka | Popis |
-|---|---|
-| `/bazaar` | Sledování cen na Bazaaru v reálném čase |
-| `/portfolio` | Správa a sledování vlastních investic |
-| `/crafting` | Crafting arbitráž – kde vydělat craftěním |
-| `/bin-sniper` | Sledování nejnižších BIN aukcí s alertem |
-| `/dungeon-party` | Hledání hráčů do Dungeon party |
-| `/profile-stats` | Statistiky Skyblock profilů |
+- Realtime data přes WebSockets pro okamžité aktualizace
+- Snadné nastavení a lokální běh (SQLite výchozí)
+- Rozšiřitelná architektura — jednoduché přidání nových alertů a metrik
+
+## Co v projektu najdete
+
+- Sledování Bazaaru (`/bazaar`) s historickými cenami
+- `Portfolio` pro správu vašich nákupů a investic
+- `Crafting` nástroj pro zjištění profitabilních receptů
+- `BIN Sniper` s notifikacemi
+- `Dungeon Party` matchmaking
+
+---
+
+## Tech stack
+
+- Backend: Laravel 11 (PHP 8.2+)
+- Frontend: Vue 3 + Inertia.js + Tailwind CSS
+- Realtime: Laravel Reverb (WebSockets)
+- Databáze: SQLite (výchozí), lze přepnout na MySQL/Postgres
+- Build: Vite
+
+---
 
 ## Požadavky
 
-- [PHP 8.2+](https://www.php.net/downloads) s extensions: `pdo_sqlite`, `mbstring`, `openssl`, `fileinfo`
-- [Composer](https://getcomposer.org/)
-- [Node.js 18+](https://nodejs.org/) + npm
+- PHP 8.2+ s extensions: `pdo_sqlite`, `mbstring`, `openssl`, `fileinfo`
+- Composer
+- Node.js 18+ + npm
 
-## Lokální spuštění (Windows - PowerShell)
+---
 
-Krátké shrnutí: potřebujete nainstalované `PHP` (8.2+), `Composer`, `Node.js` (18+), a volitelně databázi (SQLite funguje výchozí).
+## Lokální spuštění (rychlé kroky)
 
-1) Klonování repozitáře a přechod do složky
+1) Naklonujte repozitář a otevřete složku projektu
 
-```powershell
+```bash
 git clone <url-repozitare>
-Set-Location SkyblockHub.play
+cd SkyblockHub.play
 ```
 
-2) PHP závislosti
+2) Nainstalujte backend závislosti
 
-```powershell
+```bash
 composer install
 ```
 
-3) Vytvoření a nastavení prostředí
+3) Vytvořte `.env` a vygenerujte klíč aplikace
 
-```powershell
-Copy-Item .env.example .env
+```bash
+cp .env.example .env
 php artisan key:generate
 ```
 
-Otevřete `.env` v editoru a nastavte minimálně hodnoty pro databázi a Discord OAuth:
+4) (Volitelné) Spusťte migrace a seedy
 
-- `DB_CONNECTION`, `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`
-- `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`, `DISCORD_REDIRECT_URI`
-
-Příklad pro Discord callback (lokálně):
-
-```dotenv
-DISCORD_REDIRECT_URI=http://localhost:8000/auth/discord/callback
-```
-
-4) Migrace databáze (volitelné seed)
-
-```powershell
+```bash
 php artisan migrate --seed
 ```
 
-5) Node závislosti a kompilace frontend assets
+5) Nainstalujte frontend závislosti a spusťte development server
 
-Pro vývoj (hot-reload):
-
-```powershell
+```bash
 npm install
 npm run dev
 ```
 
-Pro produkci (minifikace):
+6) Spusťte aplikaci a volitelné služby ve vodiči shellu
 
-```powershell
-npm install
-npm run build
-```
-
-6) Spuštění aplikace a služeb (v samostatných PowerShell oknech)
-
-```powershell
-# Webový server (hlavní aplikace)
+```bash
+# Web server
 php artisan serve --host=127.0.0.1 --port=8000
 
-# WebSocket server (Reverb) - pro real-time aktualizace
+# Reverb (WebSockets)
 php artisan reverb:start
 
-# Queue worker - zpracování úloh na pozadí
+# Queue worker
 php artisan queue:work
 ```
 
-Aplikace bude dostupná na `http://localhost:8000`.
+Aplikace bude dostupná na http://localhost:8000
 
-7) Poznámky pro produkci
+---
 
-- Spusťte `npm run build` a nastavte webserver (Nginx/Apache) směrovaný na `public/`.
-- Nakonfigurujte environment proměnné (databáze, cache, queue, reverb) a použijte proces manager (supervisor) pro `php artisan queue:work` a `php artisan reverb:start`.
+## Poznámky pro produkci
 
-Pokud chcete, mohu připravit krátký PowerShell script, který provede většinu kroků automaticky.
+- Spusťte `npm run build` pro produkční assets
+- Nasazení směrujte na složku `public/` a nakonfigurujte env proměnné
+- Pro dlouhodobý běh `queue:work` a `reverb:start` použijte process manager (např. systemd nebo supervisor)
 
-## Užitečné odkazy
+---
 
-- [Laravel dokumentace](https://laravel.com/docs/11.x)
-- [Inertia.js dokumentace](https://inertiajs.com/)
-- [Laravel Reverb](https://reverb.laravel.com/)
-- [Hypixel Skyblock Wiki](https://wiki.hypixel.net/)
-- [Hypixel API](https://api.hypixel.net/)
-- [Discord Developer Portal](https://discord.com/developers/applications)
+Pokud chcete, mohu README ještě upravit, přidat screenshoty, badge nebo krátký PowerShell/Bash skript pro automatické nastavení.
 
