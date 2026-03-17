@@ -43,9 +43,9 @@ Obsah
 
 ## Ukázka
 
-> Doporučené: přidat screenshot do `public/img/screenshot.png` a odkomentovat níže uvedený řádek.
 
-![screenshot](public/img/screenshot.png)
+
+[screenshot](public/img/screenshot.png)
 
 ---
 
