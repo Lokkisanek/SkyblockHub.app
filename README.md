@@ -43,9 +43,7 @@ Obsah
 
 ## Ukázka
 
-
-
-[screenshot](public/img/textures/screenshot.png)
+![SkyblockHub Interface](public/img/screenshot.png)
 
 ---
 
