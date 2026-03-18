@@ -4,9 +4,15 @@ namespace App\Services;
 
 class BazaarMathService
 {
-    public function calculateMargin(float $buyPrice, float $sellPrice, float $taxRate = 0.0125): float
+    public function __construct(private readonly PerkService $perkService)
     {
-        return ($sellPrice - $buyPrice) - ($sellPrice * $taxRate);
+    }
+
+    public function calculateMargin(float $buyPrice, float $sellPrice, ?float $taxRate = null): float
+    {
+        $effectiveTaxRate = $taxRate ?? $this->perkService->getBazaarTaxRate(0.0125);
+
+        return ($sellPrice - $buyPrice) - ($sellPrice * $effectiveTaxRate);
     }
 
     public function calculateVelocity(int $sellVolume, int $buyVolume): int

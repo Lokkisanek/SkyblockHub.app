@@ -41,4 +41,8 @@ return [
         'redirect' => env('DISCORD_REDIRECT_URI', '/auth/discord/callback'),
     ],
 
+    'hypixel' => [
+        'api_key' => env('HYPIXEL_API_KEY'),
+    ],
+
 ];

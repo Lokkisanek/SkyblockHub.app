@@ -40,6 +40,8 @@ class FetchHypixelBazaarJob implements ShouldQueue
             $buyPrice = (float) ($quickStatus['buyPrice'] ?? 0);
             $sellVolume = (int) ($quickStatus['sellVolume'] ?? 0);
             $buyVolume = (int) ($quickStatus['buyVolume'] ?? 0);
+            $sellMovingWeek = (float) ($quickStatus['sellMovingWeek'] ?? 0);
+            $buyMovingWeek = (float) ($quickStatus['buyMovingWeek'] ?? 0);
             $sellOrders = (int) ($quickStatus['sellOrders'] ?? 0);
             $buyOrders = (int) ($quickStatus['buyOrders'] ?? 0);
 
@@ -61,6 +63,8 @@ class FetchHypixelBazaarJob implements ShouldQueue
                     'sell_price' => $sellPrice,
                     'buy_volume' => $buyVolume,
                     'sell_volume' => $sellVolume,
+                    'buy_moving_week' => $buyMovingWeek,
+                    'sell_moving_week' => $sellMovingWeek,
                     'buy_orders' => $buyOrders,
                     'sell_orders' => $sellOrders,
                     'updated_at' => $now,
@@ -90,6 +94,8 @@ class FetchHypixelBazaarJob implements ShouldQueue
                 'sell_price' => $sellPrice,
                 'buy_volume' => $buyVolume,
                 'sell_volume' => $sellVolume,
+                'buy_moving_week' => $buyMovingWeek,
+                'sell_moving_week' => $sellMovingWeek,
                 'buy_orders' => $buyOrders,
                 'sell_orders' => $sellOrders,
                 'updated_at' => $now->toISOString(),

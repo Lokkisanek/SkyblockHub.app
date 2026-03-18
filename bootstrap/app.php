@@ -18,6 +18,10 @@ return Application::configure(basePath: dirname(__DIR__))
             \Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class,
         ]);
 
+        $middleware->alias([
+            'testing.admin' => \App\Http\Middleware\EnsureTestingAdmin::class,
+        ]);
+
         //
     })
     ->withExceptions(function (Exceptions $exceptions) {

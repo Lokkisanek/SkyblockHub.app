@@ -5,6 +5,21 @@ import { Head } from '@inertiajs/vue3';
 import { preloadAllTextures } from '@/utils/textures';
 import ItemSlot from '@/Components/SkyBlock/ItemSlot.vue';
 
+const props = defineProps({
+    mayor: {
+        type: Object,
+        default: () => ({}),
+    },
+    perkState: {
+        type: Object,
+        default: () => ({ active_perks: {}, boosted_event_keys: [] }),
+    },
+    electionTimeline: {
+        type: Object,
+        default: null,
+    },
+});
+
 const nowMs = ref(Date.now());
 let timerId = null;
 let notifyTickId = null;
@@ -48,6 +63,7 @@ const SKYBLOCK_MONTH_NAMES = [
 const SKYBLOCK_EVENT_RULES = [
     { key: 'spookyFestival', name: 'Spooky Festival', when: [{ start: { month: 9, day: 29 }, end: { month: 9, day: 31 } }] },
     { key: 'zoo', name: 'Travelling Zoo', when: [{ start: { month: 4, day: 1 }, end: { month: 4, day: 3 } }, { start: { month: 10, day: 1 }, end: { month: 10, day: 3 } }] },
+    { key: 'mythologicalRitual', name: 'Mythological Ritual', when: [{ start: { day: 1 }, end: { day: 31 } }] },
     { key: 'jerryWorkshop', name: "Jerry's Workshop", when: [{ start: { month: 12, day: 1 }, end: { month: 12, day: 31 } }] },
     { key: 'winter', name: 'Season of Jerry', when: [{ start: { month: 12, day: 24 }, end: { month: 12, day: 26 } }] },
     { key: 'newYear', name: 'New Year Celebration', when: [{ start: { month: 12, day: 29 }, end: { month: 12, day: 31 } }] },
@@ -62,6 +78,7 @@ const EVENT_ITEM_OVERRIDES = {
     newYear: { skyblock_id: 'NEW_YEAR_CAKE_BAG', texture_path: '/item/cake', rarity: 'LEGENDARY' },
     spookyFestival: { skyblock_id: 'PET_ITEM_SPOOKY_CUPCAKE', texture_path: '/item/cake', rarity: 'LEGENDARY' },
     zoo: { skyblock_id: 'PET_CAKE', texture_path: '/item/cake', rarity: 'EPIC' },
+    mythologicalRitual: { skyblock_id: 'DAEDALUS_AXE', texture_path: '/item/golden_axe', rarity: 'MYTHIC' },
     jerryWorkshop: { texture_path: '/item/snowball', rarity: 'RARE' },
     winter: { texture_path: '/item/snowball', rarity: 'EPIC' },
     electionOver: { texture_path: '/item/record_11', rarity: 'RARE' },
@@ -113,6 +130,17 @@ const events = [
         offsetSeconds: 30 * 60,
         activeLabel: 'Ritual Active',
         upcomingLabel: 'Ritual Starts In',
+        requiresPerk: 'mythological_ritual',
+    },
+    {
+        key: 'dungeon-rush',
+        name: 'Dungeon Rush',
+        cycleSeconds: 3600,
+        activeSeconds: 15 * 60,
+        offsetSeconds: 20 * 60,
+        activeLabel: 'Dungeon Window Active',
+        upcomingLabel: 'Dungeon Window In',
+        dungeonRelated: true,
     },
     {
         key: 'spooky-festival',
@@ -149,6 +177,7 @@ const events = [
         offsetSeconds: ((11 * SKYBLOCK_DAYS_PER_MONTH) + 23) * SKYBLOCK_DAY_LENGTH_SECONDS,
         activeLabel: 'Season Event Active',
         upcomingLabel: 'Season Event Starts In',
+        requiresPerk: 'jerry_workshop',
     },
     {
         key: 'new-year-celebration',
@@ -170,51 +199,147 @@ const events = [
     },
 ];
 
+const activePerks = computed(() => props.perkState?.active_perks ?? {});
+const boostedEventKeySet = computed(() => new Set(props.perkState?.boosted_event_keys ?? []));
+
+function isEventVisible(event) {
+    if (!event.requiresPerk) {
+        return true;
+    }
+
+    return Boolean(activePerks.value[event.requiresPerk]);
+}
+
+function isEventBoosted(event) {
+    if (event.dungeonRelated && activePerks.value.dungeon_benefit) {
+        return true;
+    }
+
+    return boostedEventKeySet.value.has(event.key);
+}
+
+function buildElectionTimerCard(nowSec) {
+    const timeline = props.electionTimeline;
+    if (!timeline) {
+        return null;
+    }
+
+    const startUnix = Number(timeline.start_unix ?? 0);
+    const endUnix = Number(timeline.end_unix ?? 0);
+    const officeUnix = Number(timeline.office_unix ?? 0);
+
+    if (!startUnix || !endUnix || !officeUnix) {
+        return null;
+    }
+
+    let isActive = false;
+    let stateRemaining = 0;
+    let stateTotal = 1;
+    let nextStart = startUnix;
+    let nextEnd = endUnix;
+    let activeLabel = 'Election Live';
+    let upcomingLabel = 'Election Starts In';
+
+    if (nowSec < startUnix) {
+        stateRemaining = startUnix - nowSec;
+        stateTotal = Math.max(1, startUnix - nowSec);
+        nextStart = startUnix;
+        nextEnd = endUnix;
+    } else if (nowSec >= startUnix && nowSec < endUnix) {
+        isActive = true;
+        stateRemaining = endUnix - nowSec;
+        stateTotal = Math.max(1, endUnix - startUnix);
+        nextStart = endUnix;
+        nextEnd = officeUnix;
+    } else if (nowSec >= endUnix && nowSec < officeUnix) {
+        stateRemaining = officeUnix - nowSec;
+        stateTotal = Math.max(1, officeUnix - endUnix);
+        nextStart = officeUnix;
+        nextEnd = officeUnix;
+        activeLabel = 'Mayor Transition Live';
+        upcomingLabel = 'New Mayor Takes Office In';
+    } else {
+        return null;
+    }
+
+    const progress = Math.max(0, Math.min(1, 1 - (stateRemaining / stateTotal)));
+
+    return {
+        key: 'election-cycle',
+        name: 'Election Cycle',
+        isActive,
+        progress,
+        stateRemaining,
+        nextStart,
+        nextEnd,
+        nextOccurrences: [
+            { startUnix: nextStart, inSeconds: Math.max(0, nextStart - nowSec) },
+            { startUnix: nextEnd, inSeconds: Math.max(0, nextEnd - nowSec) },
+            { startUnix: officeUnix, inSeconds: Math.max(0, officeUnix - nowSec) },
+        ],
+        activeLabel,
+        upcomingLabel,
+        notifyEnabled: Boolean(notifyEnabled.election_cycle),
+        boosted: false,
+        dungeonRelated: false,
+    };
+}
+
 const timerCards = computed(() => {
     const nowSec = Math.floor(nowMs.value / 1000);
 
-    return events.map((event) => {
-        const shifted = nowSec - event.offsetSeconds;
-        const cyclePos = ((shifted % event.cycleSeconds) + event.cycleSeconds) % event.cycleSeconds;
+    const baseCards = events
+        .filter((event) => isEventVisible(event))
+        .map((event) => {
+            const shifted = nowSec - event.offsetSeconds;
+            const cyclePos = ((shifted % event.cycleSeconds) + event.cycleSeconds) % event.cycleSeconds;
 
-        const isActive = cyclePos < event.activeSeconds;
-        const inactiveWindow = event.cycleSeconds - event.activeSeconds;
+            const isActive = cyclePos < event.activeSeconds;
+            const inactiveWindow = event.cycleSeconds - event.activeSeconds;
 
-        const secondsUntilStart = isActive ? 0 : (event.cycleSeconds - cyclePos);
-        const secondsUntilEnd = isActive
-            ? (event.activeSeconds - cyclePos)
-            : (event.cycleSeconds - cyclePos + event.activeSeconds);
+            const secondsUntilStart = isActive ? 0 : (event.cycleSeconds - cyclePos);
+            const secondsUntilEnd = isActive
+                ? (event.activeSeconds - cyclePos)
+                : (event.cycleSeconds - cyclePos + event.activeSeconds);
 
-        const stateTotal = isActive ? event.activeSeconds : inactiveWindow;
-        const stateRemaining = isActive ? secondsUntilEnd : secondsUntilStart;
-        const progress = stateTotal > 0
-            ? Math.max(0, Math.min(1, 1 - (stateRemaining / stateTotal)))
-            : 0;
+            const stateTotal = isActive ? event.activeSeconds : inactiveWindow;
+            const stateRemaining = isActive ? secondsUntilEnd : secondsUntilStart;
+            const progress = stateTotal > 0
+                ? Math.max(0, Math.min(1, 1 - (stateRemaining / stateTotal)))
+                : 0;
 
-        const nextStart = isActive
-            ? nowSec + (event.cycleSeconds - cyclePos)
-            : nowSec + secondsUntilStart;
-        const nextEnd = nowSec + secondsUntilEnd;
+            const nextStart = isActive
+                ? nowSec + (event.cycleSeconds - cyclePos)
+                : nowSec + secondsUntilStart;
+            const nextEnd = nowSec + secondsUntilEnd;
 
-        const nextOccurrences = Array.from({ length: 3 }).map((_, idx) => {
-            const startUnix = nextStart + (idx * event.cycleSeconds);
+            const nextOccurrences = Array.from({ length: 3 }).map((_, idx) => {
+                const startUnix = nextStart + (idx * event.cycleSeconds);
+                return {
+                    startUnix,
+                    inSeconds: startUnix - nowSec,
+                };
+            });
+
             return {
-                startUnix,
-                inSeconds: startUnix - nowSec,
+                ...event,
+                isActive,
+                progress,
+                stateRemaining,
+                nextStart,
+                nextEnd,
+                nextOccurrences,
+                notifyEnabled: Boolean(notifyEnabled[event.key]),
+                boosted: isEventBoosted(event),
             };
         });
 
-        return {
-            ...event,
-            isActive,
-            progress,
-            stateRemaining,
-            nextStart,
-            nextEnd,
-            nextOccurrences,
-            notifyEnabled: Boolean(notifyEnabled[event.key]),
-        };
-    });
+    const electionCard = buildElectionTimerCard(nowSec);
+    if (electionCard) {
+        baseCards.push(electionCard);
+    }
+
+    return baseCards;
 });
 
 function seasonFromMonth(month) {
@@ -261,11 +386,27 @@ function matchesWhen(day, month, range) {
     return day >= startDay && day <= endDay && month >= startMonth && month <= endMonth;
 }
 
+function isCalendarRuleVisible(ruleKey) {
+    if (ruleKey === 'mythologicalRitual') {
+        return Boolean(activePerks.value.mythological_ritual);
+    }
+
+    if (ruleKey === 'jerryWorkshop') {
+        return Boolean(activePerks.value.jerry_workshop);
+    }
+
+    return true;
+}
+
 function getEventsForSkyDate(day, month, year) {
     const absoluteDayNumber = ((year - 1) * SKYBLOCK_DAYS_PER_YEAR) + ((month - 1) * SKYBLOCK_DAYS_PER_MONTH) + day;
     const list = [];
 
     for (const rule of SKYBLOCK_EVENT_RULES) {
+        if (!isCalendarRuleVisible(rule.key)) {
+            continue;
+        }
+
         if (rule.when.some((range) => matchesWhen(day, month, range))) {
             list.push({ key: rule.key, name: rule.name });
         }
@@ -325,6 +466,7 @@ function pickPrimaryEvent(eventsForDay) {
         'newYear',
         'winter',
         'jerryWorkshop',
+        'mythologicalRitual',
         'spookyFestival',
         'zoo',
         'electionOver',
@@ -583,15 +725,20 @@ function loadNotifyPrefs() {
         for (const event of events) {
             notifyEnabled[event.key] = Array.isArray(keys) ? keys.includes(event.key) : false;
         }
+        notifyEnabled.election_cycle = Array.isArray(keys) ? keys.includes('election_cycle') : false;
     } catch {
         for (const event of events) {
             notifyEnabled[event.key] = false;
         }
+        notifyEnabled.election_cycle = false;
     }
 }
 
 function saveNotifyPrefs() {
     const enabledKeys = events.filter((e) => notifyEnabled[e.key]).map((e) => e.key);
+    if (notifyEnabled.election_cycle) {
+        enabledKeys.push('election_cycle');
+    }
     localStorage.setItem(NOTIFY_PREFS_KEY, JSON.stringify(enabledKeys));
 }
 
@@ -785,6 +932,7 @@ onBeforeUnmount(() => {
                     class="w-full max-w-[290px] self-start overflow-hidden rounded-2xl border bg-surface-800"
                     :class="[
                         event.isActive ? 'border-green-500/70 shadow-[0_8px_30px_rgba(34,197,94,0.12)]' : 'border-border shadow-[0_6px_22px_rgba(0,0,0,0.18)]',
+                        event.boosted ? 'event-card-boosted' : '',
                         isTimerExpanded(event.key) ? 'timer-card-expanded' : 'timer-card-collapsed',
                     ]"
                 >
@@ -817,12 +965,26 @@ onBeforeUnmount(() => {
                             <div class="min-w-0 flex-1">
                                 <div class="flex items-center justify-between gap-1.5">
                                     <h3 class="truncate text-[13px] font-semibold text-white">{{ event.name }}</h3>
-                                    <span
-                                        class="rounded-full px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide"
-                                        :class="event.isActive ? 'bg-green-500/15 text-green-300' : 'bg-yellow-500/15 text-yellow-300'"
-                                    >
-                                        {{ event.isActive ? 'Live' : 'Upcoming' }}
-                                    </span>
+                                    <div class="flex items-center gap-1">
+                                        <span
+                                            class="rounded-full px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide"
+                                            :class="event.isActive ? 'bg-green-500/15 text-green-300' : 'bg-yellow-500/15 text-yellow-300'"
+                                        >
+                                            {{ event.isActive ? 'Live' : 'Upcoming' }}
+                                        </span>
+                                        <span
+                                            v-if="event.boosted"
+                                            class="rounded-full bg-cyan-500/20 px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-wide text-cyan-200 animate-pulse"
+                                        >
+                                            Special Perk
+                                        </span>
+                                        <span
+                                            v-if="event.dungeonRelated && activePerks.dungeon_benefit"
+                                            class="rounded-full bg-cyan-500/20 px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-wide text-cyan-200 animate-pulse"
+                                        >
+                                            Benefit Active
+                                        </span>
+                                    </div>
                                 </div>
 
                                 <p class="mt-1 text-[11px] font-medium leading-tight text-neutral">
@@ -939,6 +1101,10 @@ onBeforeUnmount(() => {
     display: flex;
     align-items: center;
     gap: 10px;
+}
+
+.event-card-boosted {
+    box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.45), 0 10px 28px rgba(34, 211, 238, 0.14);
 }
 
 .timer-card-collapsed,

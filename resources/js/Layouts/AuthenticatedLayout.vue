@@ -1,12 +1,18 @@
 <script setup>
-import { ref } from 'vue';
-import Dropdown from '@/Components/Dropdown.vue';
-import DropdownLink from '@/Components/DropdownLink.vue';
+import { computed, ref } from 'vue';
 import NavLink from '@/Components/NavLink.vue';
 import ResponsiveNavLink from '@/Components/ResponsiveNavLink.vue';
-import { Link } from '@inertiajs/vue3';
+import { Link, usePage } from '@inertiajs/vue3';
 
 const showingNavigationDropdown = ref(false);
+const page = usePage();
+
+const currentMayor = computed(() => page.props.currentMayor ?? null);
+const isTestingAdmin = computed(() => Boolean(page.props.auth?.testing_admin));
+const mayorPerkSummary = computed(() => {
+    const count = Number(currentMayor.value?.active_perk_count ?? 0);
+    return count === 1 ? '1 active perk' : `${count} active perks`;
+});
 </script>
 
 <template>
@@ -39,6 +45,12 @@ const showingNavigationDropdown = ref(false);
                                     Bazaar
                                 </NavLink>
                                 <NavLink
+                                    :href="route('npc-flips')"
+                                    :active="route().current('npc-flips')"
+                                >
+                                    NPC Flips
+                                </NavLink>
+                                <NavLink
                                     :href="route('profile-stats')"
                                     :active="route().current('profile-stats')"
                                 >
@@ -50,60 +62,42 @@ const showingNavigationDropdown = ref(false);
                                 >
                                     Event Timer
                                 </NavLink>
-                                <NavLink
-                                    :href="route('dungeon-party')"
-                                    :active="route().current('dungeon-party')"
-                                >
-                                    Party Finder
-                                </NavLink>
-                                <NavLink
-                                    :href="route('portfolio')"
-                                    :active="route().current('portfolio')"
-                                >
-                                    Portfolio
-                                </NavLink>
-                                <NavLink
-                                    :href="route('crafting')"
-                                    :active="route().current('crafting')"
-                                >
-                                    Crafting
-                                </NavLink>
-                                <NavLink
-                                    :href="route('bin-sniper')"
-                                    :active="route().current('bin-sniper')"
-                                >
-                                    BIN Sniper
-                                </NavLink>
+                                <template v-if="isTestingAdmin">
+                                    <NavLink
+                                        :href="route('dungeon-party')"
+                                        :active="route().current('dungeon-party')"
+                                    >
+                                        Party Finder
+                                    </NavLink>
+                                    <NavLink
+                                        :href="route('portfolio')"
+                                        :active="route().current('portfolio')"
+                                    >
+                                        Portfolio
+                                    </NavLink>
+                                    <NavLink
+                                        :href="route('crafting')"
+                                        :active="route().current('crafting')"
+                                    >
+                                        Crafting
+                                    </NavLink>
+                                    <NavLink
+                                        :href="route('bin-sniper')"
+                                        :active="route().current('bin-sniper')"
+                                    >
+                                        BIN Sniper
+                                    </NavLink>
+                                </template>
                             </div>
                         </div>
 
                         <div class="hidden sm:ms-6 sm:flex sm:items-center">
-                            <!-- Settings Dropdown -->
-                            <div class="relative ms-3">
-                                <Dropdown align="right" width="48" content-classes="py-1 bg-surface-700 border border-border">
-                                    <template #trigger>
-                                        <span class="inline-flex">
-                                            <button
-                                                type="button"
-                                                class="inline-flex items-center border border-transparent px-3 py-1.5 text-xs font-medium text-neutral hover:text-white focus:outline-none"
-                                            >
-                                                {{ $page.props.auth.user.name }}
-                                                <svg class="-me-0.5 ms-1.5 h-3 w-3" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                                                    <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/>
-                                                </svg>
-                                            </button>
-                                        </span>
-                                    </template>
-
-                                    <template #content>
-                                        <DropdownLink :href="route('profile.edit')">
-                                            Profile
-                                        </DropdownLink>
-                                        <DropdownLink :href="route('logout')" method="post" as="button">
-                                            Log Out
-                                        </DropdownLink>
-                                    </template>
-                                </Dropdown>
+                            <div
+                                v-if="currentMayor?.name"
+                                class="mr-3 hidden rounded-lg border border-border bg-surface-700/70 px-2.5 py-1.5 text-[11px] leading-tight text-neutral lg:block"
+                            >
+                                <div class="font-semibold text-white">Current Mayor: {{ currentMayor.name }}</div>
+                                <div>{{ mayorPerkSummary }}</div>
                             </div>
                         </div>
 
@@ -131,36 +125,35 @@ const showingNavigationDropdown = ref(false);
                         <ResponsiveNavLink :href="route('bazaar')" :active="route().current('bazaar')">
                             Bazaar
                         </ResponsiveNavLink>
+                        <ResponsiveNavLink :href="route('npc-flips')" :active="route().current('npc-flips')">
+                            NPC Flips
+                        </ResponsiveNavLink>
                         <ResponsiveNavLink :href="route('profile-stats')" :active="route().current('profile-stats')">
                             Profile Stats
                         </ResponsiveNavLink>
                         <ResponsiveNavLink :href="route('event-timer')" :active="route().current('event-timer')">
                             Event Timer
                         </ResponsiveNavLink>
-                        <ResponsiveNavLink :href="route('dungeon-party')" :active="route().current('dungeon-party')">
-                            Party Finder
-                        </ResponsiveNavLink>
-                        <ResponsiveNavLink :href="route('portfolio')" :active="route().current('portfolio')">
-                            Portfolio
-                        </ResponsiveNavLink>
-                        <ResponsiveNavLink :href="route('crafting')" :active="route().current('crafting')">
-                            Crafting
-                        </ResponsiveNavLink>
-                        <ResponsiveNavLink :href="route('bin-sniper')" :active="route().current('bin-sniper')">
-                            BIN Sniper
-                        </ResponsiveNavLink>
+                        <template v-if="isTestingAdmin">
+                            <ResponsiveNavLink :href="route('dungeon-party')" :active="route().current('dungeon-party')">
+                                Party Finder
+                            </ResponsiveNavLink>
+                            <ResponsiveNavLink :href="route('portfolio')" :active="route().current('portfolio')">
+                                Portfolio
+                            </ResponsiveNavLink>
+                            <ResponsiveNavLink :href="route('crafting')" :active="route().current('crafting')">
+                                Crafting
+                            </ResponsiveNavLink>
+                            <ResponsiveNavLink :href="route('bin-sniper')" :active="route().current('bin-sniper')">
+                                BIN Sniper
+                            </ResponsiveNavLink>
+                        </template>
                     </div>
 
-                    <!-- Responsive Settings Options -->
                     <div class="border-t border-border pb-1 pt-4">
-                        <div class="px-4">
-                            <div class="text-sm font-medium text-white">{{ $page.props.auth.user.name }}</div>
-                            <div class="text-xs text-neutral">{{ $page.props.auth.user.email }}</div>
-                        </div>
-
-                        <div class="mt-3 space-y-1">
-                            <ResponsiveNavLink :href="route('profile.edit')">Profile</ResponsiveNavLink>
-                            <ResponsiveNavLink :href="route('logout')" method="post" as="button">Log Out</ResponsiveNavLink>
+                        <div v-if="currentMayor?.name" class="mx-4 rounded-lg border border-border bg-surface-700/70 px-3 py-2 text-[11px] text-neutral">
+                            <div class="font-semibold text-white">Current Mayor: {{ currentMayor.name }}</div>
+                            <div>{{ mayorPerkSummary }}</div>
                         </div>
                     </div>
                 </div>

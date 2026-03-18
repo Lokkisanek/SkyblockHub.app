@@ -7,6 +7,10 @@ use Illuminate\Support\Facades\DB;
 
 class CraftingArbitrageService
 {
+    public function __construct(private readonly PerkService $perkService)
+    {
+    }
+
     /**
      * Calculate arbitrage profit for every recipe in the database.
      * Applies the 1.25% Hypixel Bazaar sell tax.
@@ -84,8 +88,8 @@ class CraftingArbitrageService
             $outputProduct  = $products->get($recipe->output_product_id);
             $name           = $outputProduct ? $outputProduct->name : $recipe->output_product_id;
 
-            // Apply 1.25% Hypixel tax on the sell-side revenue
-            $taxedRevenue   = $sellPrice * 0.9875 * $recipe->output_quantity;
+            $taxRate        = $this->perkService->getBazaarTaxRate(0.0125);
+            $taxedRevenue   = $sellPrice * (1 - $taxRate) * $recipe->output_quantity;
             $netProfit      = $taxedRevenue - $totalCraftCost;
             $marginPercent  = $totalCraftCost > 0 ? ($netProfit / $totalCraftCost) * 100 : 0.0;
 

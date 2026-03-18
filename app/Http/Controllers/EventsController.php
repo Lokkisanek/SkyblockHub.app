@@ -7,7 +7,7 @@ use App\Services\PerkService;
 use Inertia\Inertia;
 use Inertia\Response;
 
-class EventTimerController extends Controller
+class EventsController extends Controller
 {
     public function __construct(
         private readonly MayorService $mayorService,

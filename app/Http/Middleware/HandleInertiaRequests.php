@@ -2,6 +2,9 @@
 
 namespace App\Http\Middleware;
 
+use App\Services\MayorService;
+use App\Services\PerkService;
+use App\Support\TestingAdminGate;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 use Tighten\Ziggy\Ziggy;
@@ -34,11 +37,29 @@ class HandleInertiaRequests extends Middleware
             ...parent::share($request),
             'auth' => [
                 'user' => $request->user(),
+                'testing_admin' => TestingAdminGate::allows($request->user()),
             ],
+            'currentMayor' => fn () => $this->buildCurrentMayorWidget(),
             'ziggy' => fn () => [
                 ...(new Ziggy)->toArray(),
                 'location' => $request->url(),
             ],
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function buildCurrentMayorWidget(): array
+    {
+        $mayor = app(MayorService::class)->getCurrentMayorData();
+        $perkState = app(PerkService::class)->buildState($mayor);
+
+        return [
+            'name' => $mayor['name'] ?? 'Unknown',
+            'last_updated' => $mayor['last_updated'] ?? null,
+            'perks' => array_slice((array) ($mayor['perks'] ?? []), 0, 2),
+            'active_perk_count' => count(array_filter((array) ($perkState['active_perks'] ?? []))),
         ];
     }
 }
