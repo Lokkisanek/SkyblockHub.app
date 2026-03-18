@@ -4,6 +4,7 @@ use App\Http\Controllers\BazaarController;
 use App\Http\Controllers\BinSniperController;
 use App\Http\Controllers\CraftingArbitrageController;
 use App\Http\Controllers\DungeonPartyController;
+use App\Http\Controllers\EventTimerController;
 use App\Http\Controllers\PortfolioController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProfileStatsController;
@@ -31,6 +32,7 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/bazaar', [BazaarController::class, 'index'])->name('bazaar');
     Route::get('/profile-stats', [ProfileStatsController::class, 'index'])->name('profile-stats');
+    Route::get('/event-timer', [EventTimerController::class, 'index'])->name('event-timer');
 
     Route::get('/dungeon-party', [DungeonPartyController::class, 'index'])->name('dungeon-party');
     Route::post('/dungeon-party', [DungeonPartyController::class, 'store'])->name('dungeon-party.store');

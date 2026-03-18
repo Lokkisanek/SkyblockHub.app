@@ -71,11 +71,33 @@ echo ""
 echo "Press Ctrl+C to stop all services"
 echo ""
 
+# Ensure SQLite database file exists (if using sqlite)
+mkdir -p database
+if [ ! -f "database/database.sqlite" ]; then
+    echo "⚙️  Creating SQLite database file..."
+    touch database/database.sqlite
+    chmod 664 database/database.sqlite || true
+fi
+
+# Run migrations and generate app key (safe to run repeatedly)
+echo "⚙️  Generating APP_KEY and running migrations..."
+php artisan key:generate --ansi || true
+php artisan migrate --force || true
+
+# Seed crafting recipes (safe to run repeatedly)
+echo "⚙️  Seeding recipes for Crafting page..."
+php artisan recipes:seed || echo "recipes:seed failed"
+
+# Optional: run initial fetches to populate data
+echo "⚙️  Running initial fetches (bin, bazaar)..."
+php artisan bin:fetch || echo "bin:fetch failed"
+php artisan bazaar:fetch || echo "bazaar:fetch failed"
+
 # Function to kill all background processes on exit
 cleanup() {
     echo ""
     echo "Stopping services..."
-    kill $VITE_PID $REVERB_PID $LARAVEL_PID 2>/dev/null
+    kill $VITE_PID $REVERB_PID $LARAVEL_PID $QUEUE_PID $SCHEDULE_PID 2>/dev/null
     wait 2>/dev/null
     echo "Services stopped"
     exit 0
@@ -103,6 +125,16 @@ sleep 2
 echo "🚀 Starting Laravel dev server..."
 php artisan serve --host=127.0.0.1 --port=8000 &
 LARAVEL_PID=$!
+
+# Start queue worker in background
+echo "🚀 Starting queue worker..."
+php artisan queue:work --sleep=3 --tries=3 &
+QUEUE_PID=$!
+
+# Start schedule worker in background
+echo "🚀 Starting schedule worker..."
+php artisan schedule:work &
+SCHEDULE_PID=$!
 
 echo ""
 echo "✓ All services started!"

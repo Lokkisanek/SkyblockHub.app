@@ -1250,6 +1250,7 @@ class SkyCryptProxyController extends Controller
 
         $scriptPath = base_path('scripts/networth.cjs');
         $nodePath   = 'node';
+        $tmpOutFile = tempnam(sys_get_temp_dir(), 'sbh_networth_');
 
         // Call the Node.js script via subprocess
         $descriptors = [
@@ -1262,7 +1263,10 @@ class SkyCryptProxyController extends Controller
             [$nodePath, $scriptPath],
             $descriptors,
             $pipes,
-            base_path()
+            base_path(),
+            array_merge($_ENV, [
+                'SKYBLOCKHUB_NETWORTH_OUT' => $tmpOutFile ?: '',
+            ])
         );
 
         if (! is_resource($process)) {
@@ -1274,13 +1278,65 @@ class SkyCryptProxyController extends Controller
         fwrite($pipes[0], $input);
         fclose($pipes[0]);
 
-        // Read output (with timeout)
-        stream_set_timeout($pipes[1], 30);
-        $stdout = stream_get_contents($pipes[1]);
-        fclose($pipes[1]);
+        // Read stdout/stderr concurrently to avoid deadlocks and truncated output.
+        stream_set_blocking($pipes[1], false);
+        stream_set_blocking($pipes[2], false);
 
-        $stderr = stream_get_contents($pipes[2]);
-        fclose($pipes[2]);
+        $stdout = '';
+        $stderr = '';
+        $open = [1 => true, 2 => true];
+        $deadline = microtime(true) + 300.0;
+
+        while ($open[1] || $open[2]) {
+            $read = [];
+            if ($open[1]) {
+                $read[] = $pipes[1];
+            }
+            if ($open[2]) {
+                $read[] = $pipes[2];
+            }
+
+            $write = null;
+            $except = null;
+            $ready = @stream_select($read, $write, $except, 1, 0);
+
+            if ($ready === false) {
+                break;
+            }
+
+            if ($ready > 0) {
+                foreach ($read as $stream) {
+                    $idx = ($stream === $pipes[1]) ? 1 : 2;
+                    $chunk = fread($stream, 8192);
+
+                    if ($chunk !== false && $chunk !== '') {
+                        if ($idx === 1) {
+                            $stdout .= $chunk;
+                        } else {
+                            $stderr .= $chunk;
+                        }
+                    }
+
+                    if (feof($stream)) {
+                        fclose($stream);
+                        $open[$idx] = false;
+                    }
+                }
+            }
+
+            if (microtime(true) > $deadline) {
+                proc_terminate($process);
+                Log::warning('Networth: Node.js process timeout');
+                break;
+            }
+        }
+
+        if ($open[1]) {
+            fclose($pipes[1]);
+        }
+        if ($open[2]) {
+            fclose($pipes[2]);
+        }
 
         $exitCode = proc_close($process);
 
@@ -1289,10 +1345,26 @@ class SkyCryptProxyController extends Controller
                 'exitCode' => $exitCode,
                 'stderr'   => mb_substr($stderr, 0, 500),
             ]);
+            if ($tmpOutFile && file_exists($tmpOutFile)) {
+                @unlink($tmpOutFile);
+            }
             return $this->fallbackNetworth($purse, $bankBalance);
         }
 
-        $result = @json_decode($stdout, true);
+        $result = null;
+
+        if ($tmpOutFile && file_exists($tmpOutFile)) {
+            $filePayload = @file_get_contents($tmpOutFile);
+            @unlink($tmpOutFile);
+            if ($filePayload !== false && trim($filePayload) !== '') {
+                $result = $this->decodeNodeJsonOutput($filePayload);
+            }
+        }
+
+        if ($result === null) {
+            $result = $this->decodeNodeJsonOutput($stdout);
+        }
+
         if (! $result || ! isset($result['networth'])) {
             Log::warning('Networth: invalid JSON output from Node.js', [
                 'stdout' => mb_substr($stdout, 0, 500),
@@ -1311,6 +1383,123 @@ class SkyCryptProxyController extends Controller
             'itemPricesByUuid'     => $result['itemPricesByUuid'] ?? [],
             'itemPricesById'       => $result['itemPricesById'] ?? [],
         ];
+    }
+
+    /**
+     * Decode JSON output from Node script.
+     * Handles extra log lines and invalid UTF-8 gracefully.
+     */
+    private function decodeNodeJsonOutput(string $stdout): ?array
+    {
+        $clean = trim($stdout);
+
+        if ($clean === '') {
+            return null;
+        }
+
+        // Preferred format: marker-wrapped base64 payload.
+        $startMarker = '__SKYBLOCKHUB_JSON_START__';
+        $endMarker = '__SKYBLOCKHUB_JSON_END__';
+        $startPos = strpos($clean, $startMarker);
+        $endPos = strpos($clean, $endMarker);
+
+        if ($startPos !== false && $endPos !== false && $endPos > $startPos) {
+            $base64 = substr($clean, $startPos + strlen($startMarker), $endPos - ($startPos + strlen($startMarker)));
+            $json = base64_decode(trim($base64), true);
+
+            if ($json !== false) {
+                try {
+                    $decoded = json_decode($json, true, 512, JSON_THROW_ON_ERROR | JSON_INVALID_UTF8_SUBSTITUTE);
+                    return is_array($decoded) ? $decoded : null;
+                } catch (\Throwable $e) {
+                    Log::warning('Networth: marker payload decode failed', [
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+        }
+
+        try {
+            // Fast path: stdout is already pure JSON.
+            $decoded = json_decode($clean, true, 512, JSON_THROW_ON_ERROR | JSON_INVALID_UTF8_SUBSTITUTE);
+            return is_array($decoded) ? $decoded : null;
+        } catch (\Throwable $e) {
+            // Slow path: extract first balanced JSON object if logs polluted stdout.
+            $candidate = $this->extractFirstJsonObject($clean);
+            if ($candidate === null) {
+                Log::warning('Networth: JSON decode failed', [
+                    'error' => $e->getMessage(),
+                ]);
+                return null;
+            }
+
+            try {
+                $decoded = json_decode($candidate, true, 512, JSON_THROW_ON_ERROR | JSON_INVALID_UTF8_SUBSTITUTE);
+                return is_array($decoded) ? $decoded : null;
+            } catch (\Throwable $e2) {
+                Log::warning('Networth: JSON decode failed', [
+                    'error' => $e2->getMessage(),
+                ]);
+                return null;
+            }
+        }
+    }
+
+    /**
+     * Extract first balanced JSON object from mixed stdout logs.
+     */
+    private function extractFirstJsonObject(string $text): ?string
+    {
+        $start = strpos($text, '{');
+        if ($start === false) {
+            return null;
+        }
+
+        $depth = 0;
+        $inString = false;
+        $escape = false;
+        $len = strlen($text);
+
+        for ($i = $start; $i < $len; $i++) {
+            $ch = $text[$i];
+
+            if ($inString) {
+                if ($escape) {
+                    $escape = false;
+                    continue;
+                }
+
+                if ($ch === '\\') {
+                    $escape = true;
+                    continue;
+                }
+
+                if ($ch === '"') {
+                    $inString = false;
+                }
+
+                continue;
+            }
+
+            if ($ch === '"') {
+                $inString = true;
+                continue;
+            }
+
+            if ($ch === '{') {
+                $depth++;
+                continue;
+            }
+
+            if ($ch === '}') {
+                $depth--;
+                if ($depth === 0) {
+                    return substr($text, $start, $i - $start + 1);
+                }
+            }
+        }
+
+        return null;
     }
 
     /**

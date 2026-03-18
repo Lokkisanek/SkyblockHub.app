@@ -2,8 +2,9 @@
 
 namespace App\Console\Commands;
 
-use App\Models\CraftingRecipe;
+use App\Models\Recipe;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\DB;
 
 class SeedCraftingRecipes extends Command
 {
@@ -17,14 +18,52 @@ class SeedCraftingRecipes extends Command
         $count = 0;
 
         foreach ($recipes as $recipe) {
-            CraftingRecipe::updateOrCreate(
-                ['result_item_id' => $recipe['result_item_id']],
-                $recipe,
+            $outputProductId = $recipe['result_item_id'] ?? null;
+            if (! $outputProductId) {
+                continue;
+            }
+
+            // Respect FK constraints in recipes.output_product_id -> bazaar_products.product_id.
+            $exists = DB::table('bazaar_products')
+                ->where('product_id', $outputProductId)
+                ->exists();
+
+            if (! $exists) {
+                continue;
+            }
+
+            $ingredients = [];
+            foreach ((array) ($recipe['ingredients'] ?? []) as $ingredient) {
+                $itemId = $ingredient['product_id'] ?? $ingredient['item_id'] ?? null;
+                $qty = (int) ($ingredient['quantity'] ?? 0);
+
+                if (! $itemId || $qty <= 0) {
+                    continue;
+                }
+
+                $ingredients[] = [
+                    'item_id' => $itemId,
+                    'quantity' => $qty,
+                ];
+            }
+
+            if ($ingredients === []) {
+                continue;
+            }
+
+            Recipe::updateOrCreate(
+                ['output_product_id' => $outputProductId],
+                [
+                    'output_quantity' => (int) ($recipe['result_quantity'] ?? 1),
+                    'category' => $recipe['category'] ?? null,
+                    'ingredients_json' => $ingredients,
+                ],
             );
+
             $count++;
         }
 
-        $this->info("Seeded {$count} crafting recipes.");
+        $this->info("Seeded {$count} crafting recipes into recipes table.");
         return self::SUCCESS;
     }
 

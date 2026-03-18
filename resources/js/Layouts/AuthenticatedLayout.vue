@@ -45,6 +45,12 @@ const showingNavigationDropdown = ref(false);
                                     Profile Stats
                                 </NavLink>
                                 <NavLink
+                                    :href="route('event-timer')"
+                                    :active="route().current('event-timer')"
+                                >
+                                    Event Timer
+                                </NavLink>
+                                <NavLink
                                     :href="route('dungeon-party')"
                                     :active="route().current('dungeon-party')"
                                 >
@@ -127,6 +133,9 @@ const showingNavigationDropdown = ref(false);
                         </ResponsiveNavLink>
                         <ResponsiveNavLink :href="route('profile-stats')" :active="route().current('profile-stats')">
                             Profile Stats
+                        </ResponsiveNavLink>
+                        <ResponsiveNavLink :href="route('event-timer')" :active="route().current('event-timer')">
+                            Event Timer
                         </ResponsiveNavLink>
                         <ResponsiveNavLink :href="route('dungeon-party')" :active="route().current('dungeon-party')">
                             Party Finder

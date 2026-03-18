@@ -17,6 +17,7 @@
  */
 
 const { ProfileNetworthCalculator, NetworthManager } = require('skyhelper-networth');
+const fs = require('fs');
 
 let input = '';
 
@@ -27,6 +28,12 @@ process.stdin.on('data', (chunk) => {
 
 process.stdin.on('end', async () => {
     try {
+        // Some dependencies print progress/logging to stdout, which breaks
+        // the PHP side expecting pure JSON. Temporarily suppress stdout writes
+        // until we emit the final payload.
+        const originalStdoutWrite = process.stdout.write.bind(process.stdout);
+        process.stdout.write = () => true;
+
         const { profileData, museumData, bankBalance } = JSON.parse(input);
 
         if (!profileData) {
@@ -104,7 +111,18 @@ process.stdin.on('end', async () => {
             itemPricesById,
         };
 
-        process.stdout.write(JSON.stringify(output));
+        // Prefer file output for robust IPC from PHP.
+        const outFile = process.env.SKYBLOCKHUB_NETWORTH_OUT || '';
+        const jsonOutput = JSON.stringify(output);
+
+        if (outFile) {
+            fs.writeFileSync(outFile, jsonOutput, 'utf8');
+        }
+
+        // Restore stdout and emit a marker-wrapped base64 payload as fallback.
+        process.stdout.write = originalStdoutWrite;
+        const payload = Buffer.from(jsonOutput, 'utf8').toString('base64');
+        process.stdout.write(`__SKYBLOCKHUB_JSON_START__${payload}__SKYBLOCKHUB_JSON_END__`);
         process.exit(0);
     } catch (err) {
         process.stderr.write(JSON.stringify({ error: err.message || String(err) }));
