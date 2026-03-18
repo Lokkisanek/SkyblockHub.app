@@ -1,6 +1,6 @@
 <script setup>
-import { ref, computed } from 'vue';
-import { Head } from '@inertiajs/vue3';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { Head, router } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 
 const props = defineProps({
@@ -114,6 +114,50 @@ function pnlStyle(v) {
     if (v < 0) return { color: '#FF5555' };
     return { color: '#AAAAAA' };
 }
+
+// ── Auto-refresh on price updates ─────────────────────────────────────────────
+let echoChannel = null;
+let pollInterval = null;
+
+async function refreshRecipes() {
+    try {
+        const response = await fetch('/api/arbitrage/crafting');
+        const data = await response.json();
+        
+        // Update recipes data
+        props.recipes.length = 0;
+        props.recipes.push(...data);
+    } catch (error) {
+        console.error('Failed to refresh crafting recipes:', error);
+    }
+}
+
+onMounted(() => {
+    // Listen to Bazaar price updates via WebSocket
+    if (window.Echo) {
+        echoChannel = window.Echo.channel('bazaar');
+        echoChannel.listen('data.updated', () => {
+            refreshRecipes();
+        });
+    }
+
+    // Fallback: Poll every 30 seconds if WebSocket isn't available or as backup
+    pollInterval = setInterval(() => {
+        refreshRecipes();
+    }, 30000);
+});
+
+onUnmounted(() => {
+    // Cleanup WebSocket listener
+    if (echoChannel && window.Echo) {
+        window.Echo.leave('bazaar');
+    }
+
+    // Cleanup polling interval
+    if (pollInterval) {
+        clearInterval(pollInterval);
+    }
+});
 </script>
 
 <template>

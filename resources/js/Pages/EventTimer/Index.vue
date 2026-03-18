@@ -2,9 +2,8 @@
 import { computed, onBeforeUnmount, onMounted, provide, reactive, ref } from 'vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head } from '@inertiajs/vue3';
-import { preloadAllTextures, setEnabledPacks } from '@/utils/textures';
+import { preloadAllTextures } from '@/utils/textures';
 import ItemSlot from '@/Components/SkyBlock/ItemSlot.vue';
-import PackSelector from '@/Components/SkyBlock/PackSelector.vue';
 
 const nowMs = ref(Date.now());
 let timerId = null;
@@ -76,7 +75,7 @@ const EVENT_ITEM_OVERRIDES = {
 const selectedCalendarDay = ref(1);
 const selectedCalendarMonthAbsolute = ref(0);
 const displayedMonthOffset = ref(0);
-const expandedTimers = ref(new Set());
+const expandedTimer = ref(null);
 
 const events = [
     {
@@ -118,11 +117,56 @@ const events = [
     {
         key: 'spooky-festival',
         name: 'Spooky Festival',
-        cycleSeconds: 5 * 24 * 3600,
-        activeSeconds: 60 * 60,
-        offsetSeconds: 24 * 3600,
+        cycleSeconds: SKYBLOCK_DAYS_PER_YEAR * SKYBLOCK_DAY_LENGTH_SECONDS,
+        activeSeconds: 3 * SKYBLOCK_DAY_LENGTH_SECONDS,
+        offsetSeconds: ((8 * SKYBLOCK_DAYS_PER_MONTH) + 28) * SKYBLOCK_DAY_LENGTH_SECONDS,
         activeLabel: 'Festival Active',
         upcomingLabel: 'Festival Starts In',
+    },
+    {
+        key: 'bank-interest',
+        name: 'Bank Interest',
+        cycleSeconds: SKYBLOCK_DAYS_PER_MONTH * SKYBLOCK_DAY_LENGTH_SECONDS,
+        activeSeconds: 15 * 60,
+        offsetSeconds: 0,
+        activeLabel: 'Interest Payout Active',
+        upcomingLabel: 'Interest Payout In',
+    },
+    {
+        key: 'cult-fallen-star',
+        name: 'Cult of the Fallen Star',
+        cycleSeconds: 7 * SKYBLOCK_DAY_LENGTH_SECONDS,
+        activeSeconds: 15 * 60,
+        offsetSeconds: 0,
+        activeLabel: 'Fallen Star Window Active',
+        upcomingLabel: 'Fallen Star Window In',
+    },
+    {
+        key: 'season-of-jerry',
+        name: 'Season of Jerry',
+        cycleSeconds: SKYBLOCK_DAYS_PER_YEAR * SKYBLOCK_DAY_LENGTH_SECONDS,
+        activeSeconds: 3 * SKYBLOCK_DAY_LENGTH_SECONDS,
+        offsetSeconds: ((11 * SKYBLOCK_DAYS_PER_MONTH) + 23) * SKYBLOCK_DAY_LENGTH_SECONDS,
+        activeLabel: 'Season Event Active',
+        upcomingLabel: 'Season Event Starts In',
+    },
+    {
+        key: 'new-year-celebration',
+        name: 'New Year Celebration',
+        cycleSeconds: SKYBLOCK_DAYS_PER_YEAR * SKYBLOCK_DAY_LENGTH_SECONDS,
+        activeSeconds: 3 * SKYBLOCK_DAY_LENGTH_SECONDS,
+        offsetSeconds: ((11 * SKYBLOCK_DAYS_PER_MONTH) + 28) * SKYBLOCK_DAY_LENGTH_SECONDS,
+        activeLabel: 'Celebration Active',
+        upcomingLabel: 'Celebration Starts In',
+    },
+    {
+        key: 'election-over',
+        name: 'Election Over',
+        cycleSeconds: SKYBLOCK_DAYS_PER_YEAR * SKYBLOCK_DAY_LENGTH_SECONDS,
+        activeSeconds: SKYBLOCK_DAY_LENGTH_SECONDS,
+        offsetSeconds: ((2 * SKYBLOCK_DAYS_PER_MONTH) + 26) * SKYBLOCK_DAY_LENGTH_SECONDS,
+        activeLabel: 'Election Day Active',
+        upcomingLabel: 'Election Day In',
     },
 ];
 
@@ -325,11 +369,19 @@ const displayedCalendarMonth = computed(() => {
     return ((displayedMonthAbsolute.value % SKYBLOCK_MONTHS_PER_YEAR) + SKYBLOCK_MONTHS_PER_YEAR) % SKYBLOCK_MONTHS_PER_YEAR + 1;
 });
 
-const displayedMonthLabel = computed(() => {
+const currentSkyblockTimeLabel = computed(() => {
     const date = currentSkyblockDate.value;
     const hour12 = date.hour24 % 12 === 0 ? 12 : (date.hour24 % 12);
     const period = date.hour24 >= 12 ? 'pm' : 'am';
-    return `Time: ${String(hour12).padStart(2, '0')}:${String(date.minute).padStart(2, '0')}${period} ${date.day}/${date.month}/${date.year} ${date.season}`;
+    return `${String(hour12).padStart(2, '0')}:${String(date.minute).padStart(2, '0')}${period} ${date.day}/${date.month}/${date.year} ${date.season}`;
+});
+
+const calendarTrackLabel = computed(() => {
+    const selectedInDisplayedMonth = selectedCalendarMonthAbsolute.value === displayedMonthAbsolute.value;
+    const trackedDay = selectedInDisplayedMonth ? selectedCalendarDay.value : currentSkyblockDay.value;
+    const trackedMode = selectedInDisplayedMonth ? 'Selected' : 'Today';
+    const monthName = SKYBLOCK_MONTH_NAMES[displayedCalendarMonth.value - 1];
+    return `${trackedMode} Day ${trackedDay}, ${monthName}, Year ${displayedCalendarYear.value}`;
 });
 
 const calendarSlots = computed(() => {
@@ -354,9 +406,9 @@ const calendarSlots = computed(() => {
             skyblock_id: override?.skyblock_id ?? null,
             texture_path: override?.texture_path ?? '/item/map_empty',
             lore_html: [
-                `§7Date: §e${day}/${month}/${year}`,
-                eventsForDay.length > 0 ? `§6${eventsForDay.map((e) => e.name).join(', ')}` : '§8No major event scheduled',
-                '§7Daily market and profile activity',
+                `Date: ${day}/${month}/${year}`,
+                eventsForDay.length > 0 ? eventsForDay.map((e) => e.name).join(', ') : 'No major event scheduled',
+                'Daily market and profile activity',
             ],
         };
 
@@ -381,6 +433,20 @@ function formatDuration(totalSeconds) {
     }
 
     return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+}
+
+function formatRingDuration(totalSeconds) {
+    const sec = Math.max(0, Math.floor(totalSeconds));
+    const h = Math.floor(sec / 3600);
+    const m = Math.floor((sec % 3600) / 60);
+    const s = sec % 60;
+
+    // Keep ring text compact so it always fits the small circular timer.
+    if (h > 0) {
+        return `${h}:${String(m).padStart(2, '0')}`;
+    }
+
+    return `${m}:${String(s).padStart(2, '0')}`;
 }
 
 function formatCompactDuration(totalSeconds) {
@@ -411,17 +477,64 @@ function strokeOffset(progress) {
 }
 
 function isTimerExpanded(eventKey) {
-    return expandedTimers.value.has(eventKey);
+    return expandedTimer.value === eventKey;
 }
 
 function toggleTimerExpanded(eventKey) {
-    const next = new Set(expandedTimers.value);
-    if (next.has(eventKey)) {
-        next.delete(eventKey);
-    } else {
-        next.add(eventKey);
-    }
-    expandedTimers.value = next;
+    expandedTimer.value = expandedTimer.value === eventKey ? null : eventKey;
+}
+
+function onDetailBeforeEnter(el) {
+    el.style.height = '0';
+    el.style.opacity = '0';
+    el.style.transform = 'translateY(-8px) scale(0.98)';
+}
+
+function onDetailEnter(el, done) {
+    const targetHeight = `${el.scrollHeight}px`;
+    el.style.transition = 'height 320ms cubic-bezier(0.2, 0.9, 0.18, 1.05), opacity 220ms ease, transform 320ms cubic-bezier(0.2, 0.9, 0.18, 1.05)';
+
+    requestAnimationFrame(() => {
+        el.style.height = targetHeight;
+        el.style.opacity = '1';
+        el.style.transform = 'translateY(0) scale(1)';
+    });
+
+    const onEnd = (evt) => {
+        if (evt.propertyName !== 'height') return;
+        el.style.height = 'auto';
+        el.style.transition = '';
+        el.removeEventListener('transitionend', onEnd);
+        done();
+    };
+
+    el.addEventListener('transitionend', onEnd);
+}
+
+function onDetailBeforeLeave(el) {
+    el.style.height = `${el.scrollHeight}px`;
+    el.style.opacity = '1';
+    el.style.transform = 'translateY(0) scale(1)';
+}
+
+function onDetailLeave(el, done) {
+    void el.offsetHeight;
+    el.style.transition = 'height 240ms cubic-bezier(0.4, 0, 0.2, 1), opacity 180ms ease, transform 220ms ease';
+
+    requestAnimationFrame(() => {
+        el.style.height = '0';
+        el.style.opacity = '0';
+        el.style.transform = 'translateY(-6px) scale(0.98)';
+    });
+
+    const onEnd = (evt) => {
+        if (evt.propertyName !== 'height') return;
+        el.style.transition = '';
+        el.removeEventListener('transitionend', onEnd);
+        done();
+    };
+
+    el.addEventListener('transitionend', onEnd);
 }
 
 function selectCalendarDay(day) {
@@ -461,11 +574,6 @@ function selectPreviousDay() {
 function selectNextDay() {
     const currentAbsolute = (selectedCalendarMonthAbsolute.value * SKYBLOCK_DAYS_PER_MONTH) + (selectedCalendarDay.value - 1);
     setSelectedFromAbsoluteDay(currentAbsolute + 1);
-}
-
-async function onPacksChanged(packIds) {
-    await setEnabledPacks(packIds);
-    textureVersion.value++;
 }
 
 function loadNotifyPrefs() {
@@ -664,114 +772,121 @@ onBeforeUnmount(() => {
         </template>
 
         <div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-            <div class="mb-5 rounded-xl border border-border bg-surface-800 px-4 py-3 text-sm text-neutral">
-                Event windows are cycle-based timers tuned for quick in-game planning.
-                <span class="ml-2 rounded bg-surface-700 px-2 py-0.5 text-[11px] text-white">Timezone: {{ localTz }}</span>
-                <span class="ml-2 text-[11px]">
-                    Notifications:
-                    <b class="text-white">{{ notificationPermission }}</b>
-                </span>
-            </div>
+            <div class="mb-5 text-center text-2xl font-bold leading-tight text-white sm:text-3xl">{{ currentSkyblockTimeLabel }}</div>
 
-            <div class="space-y-3">
+            <TransitionGroup
+                name="timer-card"
+                tag="div"
+                class="grid grid-cols-1 items-start justify-items-center gap-3 md:grid-cols-2 2xl:grid-cols-4"
+            >
                 <section
                     v-for="event in timerCards"
                     :key="event.key"
-                    class="overflow-hidden rounded-2xl border bg-surface-800"
-                    :class="event.isActive ? 'border-green-500/70 shadow-[0_8px_30px_rgba(34,197,94,0.12)]' : 'border-border shadow-[0_6px_22px_rgba(0,0,0,0.18)]'"
+                    class="w-full max-w-[290px] self-start overflow-hidden rounded-2xl border bg-surface-800"
+                    :class="[
+                        event.isActive ? 'border-green-500/70 shadow-[0_8px_30px_rgba(34,197,94,0.12)]' : 'border-border shadow-[0_6px_22px_rgba(0,0,0,0.18)]',
+                        isTimerExpanded(event.key) ? 'timer-card-expanded' : 'timer-card-collapsed',
+                    ]"
                 >
                     <button
                         type="button"
-                        class="flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-white/[0.03]"
+                        class="w-full px-2.5 py-2.5 text-left transition hover:bg-white/[0.03]"
                         @click="toggleTimerExpanded(event.key)"
                     >
-                        <div class="relative h-10 w-10 shrink-0">
-                            <svg viewBox="0 0 48 48" class="h-full w-full -rotate-90">
-                                <circle cx="24" cy="24" r="18" stroke="rgba(148, 163, 184, 0.25)" stroke-width="4" fill="none" />
-                                <circle
-                                    cx="24"
-                                    cy="24"
-                                    r="18"
-                                    stroke-width="4"
-                                    fill="none"
-                                    stroke-linecap="round"
-                                    :stroke="event.isActive ? '#22c55e' : '#f59e0b'"
-                                    :stroke-dasharray="2 * Math.PI * 18"
-                                    :stroke-dashoffset="(2 * Math.PI * 18) * (1 - Math.max(0, Math.min(1, event.progress)))"
-                                />
-                            </svg>
-                            <span
-                                class="absolute inset-0 m-auto h-2 w-2 rounded-full"
-                                :class="event.isActive ? 'bg-green-400' : 'bg-yellow-400'"
-                            />
-                        </div>
-
-                        <div class="min-w-0 flex-1">
-                            <div class="flex items-center justify-between gap-2">
-                                <h3 class="truncate text-sm font-semibold text-white">{{ event.name }}</h3>
-                                <span
-                                    class="rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
-                                    :class="event.isActive ? 'bg-green-500/15 text-green-300' : 'bg-yellow-500/15 text-yellow-300'"
-                                >
-                                    {{ event.isActive ? 'Live' : 'Upcoming' }}
-                                </span>
-                            </div>
-
-                            <p class="mt-0.5 text-xs text-neutral">
-                                {{ event.isActive ? event.activeLabel : event.upcomingLabel }}
-                            </p>
-                        </div>
-
-                        <div class="shrink-0 text-right">
-                            <p class="text-sm font-semibold text-white">{{ formatDuration(event.stateRemaining) }}</p>
-                            <p class="text-[11px] text-neutral">{{ isTimerExpanded(event.key) ? 'Hide' : 'Details' }}</p>
-                        </div>
-                    </button>
-
-                    <div v-if="isTimerExpanded(event.key)" class="border-t border-border bg-surface-900/45 px-4 py-3">
-                        <div class="grid grid-cols-1 gap-3 lg:grid-cols-[1fr_auto] lg:items-start">
-                            <div>
-                                <p class="text-xs text-neutral">
-                                    Next start: <span class="text-white">{{ formatClock(event.nextStart) }}</span>
-                                    <span class="mx-2 text-neutral/60">•</span>
-                                    Next end: <span class="text-white">{{ formatClock(event.nextEnd) }}</span>
-                                </p>
-
-                                <div class="mt-2 rounded-lg border border-border bg-surface-900/65 px-3 py-2">
-                                    <div class="mb-1 text-[10px] font-semibold uppercase tracking-wide text-neutral">Next Occurrences</div>
-                                    <div class="space-y-1 text-xs text-neutral">
-                                        <div
-                                            v-for="occ in event.nextOccurrences"
-                                            :key="occ.startUnix"
-                                            class="flex items-center justify-between"
-                                        >
-                                            <span>in <span class="text-white">{{ formatCompactDuration(occ.inSeconds) }}</span></span>
-                                            <span class="text-white/80">{{ formatClock(occ.startUnix) }}</span>
-                                        </div>
-                                    </div>
+                        <div class="timer-card-inline">
+                            <div class="timer-ring-shell">
+                                <svg viewBox="0 0 128 128" class="h-full w-full -rotate-90">
+                                    <circle cx="64" cy="64" r="52" stroke="rgba(148, 163, 184, 0.2)" stroke-width="10" fill="none" />
+                                    <circle
+                                        cx="64"
+                                        cy="64"
+                                        r="52"
+                                        stroke-width="10"
+                                        fill="none"
+                                        stroke-linecap="round"
+                                        :stroke="event.isActive ? '#22c55e' : '#f59e0b'"
+                                        :stroke-dasharray="2 * Math.PI * 52"
+                                        :stroke-dashoffset="strokeOffset(event.progress)"
+                                    />
+                                </svg>
+                                <div class="timer-ring-content">
+                                    <div class="timer-time">{{ formatRingDuration(event.stateRemaining) }}</div>
                                 </div>
                             </div>
 
-                            <button
-                                class="rounded-md border px-2.5 py-1.5 text-[11px] font-semibold transition"
-                                :class="event.notifyEnabled
-                                    ? 'border-green-400/50 bg-green-500/10 text-green-300'
-                                    : 'border-border bg-surface-700 text-neutral hover:text-white'"
-                                @click="toggleNotify(event)"
-                            >
-                                {{ event.notifyEnabled ? 'Notify me: ON' : 'Notify me' }}
-                            </button>
+                            <div class="min-w-0 flex-1">
+                                <div class="flex items-center justify-between gap-1.5">
+                                    <h3 class="truncate text-[13px] font-semibold text-white">{{ event.name }}</h3>
+                                    <span
+                                        class="rounded-full px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide"
+                                        :class="event.isActive ? 'bg-green-500/15 text-green-300' : 'bg-yellow-500/15 text-yellow-300'"
+                                    >
+                                        {{ event.isActive ? 'Live' : 'Upcoming' }}
+                                    </span>
+                                </div>
+
+                                <p class="mt-1 text-[11px] font-medium leading-tight text-neutral">
+                                    {{ event.isActive ? event.activeLabel : event.upcomingLabel }}
+                                </p>
+
+                                <div class="mt-2 text-[11px] text-neutral">
+                                    Next: <span class="font-semibold text-white/90">{{ formatClock(event.nextStart) }}</span>
+                                </div>
+
+                                <div class="mt-1 text-[10px] text-neutral/90">
+                                    {{ isTimerExpanded(event.key) ? 'Hide details' : 'Show details' }}
+                                </div>
+                            </div>
                         </div>
-                    </div>
+                    </button>
+
+                    <Transition
+                        @before-enter="onDetailBeforeEnter"
+                        @enter="onDetailEnter"
+                        @before-leave="onDetailBeforeLeave"
+                        @leave="onDetailLeave"
+                    >
+                        <div v-if="isTimerExpanded(event.key)" class="timer-detail-panel border-t border-border bg-surface-900/45 px-4 py-3">
+                            <div class="grid grid-cols-1 gap-3">
+                                <div>
+                                    <p class="text-xs text-neutral">
+                                        Next start: <span class="text-white">{{ formatClock(event.nextStart) }}</span>
+                                        <span class="mx-2 text-neutral/60">•</span>
+                                        Next end: <span class="text-white">{{ formatClock(event.nextEnd) }}</span>
+                                    </p>
+
+                                    <div class="mt-2 rounded-lg border border-border bg-surface-900/65 px-3 py-2">
+                                        <div class="mb-1 text-[10px] font-semibold uppercase tracking-wide text-neutral">Next Occurrences</div>
+                                        <div class="space-y-1 text-xs text-neutral">
+                                            <div
+                                                v-for="occ in event.nextOccurrences"
+                                                :key="occ.startUnix"
+                                                class="flex items-center justify-between"
+                                            >
+                                                <span>in <span class="text-white">{{ formatCompactDuration(occ.inSeconds) }}</span></span>
+                                                <span class="text-white/80">{{ formatClock(occ.startUnix) }}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <button
+                                    class="rounded-md border px-2.5 py-1.5 text-[11px] font-semibold transition"
+                                    :class="event.notifyEnabled
+                                        ? 'border-green-400/50 bg-green-500/10 text-green-300'
+                                        : 'border-border bg-surface-700 text-neutral hover:text-white'"
+                                    @click="toggleNotify(event)"
+                                >
+                                    {{ event.notifyEnabled ? 'Notify me: ON' : 'Notify me' }}
+                                </button>
+                            </div>
+                        </div>
+                    </Transition>
                 </section>
-            </div>
+            </TransitionGroup>
 
             <div class="mt-8">
-                <div class="mb-3 flex items-center justify-end">
-                    <PackSelector @update:packs="onPacksChanged" />
-                </div>
-
-                <div class="mb-2 text-center text-2xl font-semibold text-white/90">{{ displayedMonthLabel }}</div>
+                <div class="mb-3 text-center text-2xl font-semibold text-white/90">{{ calendarTrackLabel }}</div>
 
                 <div class="mx-auto flex w-fit items-center justify-center gap-3 sm:gap-4">
                     <button
@@ -780,7 +895,7 @@ onBeforeUnmount(() => {
                         aria-label="Previous month"
                         @click="selectPreviousMonth"
                     >
-                        ◀
+                        <span aria-hidden="true">&lt;</span>
                     </button>
 
                     <div class="min-w-0">
@@ -811,7 +926,7 @@ onBeforeUnmount(() => {
                         aria-label="Next month"
                         @click="selectNextMonth"
                     >
-                        ▶
+                        <span aria-hidden="true">&gt;</span>
                     </button>
                 </div>
             </div>
@@ -820,6 +935,80 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
+.timer-card-inline {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.timer-card-collapsed,
+.timer-card-expanded {
+    transition: transform 240ms cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 240ms ease, filter 240ms ease;
+    transform-origin: center top;
+}
+
+.timer-card-collapsed {
+    transform: scale(1);
+}
+
+.timer-card-expanded {
+    transform: translateY(-2px) scale(1.015);
+    filter: saturate(1.04);
+}
+
+.timer-card-move {
+    transition: transform 340ms cubic-bezier(0.22, 0.9, 0.24, 1);
+}
+
+.timer-card-enter-active {
+    transition: opacity 220ms ease, transform 260ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.timer-card-leave-active {
+    transition: opacity 160ms ease, transform 180ms ease;
+}
+
+.timer-card-enter-from,
+.timer-card-leave-to {
+    opacity: 0;
+    transform: translateY(8px) scale(0.985);
+}
+
+.timer-detail-panel {
+    overflow: hidden;
+    transform-origin: top center;
+    will-change: height, opacity, transform;
+}
+
+.timer-ring-shell {
+    position: relative;
+    flex-shrink: 0;
+    height: 72px;
+    width: 72px;
+}
+
+.timer-ring-content {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    letter-spacing: 0.01em;
+    line-height: 1;
+    padding: 0 4px;
+}
+
+.timer-time {
+    font-weight: 700;
+    color: rgb(255 255 255);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
+    line-height: 1;
+    font-size: 12px;
+}
+
 .calendar-slot-btn {
     all: unset;
     position: relative;
@@ -864,28 +1053,30 @@ onBeforeUnmount(() => {
 
 .calendar-side-arrow {
     display: inline-flex;
-    height: 44px;
-    width: 44px;
+    height: 34px;
+    width: 34px;
     flex-shrink: 0;
     align-items: center;
     justify-content: center;
-    border-radius: 9999px;
+    border-radius: 8px;
     border: 1px solid rgba(148, 163, 184, 0.35);
-    background: rgba(15, 23, 42, 0.55);
-    color: rgba(255, 255, 255, 0.9);
-    font-size: 16px;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.88);
+    font-size: 18px;
     font-weight: 700;
-    transition: transform 120ms ease, background 120ms ease, border-color 120ms ease;
+    line-height: 1;
+    transition: color 120ms ease, border-color 120ms ease, transform 120ms ease;
 }
 
 .calendar-side-arrow:hover {
+    color: #ffffff;
+    border-color: rgba(255, 255, 255, 0.55);
     transform: translateY(-1px);
-    background: rgba(30, 41, 59, 0.8);
-    border-color: rgba(255, 255, 255, 0.45);
 }
 
 .calendar-side-arrow:focus-visible {
-    outline: 2px solid rgba(34, 197, 94, 0.75);
+    outline: 2px solid rgba(255, 255, 255, 0.75);
     outline-offset: 2px;
 }
+
 </style>
