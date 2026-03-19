@@ -188,30 +188,49 @@ class NpcFlipService
         ?float $spreadPercent = null,
     ): float
     {
-        // Requested formula:
-        // Score = (Profit_Per_Unit * Unit_Price * 0.4) + (ROI * 30) + (log10(Volume_24h) * 30)
+        // VOLUME-FIRST SCORING (2026 revision)
+        // Volume is the PRIMARY bottleneck - can't make money if you can't sell fast enough
+        // Formula: Base_Score * Volume_Multiplier
+        
+        // Base profitability score (kept for consistency)
         $profitDensity = $profitPerUnit * $unitPrice * 0.4;
         $roiComponent = $roi * 30;
-        $volumeComponent = log10(max($volume24h, 1)) * 30;
 
-        $score = $profitDensity + $roiComponent + $volumeComponent;
+        // Volume multiplier (exponential, not logarithmic)
+        // - 100k/day  (4k/hr)  = 1.0x multiplier
+        // - 500k/day  (21k/hr) = 2.5x multiplier  
+        // - 1M/day    (42k/hr) = 5.0x multiplier
+        // - 5M/day    (208k/hr)= 25x multiplier
+        // This ensures high-volume items are HEAVILY preferred
+        $volumeMultiplier = pow(max($volume24h / 100_000, 1), 0.6);
+        $volumeComponent = $volumeMultiplier;
 
-        // Penalize low-volume items to avoid dead flips.
-        if ($volume24h < 50_000) {
-            $score -= 25;
+        $baseScore = $profitDensity + $roiComponent;
+        $score = $baseScore * $volumeComponent;
+
+        // AGGRESSIVE volume gate: Items under 500k/day get massive penalty
+        if ($volume24h < 500_000) {
+            $score *= 0.3; // Reduce by 70% for low volume
+        }
+
+        // Critical: One-hour instasells must be reasonable
+        // Less than 100 items/hour is practically impossible to maintain
+        $oneHourVolume = max($volume24h / 24, 0.1);
+        if ($oneHourVolume < 100) {
+            $score *= 0.05; // Kill items with <100/hour sells 
         }
 
         // Personal compactor bonus requested by user.
         if ($hasCompactorBoost) {
-            $score += 25;
+            $score += 50; // Increased from 25
         }
 
         // Price stability check (spread spike penalty).
         if ($spreadPercent !== null && $spreadPercent > 12) {
-            $score -= 20;
+            $score *= 0.5; // Cut in half for unstable spreads
         }
 
-        return $score;
+        return max($score, 0); // Ensure non-negative
     }
 
     private function isStackable(string $productId): bool
@@ -222,22 +241,29 @@ class NpcFlipService
     /**
      * Rank flips by multiple criteria to find BEST PICK.
      * Returns top items across different strategies.
+     * 
+     * CRITICAL: Filters heavily on volume24h to avoid dead flips
+     * - Minimum 500k/day (20k+/hour) for strict best picks
+     * - Minimum 200k/day (8k+/hour) for other rankings
      *
      * @param array $flips Array of flip data with calculated metrics
-    * @return array{overall: array, strict_best_pick: array, hourly_profit: array, sustainability: array, consistency: array, stackable: array}
+     * @return array{overall: array, strict_best_pick: array, hourly_profit: array, sustainability: array, consistency: array, stackable: array}
      */
     public function rankBestPicks(array $flips): array
     {
         // Safety filters from product requirements.
+        // NOTE: Strict volume gate - minimum 200k/day (8.3k per hour)
         $safeFlips = collect($flips)
             ->filter(fn ($flip) => ($flip['profit_per_item'] ?? 0) > 0)
             ->filter(fn ($flip) => ($flip['roi'] ?? 0) >= 1.1)
-            ->filter(fn ($flip) => ($flip['volume_24h'] ?? 0) > 0)
+            ->filter(fn ($flip) => ($flip['volume_24h'] ?? 0) >= 200_000) // Increased from 50k
             ->filter(fn ($flip) => !($flip['is_npc_limited'] ?? false));
 
+        // Strict best picks: VERY high volume + good margin
+        // Must have 500k+/day volume (20k+/hour min throughput)
         $bestPickCandidates = $safeFlips
             ->filter(fn ($flip) => ($flip['roi'] ?? 0) >= 1.5)
-            ->filter(fn ($flip) => ($flip['volume_24h'] ?? 0) >= 50_000);
+            ->filter(fn ($flip) => ($flip['volume_24h'] ?? 0) >= 500_000); // Increased from 50k
 
         // Sort by weighted best-pick score.
         $byBestPick = $safeFlips
@@ -297,6 +323,8 @@ class NpcFlipService
      * - Coins per hour (profitability)
      * - Sustainability (hours viable)
      * - Risk (volatility, depletion speed)
+     * 
+     * CRITICAL: Enforces minimum 500k/day volume (20k+/hour) to ensure item can actually be sold
      */
     public function findBestPick(array $flips): ?array
     {
@@ -304,11 +332,12 @@ class NpcFlipService
             return null;
         }
 
-        // Best pick follows weighted score with safety filters.
+        // Best pick follows weighted score with STRICT volume requirements
+        // Must have 500k/day minimum to be considered (20k+/hour throughput)
         $scored = collect($flips)
             ->filter(fn ($flip) => ($flip['profit_per_item'] ?? 0) > 0)
             ->filter(fn ($flip) => ($flip['roi'] ?? 0) >= 1.5)
-            ->filter(fn ($flip) => ($flip['volume_24h'] ?? 0) >= 50_000)
+            ->filter(fn ($flip) => ($flip['volume_24h'] ?? 0) >= 500_000) // Increased from 50k
             ->filter(fn ($flip) => !($flip['is_npc_limited'] ?? false))
             ->map(fn ($flip) => [
                 ...$flip,

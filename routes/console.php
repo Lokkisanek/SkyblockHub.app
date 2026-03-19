@@ -15,6 +15,6 @@ Artisan::command('inspire', function () {
 | Scheduled Commands
 |--------------------------------------------------------------------------
 */
-Schedule::command('bin:fetch')->everyFiveMinutes()->withoutOverlapping();
+Schedule::command('bin:fetch')->everyThirtySeconds()->withoutOverlapping();
 Schedule::job(new FetchHypixelBazaarJob())->everyMinute()->withoutOverlapping();
 Schedule::job(new AnalyzeMarketManipulationJob())->everyFiveMinutes()->withoutOverlapping();

@@ -11,6 +11,9 @@ class BinSnapshot extends Model
 
     protected $fillable = [
         'item_name',
+        'item_id',
+        'internal_name',
+        'item_key',
         'auction_uuid',
         'price',
         'tier',

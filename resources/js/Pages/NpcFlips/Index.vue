@@ -12,12 +12,18 @@
           </p>
         </div>
 
-        <button
-          @click="refreshMarket"
-          class="rounded border border-border bg-surface-700 px-4 py-2 text-sm font-medium text-text-primary hover:bg-surface-600"
-        >
-          Refresh Bazaar
-        </button>
+        <div class="flex flex-col items-end gap-1">
+          <button
+            @click="refreshMarket"
+            class="rounded border border-border bg-surface-700 px-4 py-2 text-sm font-medium text-text-primary hover:bg-surface-600"
+            :disabled="isRefreshing"
+          >
+            {{ isRefreshing ? 'Refreshing...' : 'Refresh Bazaar' }}
+          </button>
+          <span class="text-[11px] text-text-tertiary">
+            Auto refresh in {{ formatCountdown(autoRefreshRemainingSeconds) }}
+          </span>
+        </div>
       </div>
 
       <div class="grid grid-cols-1 gap-4 sm:grid-cols-4">
@@ -298,7 +304,7 @@
 <script setup>
 import { Head, Link, router } from '@inertiajs/vue3'
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
-import { onMounted, ref } from 'vue'
+import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { getItemTextureUrl, preloadAllTextures } from '@/utils/textures'
 
 const props = defineProps({
@@ -313,8 +319,13 @@ const props = defineProps({
 const search = ref(props.filters.search || '')
 const sortBy = ref(props.filters.sort || 'best_pick_score')
 const sortDir = ref(props.filters.dir || 'desc')
+const isRefreshing = ref(false)
+
+const AUTO_REFRESH_INTERVAL_SECONDS = 180
+const autoRefreshRemainingSeconds = ref(AUTO_REFRESH_INTERVAL_SECONDS)
 
 let debounceTimer = null
+let autoRefreshTickTimer = null
 const DEFAULT_ITEM_TEXTURE = '/img/textures/chest.png'
 const SKYCRYPT_ICON_BASE = 'https://sky.shiiyu.moe/api/item/'
 
@@ -372,6 +383,12 @@ function resetFilters() {
 }
 
 function refreshMarket() {
+  if (isRefreshing.value) {
+    return
+  }
+
+  isRefreshing.value = true
+
   router.get(route('npc-flips'), {
     search: search.value || undefined,
     sort: sortBy.value,
@@ -381,7 +398,38 @@ function refreshMarket() {
   }, {
     preserveState: true,
     preserveScroll: true,
+    onFinish: () => {
+      isRefreshing.value = false
+      autoRefreshRemainingSeconds.value = AUTO_REFRESH_INTERVAL_SECONDS
+    },
   })
+}
+
+function formatCountdown(totalSeconds) {
+  const sec = Math.max(0, Math.floor(totalSeconds))
+  const m = Math.floor(sec / 60)
+  const s = sec % 60
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+}
+
+function startAutoRefreshTimer() {
+  if (autoRefreshTickTimer) {
+    clearInterval(autoRefreshTickTimer)
+  }
+
+  autoRefreshTickTimer = setInterval(() => {
+    if (isRefreshing.value) {
+      return
+    }
+
+    if (autoRefreshRemainingSeconds.value <= 1) {
+      autoRefreshRemainingSeconds.value = AUTO_REFRESH_INTERVAL_SECONDS
+      refreshMarket()
+      return
+    }
+
+    autoRefreshRemainingSeconds.value -= 1
+  }, 1000)
 }
 
 function buildPaginationUrl(page) {
@@ -581,6 +629,14 @@ function profitClass(percent) {
 
 onMounted(async () => {
   await preloadAllTextures()
+  startAutoRefreshTimer()
+})
+
+onBeforeUnmount(() => {
+  if (autoRefreshTickTimer) {
+    clearInterval(autoRefreshTickTimer)
+    autoRefreshTickTimer = null
+  }
 })
 </script>
 
