@@ -112,7 +112,7 @@ process.stdin.on('end', async () => {
         };
 
         // Prefer file output for robust IPC from PHP.
-        const outFile = process.env.SKYBLOCKHUB_NETWORTH_OUT || '';
+        const outFile = process.argv[2] || process.env.SKYBLOCKHUB_NETWORTH_OUT || '';
         const jsonOutput = JSON.stringify(output);
 
         if (outFile) {

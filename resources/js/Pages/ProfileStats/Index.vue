@@ -18,6 +18,8 @@ const loading = ref(false);
 const error = ref('');
 const selectedProfile = ref(null);
 const activeTab = ref('gear');
+let activeFetchController = null;
+let fetchSequence = 0;
 
 /* ── Tab definitions (matching SkyCrypt) ─────────────────── */
 const tabs = [
@@ -90,14 +92,29 @@ async function fetchProfile() {
     const name = username.value.trim();
     if (!name) return;
 
+    if (activeFetchController) {
+        activeFetchController.abort();
+    }
+
+    const requestId = ++fetchSequence;
+    const controller = new AbortController();
+    activeFetchController = controller;
+    const timeoutId = setTimeout(() => controller.abort(), 25000);
+
     loading.value = true;
     error.value = '';
     profileData.value = null;
     selectedProfile.value = null;
 
     try {
-        const res = await fetch(`/api/skycrypt/${encodeURIComponent(name)}`);
+        const res = await fetch(`/api/skycrypt/${encodeURIComponent(name)}`, {
+            signal: controller.signal,
+        });
         const json = await res.json();
+
+        if (requestId !== fetchSequence) {
+            return;
+        }
 
         if (!res.ok) {
             error.value = json.error || 'Failed to fetch profile.';
@@ -111,9 +128,22 @@ async function fetchProfile() {
         const sel = keys.find(k => profiles[k].selected) || keys[0];
         if (sel) selectedProfile.value = sel;
     } catch (e) {
-        error.value = 'Network error. Try again.';
+        if (requestId !== fetchSequence) {
+            return;
+        }
+
+        if (e?.name === 'AbortError') {
+            error.value = 'Request timeout. Try again in a moment.';
+        } else {
+            error.value = 'Network error. Try again.';
+        }
     } finally {
-        loading.value = false;
+        clearTimeout(timeoutId);
+
+        if (requestId === fetchSequence) {
+            loading.value = false;
+            activeFetchController = null;
+        }
     }
 }
 

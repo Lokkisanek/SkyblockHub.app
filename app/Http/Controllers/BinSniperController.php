@@ -4,17 +4,20 @@ namespace App\Http\Controllers;
 
 use App\Models\BinAlert;
 use App\Models\BinSnapshot;
+use App\Services\BinSniper\BinSniperValuationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class BinSniperController extends Controller
 {
-    private const MINIMUM_PROFIT = 500000.0;
-    private const MINIMUM_PERCENTAGE = 10.0;
+    public function __construct(private readonly BinSniperValuationService $valuationService)
+    {
+    }
 
     public function index(Request $request): Response|JsonResponse
     {
@@ -22,9 +25,10 @@ class BinSniperController extends Controller
         $sort = $request->input('sort', 'detected_at');
         $direction = $request->input('direction', 'desc');
         $tier = $request->input('tier', '');
-        $snipes = $this->buildSnipes($search, $tier, $sort, $direction);
+        $isFeed = $request->boolean('feed');
+        $snipes = $this->buildSnipes($search, $tier, $sort, $direction, $isFeed);
 
-        if ($request->boolean('feed')) {
+        if ($isFeed) {
             return response()->json([
                 'snipes' => $snipes,
                 'generated_at' => now()->toIso8601String(),
@@ -49,19 +53,19 @@ class BinSniperController extends Controller
                 'tier'      => $tier,
             ],
             'constraints' => [
-                'minimum_profit' => self::MINIMUM_PROFIT,
-                'minimum_percentage' => self::MINIMUM_PERCENTAGE,
+                'minimum_profit' => (float) config('bin_sniper.profit_thresholds.min_profit_coins', 500000),
+                'minimum_percentage' => (float) config('bin_sniper.profit_thresholds.min_profit_percentage', 10.0),
                 'ignore_manipulated' => true,
             ],
         ]);
     }
 
-    private function buildSnipes(string $search, string $tier, string $sort, string $direction): array
+    private function buildSnipes(string $search, string $tier, string $sort, string $direction, bool $lightweight = false): array
     {
         $likeOperator = DB::getDriverName() === 'pgsql' ? 'ilike' : 'like';
 
         $query = BinSnapshot::query()
-            ->where('recorded_at', '>=', now()->subHours(24));
+            ->where('recorded_at', '>=', $lightweight ? now()->subHours(8) : now()->subHours(24));
 
         if ($search !== '') {
             $query->where('item_name', $likeOperator, "%{$search}%");
@@ -73,6 +77,7 @@ class BinSniperController extends Controller
 
         $rows = $query
             ->orderByDesc('recorded_at')
+            ->when($lightweight, fn ($q) => $q->limit(5000))
             ->get([
                 'id',
                 'item_name',
@@ -87,14 +92,7 @@ class BinSniperController extends Controller
             ]);
 
         $snipes = $rows
-            ->groupBy(function (BinSnapshot $row) {
-                if ($row->item_key) {
-                    return $row->item_key;
-                }
-
-                $fallbackKey = trim((string) ($row->item_id ?? '')) . '|' . trim((string) ($row->internal_name ?? ''));
-                return $fallbackKey !== '|' ? $fallbackKey : (string) $row->item_name;
-            })
+            ->groupBy(fn (BinSnapshot $row) => $this->deriveBaseGroupKey($row))
             ->map(function (Collection $group) {
                 $priceSorted = $group->sortBy('price')->values();
                 if ($priceSorted->count() < 2) {
@@ -110,26 +108,39 @@ class BinSniperController extends Controller
                     return null;
                 }
 
-                $profitMargin = $slbin - $lbin - ($slbin * 0.01);
-                $profitPercentage = $lbin > 0 ? ($profitMargin / $lbin) * 100 : 0;
+                $priceSamples = $group
+                    ->pluck('price')
+                    ->map(static fn ($price) => (float) $price)
+                    ->filter(static fn (float $price) => $price > 0)
+                    ->values()
+                    ->all();
+
+                $liquidity24h = max(0, (int) $group
+                    ->filter(fn (BinSnapshot $entry) => $entry->recorded_at !== null && $entry->recorded_at->gte(now()->subHours(24)))
+                    ->count());
+
+                $analysis = $this->valuationService->analyzeAuction([
+                    'item_uuid' => (string) $lbinAuction->auction_uuid,
+                    'auction_uuid' => (string) $lbinAuction->auction_uuid,
+                    'item_name' => (string) $lbinAuction->item_name,
+                    'tier' => (string) ($lbinAuction->tier ?? 'UNKNOWN'),
+                    'lbin_price' => $lbin,
+                    'slbin_price' => $slbin,
+                    'liquidity_24h' => $liquidity24h,
+                ], $priceSamples);
+
+                $profitMargin = (float) ($analysis['analysis']['profit_metrics']['potential_profit_coins'] ?? 0);
+                $profitPercentage = (float) ($analysis['analysis']['profit_metrics']['profit_percentage'] ?? 0);
                 $avgPrice = (float) $group->avg(fn (BinSnapshot $snap) => (float) $snap->price);
-                $isManipulated = $avgPrice > 0 && $slbin > ($avgPrice * 2);
-
                 $itemLiquidity = $this->calculateItemLiquidity($group, $lbin);
-                $score = ($profitMargin * 0.6) + (($itemLiquidity * 1_000_000) * 0.4);
+                $isManipulated = (bool) ($analysis['analysis']['manipulated'] ?? false);
+                $confidenceScore = (float) ($analysis['analysis']['confidence_score'] ?? 0);
 
-                $marketStability = $avgPrice > 0
-                    ? max(0.0, min(100.0, 100 - (abs($lbin - $avgPrice) / $avgPrice) * 100))
-                    : 40.0;
-                $depthScore = min(100.0, $group->count() * 8);
-                $profitSignal = min(100.0, max(0.0, $profitPercentage * 1.5));
-                $confidenceScore = round(
-                    ($itemLiquidity * 0.45)
-                    + ($marketStability * 0.30)
-                    + ($depthScore * 0.15)
-                    + ($profitSignal * 0.10),
-                    1,
-                );
+                // Combined feed score: prioritize confidence and absolute profit, penalize manipulation.
+                $score = ($confidenceScore * 10000) + max(0.0, $profitMargin) + ($itemLiquidity * 2500);
+                if ($isManipulated) {
+                    $score *= 0.2;
+                }
 
                 return [
                     'item_name' => (string) $lbinAuction->item_name,
@@ -147,18 +158,19 @@ class BinSniperController extends Controller
                     'score' => round($score, 1),
                     'confidence_score' => max(0.0, min(100.0, $confidenceScore)),
                     'is_manipulated' => $isManipulated,
-                    'tax_amount' => $slbin * 0.01,
+                    'tax_amount' => (float) ($analysis['analysis']['profit_metrics']['estimated_tax'] ?? 0),
                     'profit_after_tax' => $profitMargin,
-                    'flip_roi_percentage' => $lbin > 0 ? ($profitMargin / $lbin) * 100 : 0,
+                    'flip_roi_percentage' => $profitPercentage,
                     'active_auctions' => $group->count(),
                     'detected_at' => optional($group->max('recorded_at'))?->toIso8601String(),
                     'ends_at' => optional($lbinAuction->ends_at)?->toIso8601String(),
                     'texture_path' => $this->guessTexturePath((string) ($lbinAuction->internal_name ?? ''), (string) $lbinAuction->item_name),
+                    'analysis' => $analysis['analysis'] ?? null,
                 ];
             })
             ->filter()
-            ->filter(fn (array $entry) => $entry['profit_margin'] >= self::MINIMUM_PROFIT)
-            ->filter(fn (array $entry) => $entry['profit_percentage'] >= self::MINIMUM_PERCENTAGE)
+            ->filter(fn (array $entry) => $entry['profit_margin'] >= (float) config('bin_sniper.profit_thresholds.min_profit_coins', 500000))
+            ->filter(fn (array $entry) => $entry['profit_percentage'] >= (float) config('bin_sniper.profit_thresholds.min_profit_percentage', 10.0))
             ->filter(fn (array $entry) => $entry['is_manipulated'] === false)
             ->values();
 
@@ -179,6 +191,59 @@ class BinSniperController extends Controller
             ->take(100)
             ->values()
             ->all();
+    }
+
+    private function deriveBaseGroupKey(BinSnapshot $row): string
+    {
+        $internal = strtoupper(trim((string) ($row->internal_name ?? '')));
+        if ($internal !== '') {
+            $tokens = array_values(array_filter(explode('_', $internal)));
+            if ($tokens !== []) {
+                $isAbbreviation = count(array_filter($tokens, static fn (string $token) => strlen($token) === 1)) === count($tokens);
+
+                if ($isAbbreviation && count($tokens) >= 3) {
+                    return 'abbr:' . implode('_', array_slice($tokens, 1));
+                }
+
+                // Common full-name reforges as first token.
+                $knownReforges = [
+                    'FIERCE', 'SPICY', 'SHARP', 'GENTLE', 'EPIC', 'LEGENDARY', 'PRECISE', 'SPIRITUAL',
+                    'WITHERED', 'FABLED', 'WARPED', 'HEATED', 'AUSPICIOUS', 'FORTUNATE', 'BLOOMING',
+                    'COLOSSAL', 'SOFT', 'STRENGTHENED', 'REFINED', 'EXCELLENT', 'TOIL',
+                ];
+
+                if (count($tokens) >= 2 && in_array($tokens[0], $knownReforges, true)) {
+                    return 'name:' . implode('_', array_slice($tokens, 1));
+                }
+
+                return 'name:' . implode('_', $tokens);
+            }
+        }
+
+        $name = trim((string) $row->item_name);
+        if ($name !== '') {
+            $name = preg_replace('/[✪✫★☆⚚]+/u', ' ', $name) ?? $name;
+            $name = preg_replace('/\s+/', ' ', $name) ?? $name;
+            $name = trim($name);
+            if ($name !== '') {
+                $words = explode(' ', $name);
+                if (count($words) > 2) {
+                    $first = strtoupper($words[0]);
+                    if (in_array($first, [
+                        'FIERCE', 'SPICY', 'SHARP', 'GENTLE', 'EPIC', 'LEGENDARY', 'PRECISE', 'SPIRITUAL',
+                        'WITHERED', 'FABLED', 'WARPED', 'HEATED', 'AUSPICIOUS', 'FORTUNATE', 'BLOOMING',
+                        'COLOSSAL', 'SOFT', 'STRENGTHENED', 'REFINED', 'EXCELLENT', 'TOIL',
+                    ], true)) {
+                        array_shift($words);
+                        $name = implode(' ', $words);
+                    }
+                }
+
+                return 'text:' . Str::upper($name);
+            }
+        }
+
+        return 'fallback:' . (string) $row->id;
     }
 
     private function calculateItemLiquidity(Collection $group, float $lbin): float
@@ -207,6 +272,11 @@ class BinSniperController extends Controller
         $seed = $internalName !== '' ? $internalName : $itemName;
         $token = strtolower(preg_replace('/[^a-z0-9]+/', '_', $seed) ?? '');
         $token = trim($token, '_');
+
+        // Avoid invalid numeric-only texture filenames such as /img/textures/655.png.
+        if ($token !== '' && preg_match('/^[0-9_]+$/', $token)) {
+            return '/item/paper';
+        }
 
         return '/item/' . ($token !== '' ? $token : 'paper');
     }

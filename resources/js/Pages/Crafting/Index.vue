@@ -123,7 +123,7 @@ async function refreshRecipes() {
     try {
         const response = await fetch('/api/arbitrage/crafting');
         const data = await response.json();
-        
+
         // Update recipes data
         props.recipes.length = 0;
         props.recipes.push(...data);

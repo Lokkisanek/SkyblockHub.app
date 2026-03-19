@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Utils\ItemParser;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -24,8 +25,8 @@ class SkyCryptProxyController extends Controller
     /** Cache TTL in seconds (5 minutes). */
     private const CACHE_TTL = 300;
 
-    /** Max retries on rate-limit / server error. */
-    private const MAX_RETRIES = 3;
+    /** Max retries on rate-limit / server error (keep low to avoid blocking dev server). */
+    private const MAX_RETRIES = 1;
 
     // ─── Skill XP tables (from SkyCrypt constants) ───────────────────
     private const SKILL_XP_TABLE = [
@@ -465,13 +466,10 @@ class SkyCryptProxyController extends Controller
             return response()->json(['error' => 'Player has no SkyBlock profiles.'], 404);
         }
 
-        // ── Fetch museum data for each profile ───────────────────────
+        // ── Lightweight mode: skip museum fetches on live profile request ──
+        // Museum calls significantly increase latency and are not required for
+        // fallback item valuation used in this endpoint.
         $museumDataByProfile = [];
-        foreach ($rawProfiles as $profile) {
-            $profileId = $profile['profile_id'] ?? null;
-            if (! $profileId) continue;
-            $museumDataByProfile[$profileId] = $this->fetchMuseumData($profileId, $uuid, $apiKey);
-        }
 
         // ── Fetch player data for rank info ──────────────────────────
         $playerData = $this->fetchHypixelPlayer($uuid, $apiKey);
@@ -504,8 +502,8 @@ class SkyCryptProxyController extends Controller
 
         while ($attempt < self::MAX_RETRIES) {
             try {
-                $response = Http::timeout(20)
-                    ->connectTimeout(10)
+                $response = Http::timeout(6)
+                    ->connectTimeout(3)
                     ->acceptJson()
                     ->withHeaders(['User-Agent' => 'SkyblockHub/1.0'])
                     ->get('https://api.hypixel.net/v2/skyblock/profiles', [
@@ -514,7 +512,7 @@ class SkyCryptProxyController extends Controller
                     ]);
 
                 if ($response->status() === 429) {
-                    $wait = max((int) $response->header('Retry-After', 3), pow(2, $attempt + 1));
+                    $wait = min(3, max(1, (int) $response->header('Retry-After', 1)));
                     Log::warning('Hypixel rate-limited', ['uuid' => $uuid, 'wait' => $wait, 'attempt' => $attempt + 1]);
                     sleep($wait);
                     $attempt++;
@@ -522,7 +520,7 @@ class SkyCryptProxyController extends Controller
                 }
 
                 if ($response->serverError()) {
-                    $wait = pow(2, $attempt + 1);
+                    $wait = $attempt === 0 ? 1 : 2;
                     Log::warning('Hypixel server error', ['status' => $response->status(), 'attempt' => $attempt + 1]);
                     sleep($wait);
                     $attempt++;
@@ -543,7 +541,7 @@ class SkyCryptProxyController extends Controller
                 return $json['profiles'] ?? [];
 
             } catch (\Exception $e) {
-                $wait = pow(2, $attempt + 1);
+                $wait = $attempt === 0 ? 1 : 2;
                 Log::error('Hypixel HTTP exception', ['uuid' => $uuid, 'exception' => $e->getMessage(), 'attempt' => $attempt + 1]);
                 sleep($wait);
                 $attempt++;
@@ -561,8 +559,8 @@ class SkyCryptProxyController extends Controller
     private function fetchMuseumData(string $profileId, string $uuid, string $apiKey): ?array
     {
         try {
-            $response = Http::timeout(10)
-                ->connectTimeout(5)
+            $response = Http::timeout(4)
+                ->connectTimeout(2)
                 ->acceptJson()
                 ->withHeaders(['User-Agent' => 'SkyblockHub/1.0'])
                 ->get('https://api.hypixel.net/v2/skyblock/museum', [
@@ -593,8 +591,8 @@ class SkyCryptProxyController extends Controller
     private function fetchHypixelPlayer(string $uuid, string $apiKey): ?array
     {
         try {
-            $response = Http::timeout(10)
-                ->connectTimeout(5)
+            $response = Http::timeout(4)
+                ->connectTimeout(2)
                 ->acceptJson()
                 ->withHeaders(['User-Agent' => 'SkyblockHub/1.0'])
                 ->get('https://api.hypixel.net/v2/player', [
@@ -690,6 +688,23 @@ class SkyCryptProxyController extends Controller
     private function transformProfiles(array $rawProfiles, string $uuid, string $username, array $museumDataByProfile = []): array
     {
         $profiles = [];
+        $primaryProfileId = null;
+
+        foreach ($rawProfiles as $rawProfile) {
+            $candidateId = $rawProfile['profile_id'] ?? null;
+            if (! $candidateId) {
+                continue;
+            }
+
+            if (($rawProfile['selected'] ?? false) === true) {
+                $primaryProfileId = $candidateId;
+                break;
+            }
+
+            if ($primaryProfileId === null) {
+                $primaryProfileId = $candidateId;
+            }
+        }
 
         foreach ($rawProfiles as $profile) {
             $profileId = $profile['profile_id'] ?? null;
@@ -707,9 +722,17 @@ class SkyCryptProxyController extends Controller
                 : 0;
 
             // ── Calculate networth via SkyHelper-Networth ────────────
-            $museumData   = $museumDataByProfile[$profileId] ?? null;
-            $bankBalance  = $profile['banking']['balance'] ?? 0;
-            $networthData = $this->calculateNetworth($member, $museumData, $bankBalance);
+            $bankBalance = $profile['banking']['balance'] ?? 0;
+
+            // Keep API responsive: use DB-backed fallback valuation instead of
+            // spawning Node subprocesses during live page loads.
+            if ($profileId === $primaryProfileId) {
+                $purse = (float) ($member['currencies']['coin_purse'] ?? 0);
+                $networthData = $this->fallbackNetworth($purse, (float) $bankBalance, $member);
+            } else {
+                $purse = (float) ($member['currencies']['coin_purse'] ?? 0);
+                $networthData = $this->fallbackNetworth($purse, (float) $bankBalance);
+            }
 
             // Extract price maps for injecting into parsed items
             $pricesByUuid = $networthData['itemPricesByUuid'] ?? [];
@@ -1245,7 +1268,7 @@ class SkyCryptProxyController extends Controller
 
         if ($input === false) {
             Log::warning('Networth: failed to encode input JSON');
-            return $this->fallbackNetworth($purse, $bankBalance);
+            return $this->fallbackNetworth($purse, $bankBalance, $member);
         }
 
         $scriptPath = base_path('scripts/networth.cjs');
@@ -1260,23 +1283,51 @@ class SkyCryptProxyController extends Controller
         ];
 
         $process = @proc_open(
-            [$nodePath, $scriptPath],
+            [$nodePath, $scriptPath, $tmpOutFile ?: ''],
             $descriptors,
             $pipes,
-            base_path(),
-            array_merge($_ENV, [
-                'SKYBLOCKHUB_NETWORTH_OUT' => $tmpOutFile ?: '',
-            ])
+            base_path()
         );
 
         if (! is_resource($process)) {
             Log::warning('Networth: failed to start Node.js process');
-            return $this->fallbackNetworth($purse, $bankBalance);
+            return $this->fallbackNetworth($purse, $bankBalance, $member);
         }
 
-        // Write input and close stdin
-        fwrite($pipes[0], $input);
+        // Write input and close stdin. On Windows the child process may exit
+        // early (e.g. Node bootstrap error), which can close the pipe and
+        // raise a warning; convert that case into a safe fallback.
+        try {
+            $written = @fwrite($pipes[0], $input);
+        } catch (\Throwable $e) {
+            $written = false;
+            Log::warning('Networth: failed writing to Node.js stdin', [
+                'error' => $e->getMessage(),
+            ]);
+        }
+
         fclose($pipes[0]);
+
+        if ($written === false) {
+            $stderrEarly = isset($pipes[2]) ? stream_get_contents($pipes[2]) : '';
+            if (isset($pipes[1]) && is_resource($pipes[1])) {
+                fclose($pipes[1]);
+            }
+            if (isset($pipes[2]) && is_resource($pipes[2])) {
+                fclose($pipes[2]);
+            }
+            @proc_close($process);
+
+            if ($tmpOutFile && file_exists($tmpOutFile)) {
+                @unlink($tmpOutFile);
+            }
+
+            Log::warning('Networth: stdin pipe closed before payload write', [
+                'stderr' => mb_substr((string) $stderrEarly, 0, 500),
+            ]);
+
+            return $this->fallbackNetworth($purse, $bankBalance, $member);
+        }
 
         // Read stdout/stderr concurrently to avoid deadlocks and truncated output.
         stream_set_blocking($pipes[1], false);
@@ -1285,7 +1336,9 @@ class SkyCryptProxyController extends Controller
         $stdout = '';
         $stderr = '';
         $open = [1 => true, 2 => true];
-        $deadline = microtime(true) + 300.0;
+        // Keep API responsive: networth subprocess may occasionally stall.
+        // Fallback pricing is good enough for this request when that happens.
+        $deadline = microtime(true) + 18.0;
 
         while ($open[1] || $open[2]) {
             $read = [];
@@ -1348,7 +1401,7 @@ class SkyCryptProxyController extends Controller
             if ($tmpOutFile && file_exists($tmpOutFile)) {
                 @unlink($tmpOutFile);
             }
-            return $this->fallbackNetworth($purse, $bankBalance);
+            return $this->fallbackNetworth($purse, $bankBalance, $member);
         }
 
         $result = null;
@@ -1505,8 +1558,13 @@ class SkyCryptProxyController extends Controller
     /**
      * Fallback networth when Node.js calculation fails.
      */
-    private function fallbackNetworth(float $purse, float $bank): array
+    private function fallbackNetworth(float $purse, float $bank, ?array $member = null): array
     {
+        $fallbackMaps = $member ? $this->buildFallbackItemPriceMaps($member) : [
+            'itemPricesByUuid' => [],
+            'itemPricesById'   => [],
+        ];
+
         return [
             'networth'             => $purse + $bank,
             'unsoulboundNetworth'  => $purse + $bank,
@@ -1515,9 +1573,237 @@ class SkyCryptProxyController extends Controller
             'personalBank'         => 0,
             'noInventory'          => false,
             'categories'           => [],
-            'itemPricesByUuid'     => [],
-            'itemPricesById'       => [],
+            'itemPricesByUuid'     => $fallbackMaps['itemPricesByUuid'],
+            'itemPricesById'       => $fallbackMaps['itemPricesById'],
         ];
+    }
+
+    /**
+     * Build fallback item prices from local Bazaar/BIN data.
+     * This keeps per-item value tooltips working when Node networth is unavailable.
+     */
+    private function buildFallbackItemPriceMaps(array $member): array
+    {
+        $items = $this->collectItemsForFallbackPricing($member);
+
+        if ($items === []) {
+            return [
+                'itemPricesByUuid' => [],
+                'itemPricesById'   => [],
+            ];
+        }
+
+        $ids = array_values(array_unique(array_filter(array_map(
+            fn ($item) => $item['skyblock_id'] ?? null,
+            $items
+        ))));
+
+        if ($ids === []) {
+            return [
+                'itemPricesByUuid' => [],
+                'itemPricesById'   => [],
+            ];
+        }
+
+        $bazaarRows = DB::table('bazaar_prices')
+            ->select('product_id', 'buy_price', 'sell_price')
+            ->whereIn('product_id', $ids)
+            ->get();
+
+        $bazaarPriceById = [];
+        foreach ($bazaarRows as $row) {
+            $buy = (float) ($row->buy_price ?? 0);
+            $sell = (float) ($row->sell_price ?? 0);
+
+            // Prefer insta-sell value when available.
+            $price = $sell > 0 ? $sell : $buy;
+            if ($price > 0) {
+                $bazaarPriceById[(string) $row->product_id] = $price;
+            }
+        }
+
+        // Fast BIN lookup by exact item_name candidates (base names, no stars/reforge).
+        $itemNameCandidates = [];
+        $allNameCandidates = [];
+
+        foreach ($items as $idx => $item) {
+            $candidates = $this->buildBinItemNameCandidates($item);
+            $itemNameCandidates[$idx] = $candidates;
+            foreach ($candidates as $candidate) {
+                $allNameCandidates[$candidate] = true;
+            }
+        }
+
+        $binPriceByName = [];
+        $nameKeys = array_keys($allNameCandidates);
+        if ($nameKeys !== []) {
+            $binRows = DB::table('bin_snapshots')
+                ->select('item_name', DB::raw('MIN(price) as min_price'))
+                ->where('recorded_at', '>=', now()->subHours(24))
+                ->whereIn('item_name', $nameKeys)
+                ->groupBy('item_name')
+                ->get();
+
+            foreach ($binRows as $row) {
+                $key = trim((string) ($row->item_name ?? ''));
+                $price = (float) ($row->min_price ?? 0);
+                if ($key !== '' && $price > 0) {
+                    $binPriceByName[$key] = $price;
+                }
+            }
+        }
+
+        $pricesByUuid = [];
+        $pricesById = [];
+
+        foreach ($items as $idx => $item) {
+            $id = (string) ($item['skyblock_id'] ?? '');
+            if ($id === '') {
+                continue;
+            }
+
+            $binPrice = 0.0;
+            foreach ($itemNameCandidates[$idx] ?? [] as $candidate) {
+                if (isset($binPriceByName[$candidate])) {
+                    $candidatePrice = (float) $binPriceByName[$candidate];
+                    if ($candidatePrice > 0 && ($binPrice <= 0 || $candidatePrice < $binPrice)) {
+                        $binPrice = $candidatePrice;
+                    }
+                }
+            }
+
+            $unitPrice = $bazaarPriceById[$id] ?? $binPrice;
+            if ($unitPrice <= 0) {
+                continue;
+            }
+
+            $count = max(1, (int) ($item['count'] ?? 1));
+            $price = $unitPrice * $count;
+            $entry = [
+                'price' => $price,
+                'soulbound' => false,
+            ];
+
+            $uuid = $item['uuid'] ?? null;
+            if (is_string($uuid) && $uuid !== '') {
+                $pricesByUuid[$uuid] = $entry;
+            }
+
+            $pricesById[$id][] = $entry;
+        }
+
+        return [
+            'itemPricesByUuid' => $pricesByUuid,
+            'itemPricesById'   => $pricesById,
+        ];
+    }
+
+    /**
+     * Build candidate BIN internal_name keys for an item.
+     */
+    private function buildBinItemNameCandidates(array $item): array
+    {
+        $candidates = [];
+
+        $displayName = $this->normalizeDisplayItemName((string) ($item['name'] ?? ''));
+        if ($displayName !== '') {
+            $candidates[$displayName] = true;
+        }
+
+        if ($displayName !== '' && str_contains($displayName, ' ')) {
+            $withoutFirstWord = substr($displayName, strpos($displayName, ' ') + 1);
+            if ($withoutFirstWord !== false && trim($withoutFirstWord) !== '') {
+                $candidates[trim($withoutFirstWord)] = true;
+            }
+        }
+
+        $reforge = strtolower(trim((string) ($item['reforge'] ?? '')));
+        if ($reforge !== '' && $displayName !== '') {
+            $prefix = strtolower($reforge) . ' ';
+            if (str_starts_with(strtolower($displayName), $prefix)) {
+                $withoutReforge = trim(substr($displayName, strlen($prefix)));
+                if ($withoutReforge !== '') {
+                    $candidates[$withoutReforge] = true;
+                }
+            }
+        }
+
+        $skyblockId = trim((string) ($item['skyblock_id'] ?? ''));
+        if ($skyblockId !== '') {
+            $humanized = ucwords(strtolower(str_replace('_', ' ', $skyblockId)));
+            if ($humanized !== '') {
+                $candidates[$humanized] = true;
+            }
+        }
+
+        return array_keys($candidates);
+    }
+
+    /**
+     * Normalize display item name by removing stars/markers while preserving words.
+     */
+    private function normalizeDisplayItemName(string $value): string
+    {
+        $name = trim($value);
+        if ($name === '') {
+            return '';
+        }
+
+        // Remove stars and common prefix marker used in item names.
+        $name = preg_replace('/[✪✫★☆⚚]+/u', ' ', $name) ?? $name;
+        $name = preg_replace('/\s+/', ' ', $name) ?? $name;
+
+        return trim($name);
+    }
+
+    /**
+     * Collect parsed items in the same section order used for value injection.
+     */
+    private function collectItemsForFallbackPricing(array $member): array
+    {
+        $collected = [];
+
+        $appendFlat = static function (array &$target, array $items): void {
+            foreach ($items as $item) {
+                if (is_array($item) && ! empty($item['skyblock_id'])) {
+                    $target[] = $item;
+                }
+            }
+        };
+
+        $appendFlat($collected, $this->parseArmor($member));
+        $appendFlat($collected, $this->parseEquipment($member));
+        $appendFlat($collected, $this->parseWeapons($member));
+        $appendFlat($collected, $this->parseAccessories($member));
+        $appendFlat($collected, $this->parsePlayerInventory($member));
+
+        foreach ($this->parseEnderChest($member) as $page) {
+            if (isset($page['items']) && is_array($page['items'])) {
+                $appendFlat($collected, $page['items']);
+            }
+        }
+
+        $appendFlat($collected, $this->parsePersonalVault($member));
+        $appendFlat($collected, $this->parseBagContents($member, 'fishing_bag'));
+        $appendFlat($collected, $this->parseBagContents($member, 'potion_bag'));
+        $appendFlat($collected, $this->parseBagContents($member, 'quiver'));
+
+        foreach ($this->parseWardrobe($member) as $set) {
+            if (is_array($set)) {
+                $appendFlat($collected, $set);
+            }
+        }
+
+        foreach ($this->parseBackpackStorage($member) as $slot) {
+            if (isset($slot['items']) && is_array($slot['items'])) {
+                $appendFlat($collected, $slot['items']);
+            }
+            if (isset($slot['icon']) && is_array($slot['icon'])) {
+                $appendFlat($collected, [$slot['icon']]);
+            }
+        }
+
+        return $collected;
     }
 
     // ─── SkyBlock Level ────────────────────────────────────────────────
@@ -2347,7 +2633,7 @@ class SkyCryptProxyController extends Controller
     private function getUuidFromMojang(string $username): ?string
     {
         try {
-            $resp = Http::timeout(10)->get(
+            $resp = Http::timeout(4)->get(
                 'https://api.mojang.com/users/profiles/minecraft/' . urlencode($username)
             );
 

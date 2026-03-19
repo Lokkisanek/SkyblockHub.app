@@ -15,6 +15,17 @@ Artisan::command('inspire', function () {
 | Scheduled Commands
 |--------------------------------------------------------------------------
 */
-Schedule::command('bin:fetch')->everyThirtySeconds()->withoutOverlapping();
-Schedule::job(new FetchHypixelBazaarJob())->everyMinute()->withoutOverlapping();
-Schedule::job(new AnalyzeMarketManipulationJob())->everyFiveMinutes()->withoutOverlapping();
+// BIN fetch scans many auction pages, so keep it infrequent to avoid DB/API pressure.
+Schedule::command('bin:fetch')->everyThirtyMinutes()->withoutOverlapping(45);
+
+// Run bazaar jobs inside the scheduler process with overlap locks.
+// This prevents queue buildup when a fetch takes longer than expected.
+Schedule::call(fn () => app(FetchHypixelBazaarJob::class)->handle())
+    ->name('bazaar:fetch-live-prices')
+    ->everyFiveMinutes()
+    ->withoutOverlapping(15);
+
+Schedule::call(fn () => app(AnalyzeMarketManipulationJob::class)->handle())
+    ->name('bazaar:analyze-manipulation')
+    ->everyFifteenMinutes()
+    ->withoutOverlapping(20);

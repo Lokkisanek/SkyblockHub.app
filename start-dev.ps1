@@ -1,44 +1,44 @@
 # SkyblockHub Development Server Launcher
 
 Write-Host "========================================" -ForegroundColor Cyan
-Write-Host "     SkyblockHub - Vývoj Spuštění" -ForegroundColor Cyan
+Write-Host "     SkyblockHub - Development Start" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 
 # Check npm
 if (-not (Get-Command npm -ErrorAction SilentlyContinue)) {
-    Write-Host "CHYBA: npm není nainstalován!" -ForegroundColor Red
+    Write-Host "ERROR: npm is not installed!" -ForegroundColor Red
     exit 1
 }
 
 # Check php
 if (-not (Get-Command php -ErrorAction SilentlyContinue)) {
-    Write-Host "CHYBA: PHP není nainstalováno!" -ForegroundColor Red
+    Write-Host "ERROR: PHP is not installed!" -ForegroundColor Red
     exit 1
 }
 
-Write-Host "✓ npm a PHP nalezeny" -ForegroundColor Green
+Write-Host "OK: npm and PHP found" -ForegroundColor Green
 Write-Host ""
 
 # Install dependencies if needed
 if (-not (Test-Path "node_modules")) {
-    Write-Host "⚙️  npm install..." -ForegroundColor Yellow
+    Write-Host "Running: npm install..." -ForegroundColor Yellow
     npm install
 }
 
 if (-not (Test-Path "vendor")) {
-    Write-Host "⚙️  composer install..." -ForegroundColor Yellow
+    Write-Host "Running: composer install..." -ForegroundColor Yellow
     composer install
 }
 
-Write-Host "✓ Závislosti OK" -ForegroundColor Green
+Write-Host "OK: Dependencies OK" -ForegroundColor Green
 Write-Host ""
 
 # Setup .env
 if (-not (Test-Path ".env")) {
     if (Test-Path ".env.example") {
         Copy-Item ".env.example" ".env"
-        Write-Host "✓ .env vytvořen (nastavte si ho)" -ForegroundColor Green
+        Write-Host "OK: .env created (please configure it)" -ForegroundColor Green
     }
 }
 
@@ -51,51 +51,51 @@ if (-not (Test-Path "database\database.sqlite")) {
 }
 
 # Laravel setup
-Write-Host "⚙️  Migrations a seeding..." -ForegroundColor Yellow
+Write-Host "Running migrations and seeders..." -ForegroundColor Yellow
 php artisan key:generate --ansi
 php artisan migrate --force
 php artisan recipes:seed
 
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Cyan
-Write-Host "     Spouštění služeb..." -ForegroundColor Cyan
+Write-Host "     Starting services..." -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "📌 Otevřou se vám tyto služby:" -ForegroundColor Cyan
-Write-Host "   • Laravel: http://localhost:8000" -ForegroundColor Cyan
-Write-Host "   • Vite: http://localhost:5173" -ForegroundColor Cyan
-Write-Host "   • WebSocket: ws://localhost:8080" -ForegroundColor Cyan
+Write-Host "Services to be opened:" -ForegroundColor Cyan
+Write-Host "   - Laravel: http://localhost:8000" -ForegroundColor Cyan
+Write-Host "   - Vite: http://localhost:5173" -ForegroundColor Cyan
+Write-Host "   - WebSocket: ws://localhost:8080" -ForegroundColor Cyan
 Write-Host ""
 
 $jobs = @()
 
 # Start Vite
-Write-Host "🚀 Spouštím Vite dev server..."
+Write-Host "Starting Vite dev server..."
 $jobs += Start-Process -PassThru powershell -ArgumentList "-NoExit", "-Command", "npm run dev" -WindowStyle Normal
 
 Start-Sleep -Seconds 3
 
 # Start Laravel Reverb
-Write-Host "🚀 Spouštím Laravel Reverb..."
+Write-Host "Starting Laravel Reverb..."
 $jobs += Start-Process -PassThru powershell -ArgumentList "-NoExit", "-Command", "php artisan reverb:start" -WindowStyle Normal
 
 Start-Sleep -Seconds 2
 
 # Start Laravel server
-Write-Host "🚀 Spouštím Laravel dev server..."
+Write-Host "Starting Laravel dev server..."
 $jobs += Start-Process -PassThru powershell -ArgumentList "-NoExit", "-Command", "php artisan serve" -WindowStyle Normal
 
 Start-Sleep -Seconds 2
 
 # Start Queue Worker
-Write-Host "🚀 Spouštím Queue Worker..."
+Write-Host "Starting Queue Worker..."
 $jobs += Start-Process -PassThru powershell -ArgumentList "-NoExit", "-Command", "php artisan queue:work --sleep=3 --tries=3" -WindowStyle Normal
 
 # Start Schedule Worker
-Write-Host "🚀 Spouštím Schedule Worker..."
+Write-Host "Starting Schedule Worker..."
 $jobs += Start-Process -PassThru powershell -ArgumentList "-NoExit", "-Command", "php artisan schedule:work" -WindowStyle Normal
 
 Write-Host ""
-Write-Host "✓ Všechny služby spuštěny!" -ForegroundColor Green
+Write-Host "OK: All services started!" -ForegroundColor Green
 Write-Host ""
-Write-Host "Zavřete okna ke zastavení vývoje" -ForegroundColor Yellow
+Write-Host "Close the opened windows to stop the development services." -ForegroundColor Yellow

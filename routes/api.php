@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\SkyCryptProxyController;
+use App\Http\Controllers\Api\BinSniperAnalysisController;
 use App\Http\Controllers\Api\BazaarController as ApiBazaarController;
 use App\Http\Controllers\CraftingArbitrageController;
 use App\Http\Controllers\KarmaController;
@@ -48,3 +49,12 @@ Route::prefix('v1/bazaar')->group(function () {
 |--------------------------------------------------------------------------
 */
 Route::get('/arbitrage/crafting', [CraftingArbitrageController::class, 'api']);
+
+/*
+|--------------------------------------------------------------------------
+| BIN Sniper Advanced Analysis API
+|--------------------------------------------------------------------------
+*/
+Route::post('/bin-sniper/analyze', [BinSniperAnalysisController::class, 'analyze'])
+    ->middleware('throttle:30,1')
+    ->name('api.bin-sniper.analyze');

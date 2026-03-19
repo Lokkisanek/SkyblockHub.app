@@ -19,6 +19,8 @@ const direction = ref(props.filters.direction || 'desc');
 const liveSnipes = ref(props.snipes || []);
 const isRefreshing = ref(false);
 const lastFeedUpdate = ref(new Date().toISOString());
+const refreshError = ref('');
+const lastRefreshMs = ref(null);
 const soundEnabled = ref(false);
 const copiedUuid = ref('');
 const copiedPins = ref({});
@@ -163,6 +165,11 @@ function playDing() {
 async function refreshFeed() {
     if (isRefreshing.value) return;
     isRefreshing.value = true;
+    refreshError.value = '';
+
+    const start = performance.now();
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => controller.abort(), 12000);
 
     try {
         const known = new Set((liveSnipes.value || []).map((entry) => entry.auction_uuid));
@@ -174,9 +181,20 @@ async function refreshFeed() {
             feed: 1,
         }), {
             headers: { Accept: 'application/json' },
+            signal: controller.signal,
         });
 
-        if (!response.ok) return;
+        if (!response.ok) {
+            refreshError.value = `Feed refresh failed (${response.status}).`;
+            return;
+        }
+
+        const contentType = response.headers.get('content-type') || '';
+        if (!contentType.includes('application/json')) {
+            refreshError.value = 'Feed returned unexpected response format.';
+            return;
+        }
+
         const payload = await response.json();
         const nextSnipes = Array.isArray(payload.snipes) ? payload.snipes.slice(0, MAX_FEED_ITEMS) : [];
 
@@ -190,12 +208,21 @@ async function refreshFeed() {
         if (soundEnabled.value && hasNewHighProfit) {
             playDing();
         }
+    } catch (error) {
+        if (error?.name === 'AbortError') {
+            refreshError.value = 'Feed refresh timeout.';
+        } else {
+            refreshError.value = 'Feed refresh failed. Check server state.';
+        }
     } finally {
+        window.clearTimeout(timeoutId);
+        lastRefreshMs.value = Math.round(performance.now() - start);
         isRefreshing.value = false;
     }
 }
 
 onMounted(() => {
+    refreshFeed();
     feedIntervalId = window.setInterval(refreshFeed, FEED_REFRESH_MS);
     pinTickIntervalId = window.setInterval(() => {
         nowTickMs.value = Date.now();
@@ -225,7 +252,7 @@ onBeforeUnmount(() => {
         </template>
 
         <div class="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
-            <div class="mb-4 flex flex-wrap items-center gap-3 border border-border bg-surface-800 p-3">
+            <div class="mb-4 flex flex-wrap items-center gap-3 border border-border bg-gradient-to-r from-surface-800 to-surface-700 p-3 shadow-[0_0_0_1px_rgba(90,110,130,0.12)]">
                 <input
                     v-model="search"
                     type="text"
@@ -276,10 +303,15 @@ onBeforeUnmount(() => {
 
             <div class="mb-4 flex flex-wrap gap-4 text-[11px] text-neutral">
                 <span>Feed updated: {{ timeAgo(lastFeedUpdate) }}</span>
+                <span>Refresh time: {{ lastRefreshMs !== null ? `${lastRefreshMs}ms` : '—' }}</span>
                 <span>Min Profit: {{ fmtCoins(constraints?.minimum_profit) }}</span>
                 <span>Min %: {{ constraints?.minimum_percentage }}%</span>
                 <span>Manipulated: ignored</span>
                 <span>Items in feed: {{ feedSnipes.length }}</span>
+            </div>
+
+            <div v-if="refreshError" class="mb-4 border border-loss/50 bg-loss/10 px-3 py-2 text-xs text-loss">
+                {{ refreshError }}
             </div>
 
             <transition-group name="feed" tag="div" class="grid gap-3">

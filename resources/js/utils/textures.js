@@ -284,6 +284,10 @@ function getVanillaTextureUrl(item) {
     // Vanilla items: /item/{name} → local texture file
     if (path.startsWith('/item/')) {
         const name = path.substring(6);
+        // Guard against invalid numeric texture keys (e.g. /item/655).
+        if (/^[0-9_]+$/.test(name)) {
+            return null;
+        }
         const textureName = TEXTURE_NAME_MAP[name] || name;
         return `/img/textures/${textureName}.png`;
     }

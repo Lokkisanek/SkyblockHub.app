@@ -32,6 +32,15 @@ class FetchHypixelBazaarJob implements ShouldQueue
         $products = $response->json('products', []);
         $now = Carbon::now();
         $updatedRows = [];
+        $historyRows = [];
+        $productRows = [];
+        $priceRows = [];
+
+        $productIds = array_keys($products);
+        $previousPrices = BazaarPrice::query()
+            ->whereIn('product_id', $productIds)
+            ->get()
+            ->keyBy('product_id');
 
         foreach ($products as $productId => $payload) {
             $quickStatus = $payload['quick_status'] ?? [];
@@ -45,33 +54,30 @@ class FetchHypixelBazaarJob implements ShouldQueue
             $sellOrders = (int) ($quickStatus['sellOrders'] ?? 0);
             $buyOrders = (int) ($quickStatus['buyOrders'] ?? 0);
 
-            $product = BazaarProduct::query()->firstOrCreate(
-                ['product_id' => $productId],
-                [
-                    'name' => $this->humanizeProductId($productId),
-                    'category' => $this->inferCategory($productId),
-                    'npc_sell_price' => 0,
-                ]
-            );
+            $productRows[] = [
+                'product_id' => $productId,
+                'name' => $this->humanizeProductId($productId),
+                'category' => $this->inferCategory($productId),
+                'npc_sell_price' => 0,
+                'updated_at' => $now,
+                'created_at' => $now,
+            ];
 
-            $previous = BazaarPrice::query()->find($product->product_id);
+            $priceRows[] = [
+                'product_id' => $productId,
+                'buy_price' => $buyPrice,
+                'sell_price' => $sellPrice,
+                'buy_volume' => $buyVolume,
+                'sell_volume' => $sellVolume,
+                'buy_moving_week' => $buyMovingWeek,
+                'sell_moving_week' => $sellMovingWeek,
+                'buy_orders' => $buyOrders,
+                'sell_orders' => $sellOrders,
+                'updated_at' => $now,
+                'created_at' => $now,
+            ];
 
-            BazaarPrice::query()->updateOrCreate(
-                ['product_id' => $product->product_id],
-                [
-                    'buy_price' => $buyPrice,
-                    'sell_price' => $sellPrice,
-                    'buy_volume' => $buyVolume,
-                    'sell_volume' => $sellVolume,
-                    'buy_moving_week' => $buyMovingWeek,
-                    'sell_moving_week' => $sellMovingWeek,
-                    'buy_orders' => $buyOrders,
-                    'sell_orders' => $sellOrders,
-                    'updated_at' => $now,
-                ]
-            );
-
-            $cacheKey = 'bazaar:sell_volume_history:' . $product->product_id;
+            $cacheKey = 'bazaar:sell_volume_history:' . $productId;
             $volumeSeries = Cache::get($cacheKey, []);
             $volumeSeries[] = $sellVolume;
             if (count($volumeSeries) > 10080) {
@@ -79,17 +85,20 @@ class FetchHypixelBazaarJob implements ShouldQueue
             }
             Cache::forever($cacheKey, $volumeSeries);
 
+            $previous = $previousPrices->get($productId);
             if ($this->priceChangedMoreThanOnePercent($previous, $buyPrice, $sellPrice)) {
-                BazaarHistory::query()->create([
-                    'product_id' => $product->product_id,
+                $historyRows[] = [
+                    'product_id' => $productId,
                     'buy_price' => $buyPrice,
                     'sell_price' => $sellPrice,
                     'recorded_at' => $now,
-                ]);
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ];
             }
 
             $updatedRows[] = [
-                'product_id' => $product->product_id,
+                'product_id' => $productId,
                 'buy_price' => $buyPrice,
                 'sell_price' => $sellPrice,
                 'buy_volume' => $buyVolume,
@@ -102,7 +111,37 @@ class FetchHypixelBazaarJob implements ShouldQueue
             ];
         }
 
-        if ($updatedRows !== []) {
+        if ($productRows !== []) {
+            BazaarProduct::query()->upsert(
+                $productRows,
+                ['product_id'],
+                ['name', 'category', 'npc_sell_price', 'updated_at']
+            );
+        }
+
+        if ($priceRows !== []) {
+            BazaarPrice::query()->upsert(
+                $priceRows,
+                ['product_id'],
+                [
+                    'buy_price',
+                    'sell_price',
+                    'buy_volume',
+                    'sell_volume',
+                    'buy_moving_week',
+                    'sell_moving_week',
+                    'buy_orders',
+                    'sell_orders',
+                    'updated_at',
+                ]
+            );
+        }
+
+        if ($historyRows !== []) {
+            BazaarHistory::query()->insert($historyRows);
+        }
+
+        if ($updatedRows !== [] && config('broadcasting.default') !== 'log') {
             event(new BazaarPricesUpdated($updatedRows));
         }
     }
