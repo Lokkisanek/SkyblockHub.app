@@ -45,18 +45,18 @@ class NpcPricesSeeder extends Seeder
 
         foreach ($allProducts as $product) {
             $productId = $product->product_id;
-            
+
             // Direct match
             if (isset($npcPrices[$productId])) {
                 DB::table('bazaar_products')
                     ->where('product_id', $productId)
                     ->update(['npc_sell_price' => $npcPrices[$productId]]);
                 $updated++;
-            } 
+            }
             // Pattern matching for variants (e.g., LOG, LOG:1, LOG:2)
             else {
                 $baseId = explode(':', $productId)[0];
-                
+
                 // Try base pattern (e.g., ENCHANTED_DIAMOND for all variants)
                 if (isset($npcPrices[$baseId])) {
                     DB::table('bazaar_products')

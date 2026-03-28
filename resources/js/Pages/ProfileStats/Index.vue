@@ -460,10 +460,6 @@ onMounted(async () => {
     <Head title="Profile Stats" />
 
     <AuthenticatedLayout>
-        <template #header>
-            <h2 class="text-sm font-semibold text-white uppercase tracking-wide">Profile Stats</h2>
-        </template>
-
         <div class="py-4">
             <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
 

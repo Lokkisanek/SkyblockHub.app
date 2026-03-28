@@ -78,28 +78,27 @@ function classColor(cls) {
     <Head title="Party Finder" />
 
     <AuthenticatedLayout>
-        <template #header>
-            <div class="flex items-center justify-between">
-                <h2 class="text-sm font-semibold text-white uppercase tracking-wide">Dungeon Party Finder</h2>
-                <button
-                    v-if="!myListing"
-                    @click="showForm = !showForm"
-                    class="px-3 py-1 text-xs font-medium border border-border bg-surface-700 text-neutral hover:text-white rounded-none"
-                >
-                    {{ showForm ? 'Cancel' : '+ List Yourself' }}
-                </button>
-                <button
-                    v-else
-                    @click="removeListing"
-                    class="px-3 py-1 text-xs font-medium border border-loss text-loss hover:bg-surface-700 rounded-none"
-                >
-                    Remove My Listing
-                </button>
-            </div>
-        </template>
-
         <div class="py-4">
             <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+
+                <!-- Header row -->
+                <div class="mb-4 flex items-center justify-between">
+                    <h2 class="text-sm font-semibold text-white uppercase tracking-wide">Dungeon Party Finder</h2>
+                    <button
+                        v-if="!myListing"
+                        @click="showForm = !showForm"
+                        class="px-3 py-1 text-xs font-medium border border-border bg-surface-700 text-neutral hover:text-white rounded-none"
+                    >
+                        {{ showForm ? 'Cancel' : '+ List Yourself' }}
+                    </button>
+                    <button
+                        v-else
+                        @click="removeListing"
+                        class="px-3 py-1 text-xs font-medium border border-loss text-loss hover:bg-surface-700 rounded-none"
+                    >
+                        Remove My Listing
+                    </button>
+                </div>
 
                 <!-- Create Listing Form -->
                 <div v-if="showForm && !myListing" class="mb-4 border border-border bg-surface-800 p-4">

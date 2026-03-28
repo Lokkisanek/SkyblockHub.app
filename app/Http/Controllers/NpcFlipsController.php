@@ -116,7 +116,7 @@ class NpcFlipsController extends Controller
         $sortDir = $request->input('dir', 'desc') === 'asc' ? 'asc' : 'desc';
 
         $flips = match ($sortBy) {
-            'coins_per_hour' => $flips->sort(fn ($a, $b) => $sortDir === 'asc' 
+            'coins_per_hour' => $flips->sort(fn ($a, $b) => $sortDir === 'asc'
                 ? $a['coins_per_hour'] <=> $b['coins_per_hour']
                 : $b['coins_per_hour'] <=> $a['coins_per_hour']),
             'max_profit' => $flips->sort(fn ($a, $b) => $sortDir === 'asc'

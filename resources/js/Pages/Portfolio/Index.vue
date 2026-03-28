@@ -170,10 +170,6 @@ const chartConfig = computed(() => ({
     <Head title="Portfolio Tracker" />
 
     <AuthenticatedLayout>
-        <template #header>
-            <h2 class="text-sm font-semibold text-white uppercase tracking-wide">Investment Portfolio</h2>
-        </template>
-
         <div class="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
             <!-- Summary Cards -->
             <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">

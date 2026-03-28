@@ -914,10 +914,6 @@ onBeforeUnmount(() => {
     <Head title="Visual Event Timer" />
 
     <AuthenticatedLayout>
-        <template #header>
-            <h2 class="text-lg font-semibold leading-tight text-white">Visual Event Timer</h2>
-        </template>
-
         <div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
             <div class="mb-5 text-center text-2xl font-bold leading-tight text-white sm:text-3xl">{{ currentSkyblockTimeLabel }}</div>
 

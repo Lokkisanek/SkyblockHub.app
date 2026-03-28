@@ -12,7 +12,7 @@ const props = defineProps({
     },
     contentClasses: {
         type: String,
-        default: 'py-1 bg-surface-700 border border-border',
+        default: 'py-1',
     },
 });
 
@@ -67,14 +67,15 @@ const open = ref(false);
         >
             <div
                 v-show="open"
-                class="absolute z-50 mt-2 rounded-none"
+                class="absolute z-50 mt-2 rounded-lg overflow-hidden"
                 :class="[widthClass, alignmentClasses]"
                 style="display: none"
                 @click="open = false"
             >
                 <div
-                    class="rounded-none ring-1 ring-border"
+                    class="rounded-lg border border-white/[0.06] shadow-2xl shadow-black/50"
                     :class="contentClasses"
+                    style="background: linear-gradient(180deg, rgba(16, 16, 16, 0.96) 0%, rgba(16, 16, 16, 0.92) 100%); backdrop-filter: blur(16px);"
                 >
                     <slot name="content" />
                 </div>

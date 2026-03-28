@@ -354,10 +354,6 @@ async function copyItemCommand(productId) {
     <Head title="Bazaar Pro Dashboard" />
 
     <AuthenticatedLayout>
-        <template #header>
-            <h2 class="text-sm font-semibold uppercase tracking-wide text-white">Bazaar Professional Trading Dashboard</h2>
-        </template>
-
         <div class="py-5">
             <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                 <div class="mb-4 grid grid-cols-1 gap-3 lg:grid-cols-3">

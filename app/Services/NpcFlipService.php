@@ -191,14 +191,14 @@ class NpcFlipService
         // VOLUME-FIRST SCORING (2026 revision)
         // Volume is the PRIMARY bottleneck - can't make money if you can't sell fast enough
         // Formula: Base_Score * Volume_Multiplier
-        
+
         // Base profitability score (kept for consistency)
         $profitDensity = $profitPerUnit * $unitPrice * 0.4;
         $roiComponent = $roi * 30;
 
         // Volume multiplier (exponential, not logarithmic)
         // - 100k/day  (4k/hr)  = 1.0x multiplier
-        // - 500k/day  (21k/hr) = 2.5x multiplier  
+        // - 500k/day  (21k/hr) = 2.5x multiplier
         // - 1M/day    (42k/hr) = 5.0x multiplier
         // - 5M/day    (208k/hr)= 25x multiplier
         // This ensures high-volume items are HEAVILY preferred
@@ -217,7 +217,7 @@ class NpcFlipService
         // Less than 100 items/hour is practically impossible to maintain
         $oneHourVolume = max($volume24h / 24, 0.1);
         if ($oneHourVolume < 100) {
-            $score *= 0.05; // Kill items with <100/hour sells 
+            $score *= 0.05; // Kill items with <100/hour sells
         }
 
         // Personal compactor bonus requested by user.
@@ -241,7 +241,7 @@ class NpcFlipService
     /**
      * Rank flips by multiple criteria to find BEST PICK.
      * Returns top items across different strategies.
-     * 
+     *
      * CRITICAL: Filters heavily on volume24h to avoid dead flips
      * - Minimum 500k/day (20k+/hour) for strict best picks
      * - Minimum 200k/day (8k+/hour) for other rankings
@@ -323,7 +323,7 @@ class NpcFlipService
      * - Coins per hour (profitability)
      * - Sustainability (hours viable)
      * - Risk (volatility, depletion speed)
-     * 
+     *
      * CRITICAL: Enforces minimum 500k/day volume (20k+/hour) to ensure item can actually be sold
      */
     public function findBestPick(array $flips): ?array

@@ -247,10 +247,6 @@ onBeforeUnmount(() => {
     <Head title="BIN Sniper Live Feed" />
 
     <AuthenticatedLayout>
-        <template #header>
-            <h2 class="text-sm font-semibold text-white uppercase tracking-wide">BIN Sniper Live Feed</h2>
-        </template>
-
         <div class="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
             <div class="mb-4 flex flex-wrap items-center gap-3 border border-border bg-gradient-to-r from-surface-800 to-surface-700 p-3 shadow-[0_0_0_1px_rgba(90,110,130,0.12)]">
                 <input

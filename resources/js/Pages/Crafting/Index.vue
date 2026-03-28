@@ -164,10 +164,6 @@ onUnmounted(() => {
     <Head title="Craft-to-Bazaar Arbitrage" />
 
     <AuthenticatedLayout>
-        <template #header>
-            <h2 class="text-sm font-semibold text-white uppercase tracking-wide">Craft-to-Bazaar Arbitrage</h2>
-        </template>
-
         <div class="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
 
             <!-- Summary Cards -->
