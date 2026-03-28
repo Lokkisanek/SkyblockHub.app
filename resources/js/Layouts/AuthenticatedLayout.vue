@@ -43,19 +43,18 @@ function logout() {
     <div>
         <div class="min-h-screen bg-surface-900" style="background-image: url('/background.webp'); background-size: cover; background-position: center; background-attachment: fixed;">
             <nav class="nav-wrapper relative">
-                <!-- Animated vertical glow sweep -->
-                <div class="nav-glow-sweep"></div>
+                <!-- Slime glow -->
+                <div class="slime-glow-container">
+                    <div class="slime-glow"></div>
+                </div>
 
                 <div class="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                     <div class="flex h-14 items-center justify-between">
 
                         <!-- Left: Logo -->
                         <div class="flex shrink-0 items-center">
-                            <Link :href="route('dashboard')" class="flex items-center gap-2">
-                                <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-purple-500 to-indigo-600">
-                                    <svg class="h-4 w-4 text-white" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
-                                </div>
-                                <span class="hidden text-sm font-bold tracking-wide text-white sm:inline">SKYBLOCKHUB</span>
+                            <Link :href="route('dashboard')" class="flex items-center">
+                                <span class="text-sm font-bold tracking-wide text-white">SKYBLOCKHUB</span>
                             </Link>
                         </div>
 
@@ -120,13 +119,14 @@ function logout() {
                         <!-- Right: Mayor + Lang + Auth -->
                         <div class="hidden items-center gap-4 md:flex">
                             <!-- Mayor info -->
-                            <div
+                            <Link
                                 v-if="currentMayor?.name"
-                                class="hidden rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-[11px] leading-tight text-neutral lg:block"
+                                :href="route('mayors')"
+                                class="hidden text-[11px] leading-tight text-neutral transition hover:text-white lg:block"
                             >
                                 <div class="font-semibold text-white">{{ currentMayor.name }}</div>
                                 <div>{{ mayorPerkSummary }}</div>
-                            </div>
+                            </Link>
 
                             <!-- Language Switcher -->
                             <div class="flex items-center gap-1 text-xs">
@@ -172,7 +172,7 @@ function logout() {
                             <template v-else>
                                 <Link
                                     :href="route('login')"
-                                    class="rounded-full border border-purple-500/50 bg-gradient-to-r from-purple-600/80 to-indigo-600/80 px-4 py-1.5 text-xs font-semibold text-white shadow-lg shadow-purple-500/20 transition hover:shadow-purple-500/40"
+                                    class="text-xs font-medium text-white transition hover:text-white/70"
                                 >
                                     Login
                                 </Link>
@@ -255,52 +255,64 @@ function logout() {
 <style scoped>
 /* ── Nav wrapper ── */
 .nav-wrapper {
+    position: relative;
+    z-index: 50;
     background: linear-gradient(180deg, rgba(16, 16, 16, 0.95) 0%, rgba(16, 16, 16, 0.88) 100%);
     backdrop-filter: blur(16px);
     border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-/* ── Vertical glow sweep ── */
-.nav-glow-sweep {
+/* ── Slime glow (square shape) ── */
+.slime-glow-container {
     position: absolute;
     top: 0;
+    left: 0;
+    right: 0;
     bottom: 0;
-    width: 220px;
-    background: radial-gradient(
-        ellipse 100% 100% at center,
-        rgba(139, 92, 246, 0.15) 0%,
-        rgba(120, 70, 220, 0.08) 40%,
-        transparent 100%
-    );
-    filter: blur(25px);
-    animation: sweepDrift 12s ease-in-out infinite, sweepPulse 5s ease-in-out infinite;
-    z-index: 1;
+    overflow: hidden;
     pointer-events: none;
+    z-index: 1;
 }
 
-.nav-glow-sweep::after {
+.slime-glow {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 120px;
+    height: 50px;
+    border-radius: 4px;
+    background: rgba(93, 211, 93, 0.08);
+    filter: blur(35px);
+    pointer-events: none;
+    animation: slimeGlowDrift 35s ease-in-out infinite, slimeGlowBounce 4s ease-in-out infinite;
+}
+
+.slime-glow::after {
     content: '';
     position: absolute;
-    top: 0;
-    bottom: 0;
-    left: 120px;
-    width: 180px;
-    background: radial-gradient(
-        ellipse 100% 100% at center,
-        rgba(59, 130, 246, 0.12) 0%,
-        rgba(56, 100, 220, 0.06) 40%,
-        transparent 100%
-    );
-    filter: blur(25px);
-    animation: sweepPulse 5s ease-in-out infinite reverse;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 60px;
+    height: 40px;
+    border-radius: 3px;
+    background: rgba(61, 168, 61, 0.06);
+    filter: blur(20px);
+    animation: slimeGlowPulse 6s ease-in-out infinite;
 }
 
-@keyframes sweepDrift {
-    0%, 100% { left: 15%; }
-    50%      { left: 65%; }
+@keyframes slimeGlowDrift {
+    0%, 100% { left: 8%; }
+    33%      { left: 45%; }
+    66%      { left: 75%; }
 }
 
-@keyframes sweepPulse {
+@keyframes slimeGlowBounce {
+    0%, 100% { transform: translateY(4px); }
+    50%      { transform: translateY(-6px); }
+}
+
+@keyframes slimeGlowPulse {
     0%, 100% { opacity: 0.5; }
     50%      { opacity: 1; }
 }

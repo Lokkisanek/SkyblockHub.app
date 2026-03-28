@@ -11,6 +11,14 @@ class MayorService
 {
     private const MAYOR_CACHE_KEY = 'sbh:mayor:current';
 
+    /**
+     * @return array<int, array{name:string,summary:?string,perks:array<int, array{name:string,description:?string}>}>
+     */
+    private function mayorCatalog(): array
+    {
+        return (array) config('mayors.catalog', []);
+    }
+
     public function __construct(private readonly SkyblockTimeService $skyblockTimeService)
     {
     }
@@ -66,6 +74,9 @@ class MayorService
                 ]
             );
 
+            // Store election candidates so we build a full mayor roster
+            $this->storeElectionCandidates($payload);
+
             return [
                 'name' => $name,
                 'uuid' => $uuid,
@@ -104,6 +115,12 @@ class MayorService
      * @param mixed $perks
      * @return array<int, array{name:string,description:?string}>
      */
+    /** Strip Minecraft color/formatting codes (§x) from a string. */
+    private function stripMinecraftCodes(string $text): string
+    {
+        return preg_replace('/§[0-9a-fk-or]/i', '', $text);
+    }
+
     private function normalizePerks(mixed $perks): array
     {
         if (! is_array($perks)) {
@@ -115,15 +132,15 @@ class MayorService
         foreach ($perks as $perk) {
             if (is_string($perk)) {
                 $result[] = [
-                    'name' => $perk,
+                    'name' => $this->stripMinecraftCodes($perk),
                     'description' => null,
                 ];
                 continue;
             }
 
             if (is_array($perk)) {
-                $name = (string) ($perk['name'] ?? 'Unknown Perk');
-                $description = isset($perk['description']) ? (string) $perk['description'] : null;
+                $name = $this->stripMinecraftCodes((string) ($perk['name'] ?? 'Unknown Perk'));
+                $description = isset($perk['description']) ? $this->stripMinecraftCodes((string) $perk['description']) : null;
 
                 $result[] = [
                     'name' => $name,
@@ -186,5 +203,98 @@ class MayorService
         }
 
         return $num > 0 ? $num : null;
+    }
+
+    private function storeElectionCandidates(array $payload): void
+    {
+        $candidates = data_get($payload, 'current.candidates', []);
+
+        foreach ($candidates as $candidate) {
+            if (! is_array($candidate) || empty($candidate['name'])) {
+                continue;
+            }
+
+            $candidateName = (string) $candidate['name'];
+            $existing = Mayor::query()->where('name', $candidateName)->first();
+
+            // Don't overwrite the current mayor's fresh data
+            if ($existing && $existing->last_updated && $existing->last_updated->gt(now()->subMinutes(5))) {
+                continue;
+            }
+
+            $perks = $this->normalizePerks($candidate['perks'] ?? []);
+
+            Mayor::query()->updateOrCreate(
+                ['name' => $candidateName],
+                [
+                    'uuid' => isset($candidate['uuid']) ? (string) $candidate['uuid'] : ($existing->uuid ?? null),
+                    'perks_json' => $perks,
+                    'last_updated' => $existing?->last_updated ?? now(),
+                ]
+            );
+        }
+    }
+
+    public function getAllMayors(): array
+    {
+        // Ensure fresh data
+        $this->getCurrentMayorData();
+
+        $currentMayorData = $this->getCurrentMayorData();
+        $currentName = $currentMayorData['name'] ?? null;
+
+        $databaseMayors = Mayor::query()
+            ->orderByRaw("CASE WHEN name = ? THEN 0 ELSE 1 END", [$currentName])
+            ->orderBy('name')
+            ->get()
+            ->map(function (Mayor $mayor) use ($currentName) {
+                return [
+                    'name' => $mayor->name,
+                    'uuid' => $mayor->uuid,
+                    'perks' => $this->normalizePerks($mayor->perks_json ?? []),
+                    'is_active' => $mayor->name === $currentName,
+                    'last_updated' => $mayor->last_updated?->toIso8601String(),
+                    'last_elected' => $mayor->last_updated?->diffForHumans(),
+                    'summary' => null,
+                    'skin_name' => null,
+                ];
+            })
+            ->keyBy('name');
+
+        $merged = collect($this->mayorCatalog())
+            ->map(function (array $catalogMayor) use ($databaseMayors, $currentName) {
+                $name = (string) ($catalogMayor['name'] ?? 'Unknown');
+                $existing = $databaseMayors->get($name);
+                $catalogPerks = $this->normalizePerks($catalogMayor['perks'] ?? []);
+
+                return [
+                    'name'       => $name,
+                    'label'      => $catalogMayor['label'] ?? $name,
+                    'category'   => $catalogMayor['category'] ?? 'regular',
+                    'uuid'       => $existing['uuid'] ?? null,
+                    'perks'      => ! empty($existing['perks']) ? $existing['perks'] : $catalogPerks,
+                    'is_active'  => ($existing['is_active'] ?? false) || $name === $currentName,
+                    'last_updated' => $existing['last_updated'] ?? null,
+                    'last_elected' => $existing['last_elected'] ?? null,
+                    'summary'    => $catalogMayor['summary'] ?? null,
+                    'skin_name'  => $catalogMayor['skin_name'] ?? null,
+                    'skin_alt'   => $catalogMayor['skin_alt'] ?? null,
+                ];
+            })
+            ->keyBy('name');
+
+        foreach ($databaseMayors as $name => $databaseMayor) {
+            if (! $merged->has($name)) {
+                $merged->put($name, $databaseMayor);
+            }
+        }
+
+        return $merged
+            ->sortBy(fn (array $mayor) => [
+                $mayor['is_active'] ? 0 : 1,
+                $mayor['name'],
+            ])
+            ->values()
+            ->all();
     }
 }

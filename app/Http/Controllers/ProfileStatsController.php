@@ -10,8 +10,10 @@ class ProfileStatsController extends Controller
 {
     public function index(Request $request): Response
     {
+        $username = $request->query('username');
+
         return Inertia::render('ProfileStats/Index', [
-            'minecraftUsername' => $request->user()?->minecraft_username,
+            'minecraftUsername' => $username ?: $request->user()?->minecraft_username,
         ]);
     }
 }

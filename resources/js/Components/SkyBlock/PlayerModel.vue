@@ -5,12 +5,14 @@
  *
  * Props:
  *   uuid  — Minecraft player UUID (used to fetch skin texture)
+ *   skinName — Optional username/skin name fallback when UUID is unavailable
  *   width / height — canvas dimensions
  */
 import { ref, watch, onMounted, onBeforeUnmount, nextTick } from 'vue';
 
 const props = defineProps({
     uuid:   { type: String, default: null },
+    skinName: { type: String, default: null },
     width:  { type: Number, default: 200 },
     height: { type: Number, default: 400 },
 });
@@ -22,13 +24,22 @@ let viewer = null;
  * Get the raw skin texture URL from Mojang via proxy (to avoid CORS).
  * We use mc-heads.net/skin/ which returns the raw skin PNG.
  */
-function getSkinTextureUrl(uuid) {
-    if (!uuid) return null;
-    return `https://mc-heads.net/skin/${uuid}`;
+function getSkinTextureUrl() {
+    if (props.uuid) {
+        return `https://mc-heads.net/skin/${props.uuid}`;
+    }
+
+    if (props.skinName) {
+        return `https://mc-heads.net/skin/${encodeURIComponent(props.skinName)}`;
+    }
+
+    return null;
 }
 
 async function initViewer() {
-    if (!canvasRef.value || !props.uuid) return;
+    const skinUrl = getSkinTextureUrl();
+
+    if (!canvasRef.value || !skinUrl) return;
 
     // Dynamically import to keep bundle lighter (three.js is heavy)
     const { SkinViewer, IdleAnimation } = await import('skinview3d');
@@ -43,7 +54,7 @@ async function initViewer() {
         canvas: canvasRef.value,
         width: props.width,
         height: props.height,
-        skin: getSkinTextureUrl(props.uuid),
+        skin: skinUrl,
         zoom: 0.9,
         fov: 50,
         animation: new IdleAnimation(),
@@ -72,8 +83,20 @@ onMounted(() => {
 });
 
 watch(() => props.uuid, () => {
-    if (viewer && props.uuid) {
-        viewer.loadSkin(getSkinTextureUrl(props.uuid));
+    const skinUrl = getSkinTextureUrl();
+
+    if (viewer && skinUrl) {
+        viewer.loadSkin(skinUrl);
+    } else {
+        nextTick(() => initViewer());
+    }
+});
+
+watch(() => props.skinName, () => {
+    const skinUrl = getSkinTextureUrl();
+
+    if (viewer && skinUrl) {
+        viewer.loadSkin(skinUrl);
     } else {
         nextTick(() => initViewer());
     }
@@ -94,7 +117,7 @@ onBeforeUnmount(() => {
                 class="player-model-canvas"
                 :width="width"
                 :height="height" />
-        <div v-if="!uuid" class="player-model-placeholder">
+        <div v-if="!uuid && !skinName" class="player-model-placeholder">
             <span>No player</span>
         </div>
     </div>
@@ -104,7 +127,6 @@ onBeforeUnmount(() => {
 .player-model-container {
     position: relative;
     cursor: grab;
-    border-radius: 10px;
     overflow: hidden;
 }
 .player-model-container:active {

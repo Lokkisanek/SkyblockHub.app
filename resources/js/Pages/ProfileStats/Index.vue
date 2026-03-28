@@ -464,14 +464,30 @@ onMounted(async () => {
             <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
 
                 <!-- ═══ SEARCH BAR ═══ -->
-                <div class="mb-6 flex items-center gap-2">
-                    <input v-model="username" type="text" placeholder="Search player…"
-                        class="bg-surface-800 border border-border rounded px-4 py-2 text-sm text-white placeholder-neutral focus:outline-none focus:border-profit w-72"
-                        @keyup.enter="fetchProfile" />
-                    <button @click="fetchProfile" :disabled="loading"
-                        class="px-4 py-2 text-sm font-medium bg-profit/20 border border-profit/30 text-profit hover:bg-profit/30 rounded disabled:opacity-50 transition">
-                        {{ loading ? 'Loading…' : 'Search' }}
-                    </button>
+                <div class="mb-8 flex justify-center">
+                    <div class="w-full max-w-2xl rounded-2xl border border-border/80 bg-surface-900/75 p-3 shadow-[0_16px_40px_rgba(0,0,0,0.35)] backdrop-blur-sm">
+                        <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+                            <div class="relative flex-1">
+                                <svg class="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                    <path fill-rule="evenodd" d="M8.5 3a5.5 5.5 0 104.35 8.87l2.64 2.64a1 1 0 001.42-1.42l-2.64-2.64A5.5 5.5 0 008.5 3zm-3.5 5.5a3.5 3.5 0 117 0 3.5 3.5 0 01-7 0z" clip-rule="evenodd" />
+                                </svg>
+                                <input
+                                    v-model="username"
+                                    type="text"
+                                    placeholder="Search player..."
+                                    class="w-full rounded-xl border border-border/80 bg-surface-800/80 py-3 pl-11 pr-4 text-sm text-white placeholder:text-neutral/80 transition focus:border-profit/70 focus:outline-none focus:ring-2 focus:ring-profit/25"
+                                    @keyup.enter="fetchProfile"
+                                />
+                            </div>
+                            <button
+                                @click="fetchProfile"
+                                :disabled="loading"
+                                class="inline-flex h-[46px] items-center justify-center rounded-xl border border-profit/35 bg-profit/20 px-6 text-sm font-semibold text-profit transition hover:bg-profit/30 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                                {{ loading ? 'Loading...' : 'Search' }}
+                            </button>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Error -->
