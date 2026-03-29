@@ -21,17 +21,7 @@ const featureCards = [
         metric: 'Live market deltas',
         routeName: 'bazaar',
         accent: 'emerald',
-        size: 'tall',
-    },
-    {
-        id: 'npc',
-        title: 'NPC Arbitrage',
-        subtitle: 'Low-risk coin printing',
-        description: 'Instantly compare Bazaar buy prices with NPC sell values and rank best opportunities.',
-        metric: '1.5x+ opportunities',
-        routeName: 'npc-flips',
-        accent: 'amber',
-        size: 'medium',
+        layout: 'main',
     },
     {
         id: 'events',
@@ -41,7 +31,17 @@ const featureCards = [
         metric: 'Always on schedule',
         routeName: 'event-timer',
         accent: 'indigo',
-        size: 'tall',
+        layout: 'sidebar',
+    },
+    {
+        id: 'npc',
+        title: 'NPC Arbitrage',
+        subtitle: 'Low-risk coin printing',
+        description: 'Instantly compare Bazaar buy prices with NPC sell values and rank best opportunities.',
+        metric: '1.5x+ opportunities',
+        routeName: 'npc-flips',
+        accent: 'amber',
+        layout: 'twin',
     },
     {
         id: 'profiles',
@@ -51,7 +51,7 @@ const featureCards = [
         metric: 'Deep account visibility',
         routeName: 'profile-stats',
         accent: 'emerald',
-        size: 'medium',
+        layout: 'twin',
     },
     {
         id: 'mayors',
@@ -61,7 +61,7 @@ const featureCards = [
         metric: 'Meta-ready decisions',
         routeName: 'mayors',
         accent: 'indigo',
-        size: 'medium',
+        layout: 'main',
     },
     {
         id: 'privacy',
@@ -71,7 +71,7 @@ const featureCards = [
         metric: '100% API driven',
         routeName: 'profile-stats',
         accent: 'amber',
-        size: 'tall',
+        layout: 'sidebar',
     },
 ];
 
@@ -82,6 +82,12 @@ function submitSearch() {
     }
 
     router.get(route('profile-stats'), { username });
+}
+
+function cardLayoutClass(layout) {
+    if (layout === 'main') return 'md:col-span-4';
+    if (layout === 'sidebar') return 'md:col-span-2';
+    return 'md:col-span-3';
 }
 
 function cardAccentClass(accent) {
@@ -97,18 +103,13 @@ function cardAccentClass(accent) {
     <AuthenticatedLayout>
         <div class="py-8">
             <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                <section class="mb-10 rounded-2xl bg-surface-900/70 p-6 shadow-[0_18px_48px_rgba(0,0,0,0.42)] backdrop-blur-sm sm:p-8">
-                    <p class="mx-auto mb-3 inline-flex items-center rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-emerald-300">
-                        Skyblock Economy Control Center
-                    </p>
-
-                    <h1 class="mx-auto max-w-4xl text-center text-3xl font-black leading-tight text-white sm:text-4xl lg:text-5xl">
-                        One hub for smart flipping decisions, precise event timing, and full Skyblock profile analysis.
+                <section class="mb-14">
+                    <h1 class="mx-auto max-w-5xl text-center text-5xl font-black leading-[1.05] tracking-tight text-white sm:text-6xl lg:text-8xl">
+                        Skyblock Intelligence. Simplified
                     </h1>
 
-                    <p class="mx-auto mt-4 max-w-3xl text-center text-sm leading-relaxed text-white/70 sm:text-base">
-                        SkyblockHub combines real-time Bazaar data, NPC arbitrage, mayor context, and deep account stats into one workflow.
-                        Less guessing, better decisions, and faster coin growth.
+                    <p class="mx-auto mt-6 max-w-2xl text-center text-base leading-relaxed text-white/60 sm:text-lg lg:text-xl">
+                        Real-time Bazaar tracking, profile analytics, and event countdowns. Everything you need to dominate the Hub, all in one place.
                     </p>
                 </section>
 
@@ -144,13 +145,13 @@ function cardAccentClass(accent) {
                         <div class="text-xs text-white/40">Interactive overview</div>
                     </div>
 
-                    <div class="feature-masonry columns-1 gap-4 md:columns-2 xl:columns-3">
+                    <div class="grid grid-cols-1 gap-4 md:grid-cols-6">
                         <Link
                             v-for="card in featureCards"
                             :key="card.id"
                             :href="route(card.routeName)"
-                            class="feature-card mb-4 inline-block w-full break-inside-avoid rounded-2xl border border-white/10 bg-surface-900/70 p-5 backdrop-blur-sm"
-                            :class="[cardAccentClass(card.accent), card.size === 'tall' ? 'feature-tall' : 'feature-medium']"
+                            class="feature-card rounded-2xl border border-white/10 bg-surface-900/70 p-5 backdrop-blur-sm"
+                            :class="[cardAccentClass(card.accent), cardLayoutClass(card.layout)]"
                         >
                             <div class="mb-3 inline-flex rounded-full border border-white/15 bg-white/5 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/70">
                                 {{ card.metric }}
@@ -178,34 +179,9 @@ function cardAccentClass(accent) {
     transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
 }
 
-.feature-masonry {
-    column-gap: 1rem;
-    column-fill: balance;
-}
-
-@media (min-width: 768px) {
-    .feature-masonry {
-        column-count: 2;
-    }
-}
-
-@media (min-width: 1280px) {
-    .feature-masonry {
-        column-count: 3;
-    }
-}
-
 .feature-card:hover {
     transform: translateY(-3px);
     border-color: rgba(255, 255, 255, 0.25);
-}
-
-.feature-tall {
-    min-height: 250px;
-}
-
-.feature-medium {
-    min-height: 200px;
 }
 
 .card-accent-emerald {
