@@ -65,11 +65,11 @@ const featureCards = [
     },
     {
         id: 'privacy',
-        title: 'Privacy-First Data Layer',
-        subtitle: 'Community built tooling',
-        description: 'API-driven features with no session-id logging in analytics flow.',
-        metric: '100% API driven',
-        routeName: 'profile-stats',
+        title: 'About the Project',
+        subtitle: 'Open source & community',
+        description: 'Learn about SkyblockHub, the developer behind it, and how you can support the project.',
+        metric: 'Open source',
+        routeName: 'about',
         accent: 'amber',
         layout: 'sidebar',
     },
@@ -95,15 +95,21 @@ function cardAccentClass(accent) {
     if (accent === 'amber') return 'card-accent-amber';
     return 'card-accent-indigo';
 }
+
+function metricColorClass(accent) {
+    if (accent === 'emerald') return 'text-emerald-400/80';
+    if (accent === 'amber') return 'text-amber-400/80';
+    return 'text-indigo-400/80';
+}
 </script>
 
 <template>
     <Head title="SkyblockHub" />
 
     <AuthenticatedLayout>
-        <div class="py-8">
+        <div class="pt-14 pb-20 sm:pt-16 sm:pb-24 lg:pt-20 lg:pb-28">
             <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                <section class="mb-14">
+                <section class="animate-rise-up animate-delay-1 mb-16">
                     <h1 class="mx-auto max-w-5xl text-center text-5xl font-black leading-[1.05] tracking-tight text-white sm:text-6xl lg:text-8xl">
                         Skyblock Intelligence. Simplified
                     </h1>
@@ -113,7 +119,7 @@ function cardAccentClass(accent) {
                     </p>
                 </section>
 
-                <section class="mb-10">
+                <section class="animate-rise-up animate-delay-2 mb-12">
                     <div class="mx-auto w-full max-w-2xl rounded-2xl border border-border/80 bg-surface-900/75 p-3 shadow-[0_16px_40px_rgba(0,0,0,0.35)] backdrop-blur-sm">
                         <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
                             <div class="relative flex-1">
@@ -139,7 +145,7 @@ function cardAccentClass(accent) {
                     <p class="mt-3 text-center text-xs text-white/50">After search, you will be redirected to Profile Stats with the entered username.</p>
                 </section>
 
-                <section>
+                <section class="animate-rise-up animate-delay-3">
                     <div class="mb-4 flex items-center justify-between">
                         <h2 class="text-sm font-semibold uppercase tracking-[0.18em] text-white/45">What You Can Use Right Now</h2>
                         <div class="text-xs text-white/40">Interactive overview</div>
@@ -147,64 +153,246 @@ function cardAccentClass(accent) {
 
                     <div class="grid grid-cols-1 gap-4 md:grid-cols-6">
                         <Link
-                            v-for="card in featureCards"
+                            v-for="(card, index) in featureCards"
                             :key="card.id"
                             :href="route(card.routeName)"
-                            class="feature-card rounded-2xl border border-white/10 bg-surface-900/70 p-5 backdrop-blur-sm"
-                            :class="[cardAccentClass(card.accent), cardLayoutClass(card.layout)]"
+                            class="feature-card group flex flex-col justify-between rounded-xl border border-white/[0.06] p-5"
+                            :class="[cardAccentClass(card.accent), cardLayoutClass(card.layout), `animate-rise-up animate-delay-card-${index + 1}`]"
                         >
-                            <div class="mb-3 inline-flex rounded-full border border-white/15 bg-white/5 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/70">
-                                {{ card.metric }}
+                            <div>
+                                <span class="mb-3 inline-block text-[10px] font-bold uppercase tracking-widest" :class="metricColorClass(card.accent)">
+                                    {{ card.metric }}
+                                </span>
+
+                                <h3 class="text-[15px] font-semibold text-white">{{ card.title }}</h3>
+                                <p class="mt-2 text-[13px] leading-relaxed text-white/50">{{ card.description }}</p>
                             </div>
 
-                            <h3 class="text-lg font-bold text-white">{{ card.title }}</h3>
-                            <p class="mt-1 text-xs uppercase tracking-[0.1em] text-white/45">{{ card.subtitle }}</p>
-                            <p class="mt-3 text-sm leading-relaxed text-white/70">{{ card.description }}</p>
-
-                            <div class="mt-5 flex items-center justify-between text-xs font-semibold">
-                                <span class="text-white/45">Open module</span>
-                                <span class="text-white/85">Explore -></span>
+                            <div class="mt-5 flex items-center gap-1 text-xs font-medium text-white/40 transition group-hover:text-white/70">
+                                Explore
+                                <svg class="h-3 w-3 transition-transform group-hover:translate-x-0.5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd" /></svg>
                             </div>
                         </Link>
                     </div>
                 </section>
             </div>
         </div>
+
+        <!-- Footer -->
+        <footer class="footer-wrapper relative">
+            <div class="slime-glow-footer-container">
+                <div class="slime-glow-footer"></div>
+            </div>
+
+            <div class="relative z-10 mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+                <div class="grid grid-cols-2 gap-8 sm:grid-cols-4">
+
+                    <div class="col-span-2 sm:col-span-1">
+                        <Link :href="route('dashboard')" class="text-sm font-bold tracking-wide text-white">SKYBLOCKHUB</Link>
+                        <p class="mt-2 text-xs leading-relaxed text-white/30">Skyblock intelligence platform. Real-time data, zero ads.</p>
+                    </div>
+
+                    <div>
+                        <h3 class="text-[10px] font-bold uppercase tracking-widest text-white/40">Modules</h3>
+                        <ul class="mt-3 space-y-2">
+                            <li><Link :href="route('bazaar')" class="text-xs text-white/35 transition hover:text-white">Bazaar Flips</Link></li>
+                            <li><Link :href="route('npc-flips')" class="text-xs text-white/35 transition hover:text-white">NPC Arbitrage</Link></li>
+                            <li><Link :href="route('event-timer')" class="text-xs text-white/35 transition hover:text-white">Event Timer</Link></li>
+                            <li><Link :href="route('mayors')" class="text-xs text-white/35 transition hover:text-white">Mayor Intel</Link></li>
+                            <li><Link :href="route('profile-stats')" class="text-xs text-white/35 transition hover:text-white">Profile Stats</Link></li>
+                        </ul>
+                    </div>
+
+                    <div>
+                        <h3 class="text-[10px] font-bold uppercase tracking-widest text-white/40">Project</h3>
+                        <ul class="mt-3 space-y-2">
+                            <li><Link :href="route('about')" class="text-xs text-white/35 transition hover:text-white">About</Link></li>
+                            <li><a href="https://github.com/Lokkisanek/SkyblockHub.play" target="_blank" rel="noopener noreferrer" class="text-xs text-white/35 transition hover:text-white">GitHub</a></li>
+                            <li><a href="https://www.patreon.com/SkyblockHub" target="_blank" rel="noopener noreferrer" class="text-xs text-white/35 transition hover:text-white">Patreon</a></li>
+                        </ul>
+                    </div>
+
+                    <div>
+                        <h3 class="text-[10px] font-bold uppercase tracking-widest text-white/40">Legal</h3>
+                        <ul class="mt-3 space-y-2">
+                            <li><Link :href="route('privacy')" class="text-xs text-white/35 transition hover:text-white">Privacy Policy</Link></li>
+                            <li><Link :href="route('terms')" class="text-xs text-white/35 transition hover:text-white">Terms of Service</Link></li>
+                        </ul>
+                    </div>
+
+                </div>
+
+                <div class="mt-8 flex flex-col items-center justify-between gap-3 border-t border-white/[0.06] pt-6 sm:flex-row">
+                    <p class="text-[11px] text-white/25">&copy; {{ new Date().getFullYear() }} SkyblockHub. All rights reserved.</p>
+                    <p class="text-[11px] text-white/20">Not affiliated with Hypixel Inc. or Mojang Studios.</p>
+                </div>
+            </div>
+        </footer>
     </AuthenticatedLayout>
 </template>
 
 <style scoped>
+/* ── Footer ── */
+.footer-wrapper {
+    background: linear-gradient(180deg, rgba(16, 16, 16, 0.95) 0%, rgba(16, 16, 16, 0.88) 100%);
+    backdrop-filter: blur(16px);
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    z-index: 10;
+}
+
+.slime-glow-footer-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    overflow: hidden;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.slime-glow-footer {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 120px;
+    height: 50px;
+    border-radius: 4px;
+    background: rgba(93, 211, 93, 0.08);
+    filter: blur(35px);
+    pointer-events: none;
+    animation: footerSlimeDrift 40s ease-in-out infinite, footerSlimeBounce 5s ease-in-out infinite;
+}
+
+.slime-glow-footer::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 60px;
+    height: 40px;
+    border-radius: 3px;
+    background: rgba(61, 168, 61, 0.06);
+    filter: blur(20px);
+    animation: footerSlimePulse 6s ease-in-out infinite;
+}
+
+@keyframes footerSlimeDrift {
+    0%, 100% { left: 75%; }
+    33%      { left: 40%; }
+    66%      { left: 10%; }
+}
+
+@keyframes footerSlimeBounce {
+    0%, 100% { transform: translateY(4px); }
+    50%      { transform: translateY(-6px); }
+}
+
+@keyframes footerSlimePulse {
+    0%, 100% { opacity: 0.5; }
+    50%      { opacity: 1; }
+}
+.animate-rise-up {
+    opacity: 0;
+    transform: translateY(26px);
+    animation: riseUpIn 620ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    will-change: transform, opacity;
+}
+
+.animate-delay-1 {
+    animation-delay: 80ms;
+}
+
+.animate-delay-2 {
+    animation-delay: 170ms;
+}
+
+.animate-delay-3 {
+    animation-delay: 260ms;
+}
+
+.animate-delay-card-1 {
+    animation-delay: 320ms;
+}
+
+.animate-delay-card-2 {
+    animation-delay: 380ms;
+}
+
+.animate-delay-card-3 {
+    animation-delay: 440ms;
+}
+
+.animate-delay-card-4 {
+    animation-delay: 500ms;
+}
+
+.animate-delay-card-5 {
+    animation-delay: 560ms;
+}
+
+.animate-delay-card-6 {
+    animation-delay: 620ms;
+}
+
+@keyframes riseUpIn {
+    0% {
+        opacity: 0;
+        transform: translateY(26px) scale(0.99);
+    }
+    65% {
+        opacity: 1;
+        transform: translateY(-3px) scale(1);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .animate-rise-up {
+        opacity: 1;
+        transform: none;
+        animation: none;
+    }
+}
+
 .feature-card {
-    box-shadow: 0 14px 30px rgba(0, 0, 0, 0.35);
-    transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+    background: rgba(15, 18, 25, 0.65);
+    backdrop-filter: blur(8px);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+    transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
 }
 
 .feature-card:hover {
-    transform: translateY(-3px);
-    border-color: rgba(255, 255, 255, 0.25);
+    transform: translateY(-2px);
+    border-color: rgba(255, 255, 255, 0.12);
+    background: rgba(20, 24, 33, 0.8);
 }
 
 .card-accent-emerald {
-    background-image: linear-gradient(180deg, rgba(16, 185, 129, 0.08), rgba(2, 6, 23, 0.78));
+    border-left: 2px solid rgba(16, 185, 129, 0.35);
 }
 
 .card-accent-emerald:hover {
-    box-shadow: 0 0 24px rgba(16, 185, 129, 0.16), 0 14px 30px rgba(0, 0, 0, 0.35);
+    border-left-color: rgba(16, 185, 129, 0.6);
 }
 
 .card-accent-amber {
-    background-image: linear-gradient(180deg, rgba(251, 191, 36, 0.08), rgba(2, 6, 23, 0.78));
+    border-left: 2px solid rgba(251, 191, 36, 0.35);
 }
 
 .card-accent-amber:hover {
-    box-shadow: 0 0 24px rgba(251, 191, 36, 0.16), 0 14px 30px rgba(0, 0, 0, 0.35);
+    border-left-color: rgba(251, 191, 36, 0.6);
 }
 
 .card-accent-indigo {
-    background-image: linear-gradient(180deg, rgba(99, 102, 241, 0.08), rgba(2, 6, 23, 0.78));
+    border-left: 2px solid rgba(99, 102, 241, 0.35);
 }
 
 .card-accent-indigo:hover {
-    box-shadow: 0 0 24px rgba(99, 102, 241, 0.18), 0 14px 30px rgba(0, 0, 0, 0.35);
+    border-left-color: rgba(99, 102, 241, 0.6);
 }
 </style>

@@ -33,6 +33,18 @@ Route::get('/profile-stats', [ProfileStatsController::class, 'index'])->name('pr
 Route::get('/event-timer', [EventsController::class, 'index'])->name('event-timer');
 Route::get('/mayors', [MayorController::class, 'index'])->name('mayors');
 
+Route::get('/about', function () {
+    return Inertia::render('About');
+})->name('about');
+
+Route::get('/privacy', function () {
+    return Inertia::render('Privacy');
+})->name('privacy');
+
+Route::get('/terms', function () {
+    return Inertia::render('Terms');
+})->name('terms');
+
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
