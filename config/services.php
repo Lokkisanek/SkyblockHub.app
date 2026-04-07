@@ -39,6 +39,14 @@ return [
         'client_id' => env('DISCORD_CLIENT_ID'),
         'client_secret' => env('DISCORD_CLIENT_SECRET'),
         'redirect' => env('DISCORD_REDIRECT_URI', '/auth/discord/callback'),
+        'redirect_link' => env('DISCORD_REDIRECT_LINK_URI', '/auth/discord/link/callback'),
+    ],
+
+    'microsoft' => [
+        'client_id' => env('MICROSOFT_CLIENT_ID'),
+        'client_secret' => env('MICROSOFT_CLIENT_SECRET'),
+        'redirect' => env('MICROSOFT_REDIRECT_URI', '/auth/microsoft/callback'),
+        'tenant' => env('MICROSOFT_TENANT_ID', 'common'),
     ],
 
     'hypixel' => [

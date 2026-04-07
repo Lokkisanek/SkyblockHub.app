@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\Models\User;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Http;
 
 class PlayerBazaarTaxService
 {
@@ -13,6 +12,7 @@ class PlayerBazaarTaxService
 
     public function __construct(
         private readonly PerkService $perkService,
+        private readonly HypixelApiProxy $hypixelApi,
     ) {
     }
 
@@ -27,7 +27,7 @@ class PlayerBazaarTaxService
         $source = 'default';
         $tradingLevel = null;
 
-        if ($user?->minecraft_uuid && config('services.hypixel.api_key')) {
+        if ($user?->minecraft_uuid && config('hypixel.api_key')) {
             $tradingLevel = $this->fetchTradingLevel($user->minecraft_uuid);
 
             if ($tradingLevel !== null) {
@@ -54,16 +54,13 @@ class PlayerBazaarTaxService
         $cacheKey = 'hypixel:trading_level:' . $uuid;
 
         return Cache::remember($cacheKey, 300, function () use ($uuid) {
-            $response = Http::timeout(15)->get('https://api.hypixel.net/v2/skyblock/profiles', [
-                'key' => (string) config('services.hypixel.api_key'),
-                'uuid' => $uuid,
-            ]);
+            $data = $this->hypixelApi->getProfiles($uuid);
 
-            if (! $response->ok() || ! $response->json('success')) {
+            if (! $data || ! ($data['success'] ?? false)) {
                 return null;
             }
 
-            $profiles = (array) $response->json('profiles', []);
+            $profiles = (array) ($data['profiles'] ?? []);
             $bestLevel = null;
 
             foreach ($profiles as $profile) {

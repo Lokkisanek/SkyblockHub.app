@@ -5,8 +5,8 @@ namespace App\Console\Commands;
 use App\Events\BazaarDataUpdated;
 use App\Models\BazaarItem;
 use App\Models\PriceHistory;
+use App\Services\HypixelApiProxy;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 class FetchBazaarData extends Command
@@ -16,36 +16,22 @@ class FetchBazaarData extends Command
     protected $description = 'Fetch latest Bazaar data from the Hypixel API and store it in the database';
 
     /**
-     * Hypixel API endpoint (no key required for bazaar).
-     */
-    private const API_URL = 'https://api.hypixel.net/v2/skyblock/bazaar';
-
-    /**
      * Maximum retries on rate-limit (HTTP 429) or server errors.
      */
     private const MAX_RETRIES = 3;
 
-    public function handle(): int
+    public function handle(HypixelApiProxy $proxy): int
     {
         $this->info('Fetching Bazaar data from Hypixel API…');
 
-        $response = $this->fetchWithRetry();
+        $data = $proxy->getBazaar();
 
-        if ($response === null) {
-            $this->error('Failed to fetch Bazaar data after ' . self::MAX_RETRIES . ' retries.');
+        if ($data === null || ! ($data['success'] ?? false)) {
+            $this->error('Failed to fetch Bazaar data.');
             return self::FAILURE;
         }
 
-        if (! $response->successful() || ! $response->json('success')) {
-            $this->error('API returned an unsuccessful response: ' . $response->status());
-            Log::error('Bazaar API error', [
-                'status' => $response->status(),
-                'body'   => $response->body(),
-            ]);
-            return self::FAILURE;
-        }
-
-        $products = $response->json('products', []);
+        $products = $data['products'] ?? [];
         $this->info('Received ' . count($products) . ' products. Processing…');
 
         $now           = now();
@@ -138,52 +124,6 @@ class FetchBazaarData extends Command
         $this->info("Done. Processed {$processed} products.");
 
         return self::SUCCESS;
-    }
-
-    /**
-     * Fetch with exponential back-off on 429 / 5xx.
-     */
-    private function fetchWithRetry(): ?\Illuminate\Http\Client\Response
-    {
-        $attempt = 0;
-
-        while ($attempt < self::MAX_RETRIES) {
-            try {
-                $response = Http::timeout(15)
-                    ->connectTimeout(10)
-                    ->get(self::API_URL);
-
-                // If rate-limited, back off and retry
-                if ($response->status() === 429) {
-                    $retryAfter = (int) $response->header('Retry-After', 2);
-                    $wait = max($retryAfter, pow(2, $attempt + 1));
-                    $this->warn("Rate-limited (429). Retrying in {$wait}s… (attempt " . ($attempt + 1) . ')');
-                    Log::warning('Bazaar API rate-limited', ['retry_after' => $wait]);
-                    sleep($wait);
-                    $attempt++;
-                    continue;
-                }
-
-                // On server error, retry with back-off
-                if ($response->serverError()) {
-                    $wait = pow(2, $attempt + 1);
-                    $this->warn("Server error ({$response->status()}). Retrying in {$wait}s…");
-                    sleep($wait);
-                    $attempt++;
-                    continue;
-                }
-
-                return $response;
-            } catch (\Exception $e) {
-                $wait = pow(2, $attempt + 1);
-                $this->warn("HTTP exception: {$e->getMessage()}. Retrying in {$wait}s…");
-                Log::error('Bazaar API exception', ['exception' => $e->getMessage()]);
-                sleep($wait);
-                $attempt++;
-            }
-        }
-
-        return null;
     }
 
     /**

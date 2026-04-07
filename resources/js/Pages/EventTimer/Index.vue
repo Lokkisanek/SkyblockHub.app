@@ -920,12 +920,12 @@ onBeforeUnmount(() => {
             <TransitionGroup
                 name="timer-card"
                 tag="div"
-                class="grid grid-cols-1 items-start justify-items-center gap-3 md:grid-cols-2 2xl:grid-cols-4"
+                class="grid grid-cols-1 items-start gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"
             >
                 <section
                     v-for="event in timerCards"
                     :key="event.key"
-                    class="w-full max-w-[290px] self-start overflow-hidden rounded-2xl border bg-surface-800"
+                    class="w-full max-w-md self-start overflow-hidden rounded-2xl border bg-surface-800 sm:max-w-none"
                     :class="[
                         event.isActive ? 'border-green-500/70 shadow-[0_8px_30px_rgba(34,197,94,0.12)]' : 'border-border shadow-[0_6px_22px_rgba(0,0,0,0.18)]',
                         event.boosted ? 'event-card-boosted' : '',
@@ -1056,7 +1056,7 @@ onBeforeUnmount(() => {
                         <span aria-hidden="true">&lt;</span>
                     </button>
 
-                    <div class="min-w-0">
+                    <div class="min-w-0 overflow-x-auto">
                         <div class="inventory-container">
                             <div class="inventory-grid">
                                 <button

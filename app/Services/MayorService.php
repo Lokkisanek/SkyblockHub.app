@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\Models\Mayor;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 class MayorService
@@ -19,8 +18,10 @@ class MayorService
         return (array) config('mayors.catalog', []);
     }
 
-    public function __construct(private readonly SkyblockTimeService $skyblockTimeService)
-    {
+    public function __construct(
+        private readonly SkyblockTimeService $skyblockTimeService,
+        private readonly HypixelApiProxy $hypixelApi,
+    ) {
     }
 
     public function getCurrentMayorData(bool $forceRefresh = false): array
@@ -39,15 +40,12 @@ class MayorService
         $fallback = $this->payloadFromModel(Mayor::query()->latest('last_updated')->first());
 
         try {
-            $response = Http::timeout(8)
-                ->retry(2, 250)
-                ->get('https://api.hypixel.net/v2/resources/skyblock/election');
+            $json = $this->hypixelApi->getElection();
 
-            if (! $response->successful()) {
+            if ($json === null) {
                 return $fallback;
             }
 
-            $json = $response->json();
             $payload = $json['election'] ?? $json;
             $currentMayor = $payload['mayor'] ?? $payload['current']['mayor'] ?? null;
 

@@ -3,8 +3,8 @@
 namespace App\Console\Commands;
 
 use App\Models\BinSnapshot;
+use App\Services\HypixelApiProxy;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 class FetchLowestBinData extends Command
@@ -13,19 +13,18 @@ class FetchLowestBinData extends Command
 
     protected $description = 'Fetch lowest BIN auction data from the Hypixel API';
 
-    public function handle(): int
+    public function handle(HypixelApiProxy $proxy): int
     {
         $this->info('Fetching lowest BIN data…');
 
         try {
-            $response = $this->fetchWithRetry('https://api.hypixel.net/v2/skyblock/auctions?page=0');
+            $data = $proxy->getAuctions(0);
 
-            if (!$response->successful()) {
-                $this->error('API returned status '.$response->status());
+            if ($data === null) {
+                $this->error('API returned no data');
                 return self::FAILURE;
             }
 
-            $data = $response->json();
             $totalPages = (int) ($data['totalPages'] ?? 1);
 
             $now = now();
@@ -35,13 +34,12 @@ class FetchLowestBinData extends Command
 
             // Fetch all pages so BIN sniper sees the full market.
             for ($page = 1; $page < $totalPages; $page++) {
-                $pageResponse = $this->fetchWithRetry("https://api.hypixel.net/v2/skyblock/auctions?page={$page}");
-                if (! $pageResponse->successful()) {
+                $pageData = $proxy->getAuctions($page);
+                if ($pageData === null) {
                     usleep(200_000);
                     continue;
                 }
 
-                $pageData = $pageResponse->json();
                 $inserted += $this->processAuctionsPage($pageData['auctions'] ?? [], $now);
                 usleep(200_000); // 200ms between pages
             }
@@ -95,27 +93,6 @@ class FetchLowestBinData extends Command
             }
 
         return $inserted;
-    }
-
-    private function fetchWithRetry(string $url, int $maxRetries = 3): \Illuminate\Http\Client\Response
-    {
-        $attempt = 0;
-        while (true) {
-            $attempt++;
-            $response = Http::timeout(30)->get($url);
-
-            if ($response->successful()) {
-                return $response;
-            }
-
-            if ($attempt >= $maxRetries || !in_array($response->status(), [429, 502, 503, 504])) {
-                return $response;
-            }
-
-            $wait = (int) pow(2, $attempt);
-            $this->warn("Retry {$attempt}/{$maxRetries} after {$wait}s…");
-            sleep($wait);
-        }
     }
 
     private function normalizeItemName(string $itemName): string

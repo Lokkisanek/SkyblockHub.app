@@ -16,17 +16,90 @@
  *   }
  */
 
-const { ProfileNetworthCalculator, NetworthManager } = require('skyhelper-networth');
 const fs = require('fs');
+const path = require('path');
 
-let input = '';
+// The NetworthManager singleton auto-starts updateItems() HTTP fetch on require().
+// If backup items exist (loaded automatically by the library), skip the HTTP wait
+// to avoid 5-15s delays when Hypixel API is slow.
+const backupPath = path.join(__dirname, '..', 'node_modules', 'skyhelper-networth', '.itemsBackup.json');
+const hasBackup = fs.existsSync(backupPath);
 
-process.stdin.setEncoding('utf8');
-process.stdin.on('data', (chunk) => {
-    input += chunk;
-});
+const { ProfileNetworthCalculator, NetworthManager, getPrices } = require('skyhelper-networth');
 
-process.stdin.on('end', async () => {
+if (hasBackup) {
+    // Backup was loaded on require(). Replace the pending HTTP promise with
+    // an already-resolved one so calculations don't block on network.
+    NetworthManager.itemsPromise = Promise.resolve();
+}
+
+// ── Local prices cache ──────────────────────────────────────────────
+// getPrices() fetches from GitHub which can be slow (5-15s). Cache locally.
+const pricesCachePath = path.join(__dirname, '..', 'storage', 'app', '.skyhelper-prices-cache.json');
+const PRICES_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+function loadCachedPrices() {
+    try {
+        if (!fs.existsSync(pricesCachePath)) return null;
+        const stat = fs.statSync(pricesCachePath);
+        if (Date.now() - stat.mtimeMs > PRICES_CACHE_TTL) return null;
+        const data = JSON.parse(fs.readFileSync(pricesCachePath, 'utf8'));
+        return data && typeof data === 'object' ? data : null;
+    } catch {
+        return null;
+    }
+}
+
+function savePricesCache(prices) {
+    try {
+        const dir = path.dirname(pricesCachePath);
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+        fs.writeFileSync(pricesCachePath, JSON.stringify(prices), 'utf8');
+    } catch {}
+}
+
+async function getOrFetchPrices() {
+    // Try local cache first (instant, no HTTP)
+    const cached = loadCachedPrices();
+    if (cached) return cached;
+
+    // Fetch fresh prices with a 5s timeout
+    const prices = await Promise.race([
+        getPrices(false),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('prices timeout')), 5000)),
+    ]);
+
+    // Save to local file cache
+    savePricesCache(prices);
+    return prices;
+}
+
+// Hard safety timeout – force-exit if anything hangs (unclosed handles, etc.)
+const _forceExitTimer = setTimeout(() => {
+    process.stderr.write('Force exit: hard timeout\n');
+    process.exit(2);
+}, 5000);
+_forceExitTimer.unref();
+
+// Read input from file (argv[3]) or stdin
+const inputFilePath = process.argv[3] || '';
+
+function readInput() {
+    if (inputFilePath && fs.existsSync(inputFilePath)) {
+        const data = fs.readFileSync(inputFilePath, 'utf8');
+        try { fs.unlinkSync(inputFilePath); } catch {}
+        return Promise.resolve(data);
+    }
+    // Fallback: read from stdin
+    return new Promise((resolve) => {
+        let buf = '';
+        process.stdin.setEncoding('utf8');
+        process.stdin.on('data', (chunk) => { buf += chunk; });
+        process.stdin.on('end', () => resolve(buf));
+    });
+}
+
+readInput().then(async (input) => {
     try {
         // Some dependencies print progress/logging to stdout, which breaks
         // the PHP side expecting pure JSON. Temporarily suppress stdout writes
@@ -40,8 +113,13 @@ process.stdin.on('end', async () => {
             throw new Error('profileData is required');
         }
 
-        // Initialize items from Hypixel API (needed for item info like upgrade costs)
-        await NetworthManager.updateItems();
+        if (!hasBackup) {
+            // No backup exists - must fetch items (first run only)
+            await NetworthManager.updateItems();
+        }
+
+        // Pre-fetch prices from local cache (or GitHub with timeout)
+        const prices = await getOrFetchPrices();
 
         // Create calculator and compute networth
         const calculator = new ProfileNetworthCalculator(
@@ -51,6 +129,7 @@ process.stdin.on('end', async () => {
         );
 
         const result = await calculator.getNetworth({
+            prices,
             stackItems: false,
             sortItems: false,
             cachePrices: true,
@@ -117,13 +196,16 @@ process.stdin.on('end', async () => {
 
         if (outFile) {
             fs.writeFileSync(outFile, jsonOutput, 'utf8');
+            // File IPC written – skip stdout to avoid pipe buffer deadlocks.
+            process.stdout.write = originalStdoutWrite;
+            process.exit(0);
+        } else {
+            // No file output: emit marker-wrapped base64 to stdout.
+            process.stdout.write = originalStdoutWrite;
+            const payload = Buffer.from(jsonOutput, 'utf8').toString('base64');
+            process.stdout.write(`__SKYBLOCKHUB_JSON_START__${payload}__SKYBLOCKHUB_JSON_END__`);
+            process.exit(0);
         }
-
-        // Restore stdout and emit a marker-wrapped base64 payload as fallback.
-        process.stdout.write = originalStdoutWrite;
-        const payload = Buffer.from(jsonOutput, 'utf8').toString('base64');
-        process.stdout.write(`__SKYBLOCKHUB_JSON_START__${payload}__SKYBLOCKHUB_JSON_END__`);
-        process.exit(0);
     } catch (err) {
         process.stderr.write(JSON.stringify({ error: err.message || String(err) }));
         process.exit(1);

@@ -1,10 +1,12 @@
 <script setup>
 import { computed, ref } from 'vue';
+import AuthSlidePanel from '@/Components/AuthSlidePanel.vue';
 import Dropdown from '@/Components/Dropdown.vue';
 import DropdownLink from '@/Components/DropdownLink.vue';
 import { Link, usePage, router } from '@inertiajs/vue3';
 
 const showingNavigationDropdown = ref(false);
+const showAuthPanel = ref(false);
 const page = usePage();
 
 const user = computed(() => page.props.auth?.user ?? null);
@@ -140,30 +142,11 @@ function logout() {
                                 </svg>
                             </a>
 
-                            <!-- Language Switcher -->
-                            <div class="flex items-center gap-1 text-xs">
-                                <button
-                                    @click="switchLocale('en')"
-                                    class="rounded px-1.5 py-0.5 transition"
-                                    :class="currentLocale === 'en' ? 'bg-white/10 text-white' : 'text-neutral hover:text-white'"
-                                >
-                                    EN
-                                </button>
-                                <span class="text-white/20">|</span>
-                                <button
-                                    @click="switchLocale('cz')"
-                                    class="rounded px-1.5 py-0.5 transition"
-                                    :class="currentLocale === 'cz' ? 'bg-white/10 text-white' : 'text-neutral hover:text-white'"
-                                >
-                                    CZ
-                                </button>
-                            </div>
-
                             <!-- Auth: Login/Register or Profile -->
                             <template v-if="user">
                                 <Dropdown align="right" width="48">
                                     <template #trigger>
-                                        <button class="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-white/10">
+                                        <button class="flex items-center gap-2 text-xs font-medium text-white/70 transition hover:text-white">
                                             <div class="flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-br from-purple-400 to-indigo-500 text-[10px] font-bold uppercase text-white">
                                                 {{ displayName.charAt(0) }}
                                             </div>
@@ -182,12 +165,12 @@ function logout() {
                                 </Dropdown>
                             </template>
                             <template v-else>
-                                <Link
-                                    :href="route('login')"
+                                <button
+                                    @click="showAuthPanel = true"
                                     class="text-xs font-medium text-white transition hover:text-white/70"
                                 >
                                     Login
-                                </Link>
+                                </button>
                             </template>
                         </div>
 
@@ -237,19 +220,14 @@ function logout() {
                             <Link :href="route('bin-sniper')" class="mobile-link" :class="{ 'mobile-link-active': isActive('bin-sniper') }">BIN Sniper</Link>
                         </template>
 
-                        <!-- Mobile lang + auth -->
+                        <!-- Mobile auth -->
                         <div class="mt-3 flex items-center gap-3 border-t border-white/10 pt-3">
-                            <div class="flex items-center gap-1 text-xs">
-                                <button @click="switchLocale('en')" class="rounded px-1.5 py-0.5" :class="currentLocale === 'en' ? 'bg-white/10 text-white' : 'text-neutral'">EN</button>
-                                <span class="text-white/20">|</span>
-                                <button @click="switchLocale('cz')" class="rounded px-1.5 py-0.5" :class="currentLocale === 'cz' ? 'bg-white/10 text-white' : 'text-neutral'">CZ</button>
-                            </div>
                             <template v-if="user">
                                 <span class="text-xs text-white">{{ displayName }}</span>
                                 <button @click="logout" class="text-xs text-neutral hover:text-white">Log Out</button>
                             </template>
                             <template v-else>
-                                <Link :href="route('login')" class="text-xs font-medium text-purple-400 hover:text-white">Login</Link>
+                                <button @click="showAuthPanel = true" class="text-xs font-medium text-purple-400 hover:text-white">Login</button>
                             </template>
                         </div>
                     </div>
@@ -260,6 +238,9 @@ function logout() {
             <main>
                 <slot />
             </main>
+
+            <!-- Auth Slide Panel -->
+            <AuthSlidePanel :show="showAuthPanel" @close="showAuthPanel = false" />
         </div>
     </div>
 </template>

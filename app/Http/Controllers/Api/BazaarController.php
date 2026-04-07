@@ -34,12 +34,15 @@ class BazaarController extends Controller
                 'bazaar_prices.sell_volume',
                 'bazaar_prices.buy_orders',
                 'bazaar_prices.sell_orders',
+                'bazaar_prices.sell_moving_week',
+                'bazaar_prices.buy_moving_week',
                 'bazaar_prices.updated_at',
             ])
             ->orderBy('bazaar_products.product_id')
             ->get()
             ->map(function ($row) {
-                $margin = $this->bazaarMathService->calculateMargin((float) $row->buy_price, (float) $row->sell_price);
+                // sell_price = instasell (LOW, your buy cost), buy_price = instabuy (HIGH, your sell revenue)
+                $margin = $this->bazaarMathService->calculateMargin((float) $row->sell_price, (float) $row->buy_price);
                 $velocity = $this->bazaarMathService->calculateVelocity((int) $row->sell_volume, (int) $row->buy_volume);
 
                 return [
@@ -54,6 +57,8 @@ class BazaarController extends Controller
                     'buy_orders' => (int) $row->buy_orders,
                     'sell_orders' => (int) $row->sell_orders,
                     'updated_at' => $row->updated_at,
+                    'sell_moving_week' => (float) $row->sell_moving_week,
+                    'buy_moving_week' => (float) $row->buy_moving_week,
                     'margin' => $margin,
                     'velocity' => $velocity,
                 ];

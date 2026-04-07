@@ -6,6 +6,7 @@ use App\Events\BazaarPricesUpdated;
 use App\Models\BazaarHistory;
 use App\Models\BazaarPrice;
 use App\Models\BazaarProduct;
+use App\Services\HypixelApiProxy;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -13,23 +14,21 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Http;
 
 class FetchHypixelBazaarJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    private const API_ENDPOINT = 'https://api.hypixel.net/v2/skyblock/bazaar';
-
     public function handle(): void
     {
-        $response = Http::timeout(20)->get(self::API_ENDPOINT);
+        $proxy = app(HypixelApiProxy::class);
+        $data = $proxy->getBazaar();
 
-        if (! $response->ok() || ! $response->json('success')) {
+        if (! $data || ! ($data['success'] ?? false)) {
             return;
         }
 
-        $products = $response->json('products', []);
+        $products = $data['products'] ?? [];
         $now = Carbon::now();
         $updatedRows = [];
         $historyRows = [];
@@ -59,8 +58,6 @@ class FetchHypixelBazaarJob implements ShouldQueue
                 'name' => $this->humanizeProductId($productId),
                 'category' => $this->inferCategory($productId),
                 'npc_sell_price' => 0,
-                'updated_at' => $now,
-                'created_at' => $now,
             ];
 
             $priceRows[] = [
@@ -74,7 +71,6 @@ class FetchHypixelBazaarJob implements ShouldQueue
                 'buy_orders' => $buyOrders,
                 'sell_orders' => $sellOrders,
                 'updated_at' => $now,
-                'created_at' => $now,
             ];
 
             $cacheKey = 'bazaar:sell_volume_history:' . $productId;
@@ -92,8 +88,6 @@ class FetchHypixelBazaarJob implements ShouldQueue
                     'buy_price' => $buyPrice,
                     'sell_price' => $sellPrice,
                     'recorded_at' => $now,
-                    'created_at' => $now,
-                    'updated_at' => $now,
                 ];
             }
 
@@ -115,7 +109,7 @@ class FetchHypixelBazaarJob implements ShouldQueue
             BazaarProduct::query()->upsert(
                 $productRows,
                 ['product_id'],
-                ['name', 'category', 'npc_sell_price', 'updated_at']
+                ['name', 'category']
             );
         }
 

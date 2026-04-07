@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Services\HypixelApiProxy;
 use App\Utils\ItemParser;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Cache;
@@ -27,6 +28,11 @@ class SkyCryptProxyController extends Controller
 
     /** Max retries on rate-limit / server error (keep low to avoid blocking dev server). */
     private const MAX_RETRIES = 1;
+
+    public function __construct(
+        private readonly HypixelApiProxy $hypixelApi,
+    ) {
+    }
 
     // ─── Skill XP tables (from SkyCrypt constants) ───────────────────
     private const SKILL_XP_TABLE = [
@@ -450,29 +456,24 @@ class SkyCryptProxyController extends Controller
         }
 
         // ── Fetch profiles from Hypixel API v2 ──────────────────────
-        $apiKey = env('HYPIXEL_API_KEY', '');
-        if (empty($apiKey)) {
-            return response()->json(['error' => 'Hypixel API key not configured.'], 500);
-        }
-
-        $rawProfiles = $this->fetchHypixelProfiles($uuid, $apiKey);
-        if ($rawProfiles === null) {
+        $profilesResponse = $this->hypixelApi->getProfiles($uuid);
+        if ($profilesResponse === null) {
             return response()->json([
                 'error' => 'Failed to fetch profile data from Hypixel API. Try again later.',
             ], 502);
         }
 
+        $rawProfiles = $profilesResponse['profiles'] ?? [];
+
         if (empty($rawProfiles)) {
             return response()->json(['error' => 'Player has no SkyBlock profiles.'], 404);
         }
 
-        // ── Lightweight mode: skip museum fetches on live profile request ──
-        // Museum calls significantly increase latency and are not required for
-        // fallback item valuation used in this endpoint.
+        // Museum data is not needed for DB-backed networth fallback.
         $museumDataByProfile = [];
 
         // ── Fetch player data for rank info ──────────────────────────
-        $playerData = $this->fetchHypixelPlayer($uuid, $apiKey);
+        $playerData = $this->hypixelApi->getPlayer($uuid);
         $rankData   = $this->parseRank($playerData);
 
         // ── Transform into front-end format ──────────────────────────
@@ -491,126 +492,6 @@ class SkyCryptProxyController extends Controller
     // ═══════════════════════════════════════════════════════════════════
     //  Hypixel API
     // ═══════════════════════════════════════════════════════════════════
-
-    /**
-     * Call Hypixel v2/skyblock/profiles with retry logic.
-     * Returns the array of profiles or null on failure.
-     */
-    private function fetchHypixelProfiles(string $uuid, string $apiKey): ?array
-    {
-        $attempt = 0;
-
-        while ($attempt < self::MAX_RETRIES) {
-            try {
-                $response = Http::timeout(6)
-                    ->connectTimeout(3)
-                    ->acceptJson()
-                    ->withHeaders(['User-Agent' => 'SkyblockHub/1.0'])
-                    ->get('https://api.hypixel.net/v2/skyblock/profiles', [
-                        'key'  => $apiKey,
-                        'uuid' => $uuid,
-                    ]);
-
-                if ($response->status() === 429) {
-                    $wait = min(3, max(1, (int) $response->header('Retry-After', 1)));
-                    Log::warning('Hypixel rate-limited', ['uuid' => $uuid, 'wait' => $wait, 'attempt' => $attempt + 1]);
-                    sleep($wait);
-                    $attempt++;
-                    continue;
-                }
-
-                if ($response->serverError()) {
-                    $wait = $attempt === 0 ? 1 : 2;
-                    Log::warning('Hypixel server error', ['status' => $response->status(), 'attempt' => $attempt + 1]);
-                    sleep($wait);
-                    $attempt++;
-                    continue;
-                }
-
-                if (! $response->successful()) {
-                    Log::error('Hypixel unexpected status', ['status' => $response->status(), 'body' => $response->body()]);
-                    return null;
-                }
-
-                $json = $response->json();
-                if (($json['success'] ?? false) !== true) {
-                    Log::error('Hypixel API returned success=false', ['cause' => $json['cause'] ?? 'unknown']);
-                    return null;
-                }
-
-                return $json['profiles'] ?? [];
-
-            } catch (\Exception $e) {
-                $wait = $attempt === 0 ? 1 : 2;
-                Log::error('Hypixel HTTP exception', ['uuid' => $uuid, 'exception' => $e->getMessage(), 'attempt' => $attempt + 1]);
-                sleep($wait);
-                $attempt++;
-            }
-        }
-
-        Log::error('Hypixel fetch failed after retries', ['uuid' => $uuid]);
-        return null;
-    }
-
-    /**
-     * Fetch museum data from Hypixel API v2 for networth calculation.
-     * Returns the member's museum data or null on failure.
-     */
-    private function fetchMuseumData(string $profileId, string $uuid, string $apiKey): ?array
-    {
-        try {
-            $response = Http::timeout(4)
-                ->connectTimeout(2)
-                ->acceptJson()
-                ->withHeaders(['User-Agent' => 'SkyblockHub/1.0'])
-                ->get('https://api.hypixel.net/v2/skyblock/museum', [
-                    'key'     => $apiKey,
-                    'profile' => $profileId,
-                ]);
-
-            if (! $response->successful()) {
-                Log::warning('Museum API failed', ['profile' => $profileId, 'status' => $response->status()]);
-                return null;
-            }
-
-            $json = $response->json();
-            if (($json['success'] ?? false) !== true) {
-                return null;
-            }
-
-            return $json['members'][$uuid] ?? null;
-        } catch (\Exception $e) {
-            Log::warning('Museum API exception', ['profile' => $profileId, 'exception' => $e->getMessage()]);
-            return null;
-        }
-    }
-
-    /**
-     * Fetch player data from Hypixel API v2 (for rank info).
-     */
-    private function fetchHypixelPlayer(string $uuid, string $apiKey): ?array
-    {
-        try {
-            $response = Http::timeout(4)
-                ->connectTimeout(2)
-                ->acceptJson()
-                ->withHeaders(['User-Agent' => 'SkyblockHub/1.0'])
-                ->get('https://api.hypixel.net/v2/player', [
-                    'key'  => $apiKey,
-                    'uuid' => $uuid,
-                ]);
-
-            if (! $response->successful()) return null;
-
-            $json = $response->json();
-            if (($json['success'] ?? false) !== true) return null;
-
-            return $json['player'] ?? null;
-        } catch (\Exception $e) {
-            Log::warning('Player API exception', ['uuid' => $uuid, 'exception' => $e->getMessage()]);
-            return null;
-        }
-    }
 
     /**
      * Parse Hypixel rank from player data (mirrors SkyCrypt helper.js).
@@ -721,16 +602,17 @@ class SkyCryptProxyController extends Controller
                 ? round(array_sum(array_column($countable, 'level')) / count($countable), 2)
                 : 0;
 
-            // ── Calculate networth via SkyHelper-Networth ────────────
+            // ── Calculate networth ─────────────────────────────────
             $bankBalance = $profile['banking']['balance'] ?? 0;
+            $purse = (float) ($member['currencies']['coin_purse'] ?? 0);
 
-            // Keep API responsive: use DB-backed fallback valuation instead of
-            // spawning Node subprocesses during live page loads.
+            // Primary profile: use SkyHelper-Networth (Node.js) for accurate
+            // item values (enchants, stars, gems, etc). Prices and items are
+            // cached locally so the subprocess finishes in ~1-3s.
+            // Falls back to DB-backed pricing on failure.
             if ($profileId === $primaryProfileId) {
-                $purse = (float) ($member['currencies']['coin_purse'] ?? 0);
-                $networthData = $this->fallbackNetworth($purse, (float) $bankBalance, $member);
+                $networthData = $this->calculateNetworth($member, null, (float) $bankBalance);
             } else {
-                $purse = (float) ($member['currencies']['coin_purse'] ?? 0);
                 $networthData = $this->fallbackNetworth($purse, (float) $bankBalance);
             }
 
@@ -931,24 +813,9 @@ class SkyCryptProxyController extends Controller
      */
     private function getCollectionDefinitions(): ?array
     {
-        return Cache::remember('hypixel:collection_definitions', 86400, function () {
-            try {
-                $response = Http::timeout(15)
-                    ->connectTimeout(5)
-                    ->acceptJson()
-                    ->get('https://api.hypixel.net/v2/resources/skyblock/collections');
+        $data = $this->hypixelApi->getCollections();
 
-                if (! $response->successful()) return null;
-
-                $json = $response->json();
-                if (($json['success'] ?? false) !== true) return null;
-
-                return $json['collections'] ?? null;
-            } catch (\Exception $e) {
-                Log::warning('Collection definitions fetch failed', ['exception' => $e->getMessage()]);
-                return null;
-            }
-        });
+        return $data['collections'] ?? null;
     }
 
     /**
@@ -1253,7 +1120,13 @@ class SkyCryptProxyController extends Controller
 
     /**
      * Calculate networth by invoking the SkyHelper-Networth Node.js script.
-     * Falls back to basic purse + bank if the script fails.
+     *
+     * Uses file-based I/O (temp files for input and output) instead of pipes
+     * to avoid deadlocks on Windows where stream_select() does not work with
+     * proc_open pipes. The script reads input from a file (argv[3]) and writes
+     * the result to another file (argv[2]).
+     *
+     * Falls back to basic purse + bank + DB item prices if the script fails.
      */
     private function calculateNetworth(array $member, ?array $museumData, float $bankBalance): array
     {
@@ -1273,17 +1146,32 @@ class SkyCryptProxyController extends Controller
 
         $scriptPath = base_path('scripts/networth.cjs');
         $nodePath   = 'node';
-        $tmpOutFile = tempnam(sys_get_temp_dir(), 'sbh_networth_');
+        $tmpOutFile = tempnam(sys_get_temp_dir(), 'sbh_nw_out_');
+        $tmpInFile  = tempnam(sys_get_temp_dir(), 'sbh_nw_in_');
 
-        // Call the Node.js script via subprocess
+        // Write input to a temp file to avoid pipe deadlocks on Windows.
+        if (! @file_put_contents($tmpInFile, $input)) {
+            Log::warning('Networth: failed to write input temp file');
+            @unlink($tmpInFile);
+            @unlink($tmpOutFile);
+            return $this->fallbackNetworth($purse, $bankBalance, $member);
+        }
+
+        // Start Node.js with file paths: argv[2] = output file, argv[3] = input file.
+        // Use NUL/dev/null for pipes to avoid any pipe buffer issues.
+        $isWin = stripos(PHP_OS, 'WIN') === 0;
+        $nul = $isWin ? 'NUL' : '/dev/null';
+
         $descriptors = [
-            0 => ['pipe', 'r'],  // stdin
-            1 => ['pipe', 'w'],  // stdout
-            2 => ['pipe', 'w'],  // stderr
+            0 => ['file', $nul, 'r'],  // stdin: empty
+            1 => ['file', $nul, 'w'],  // stdout: discard
+            2 => ['pipe', 'w'],        // stderr: capture for error logging
         ];
 
+        $startTime = microtime(true);
+
         $process = @proc_open(
-            [$nodePath, $scriptPath, $tmpOutFile ?: ''],
+            [$nodePath, $scriptPath, $tmpOutFile ?: '', $tmpInFile ?: ''],
             $descriptors,
             $pipes,
             base_path()
@@ -1291,138 +1179,90 @@ class SkyCryptProxyController extends Controller
 
         if (! is_resource($process)) {
             Log::warning('Networth: failed to start Node.js process');
+            @unlink($tmpInFile);
+            @unlink($tmpOutFile);
             return $this->fallbackNetworth($purse, $bankBalance, $member);
         }
 
-        // Write input and close stdin. On Windows the child process may exit
-        // early (e.g. Node bootstrap error), which can close the pipe and
-        // raise a warning; convert that case into a safe fallback.
-        try {
-            $written = @fwrite($pipes[0], $input);
-        } catch (\Throwable $e) {
-            $written = false;
-            Log::warning('Networth: failed writing to Node.js stdin', [
-                'error' => $e->getMessage(),
-            ]);
+        // Poll for process completion instead of stream_select (broken on Windows).
+        $deadline = microtime(true) + 4.0;
+        $finished = false;
+
+        while (microtime(true) < $deadline) {
+            $status = proc_get_status($process);
+            if (! $status['running']) {
+                $finished = true;
+                break;
+            }
+            usleep(50000); // 50ms sleep between polls
         }
 
-        fclose($pipes[0]);
-
-        if ($written === false) {
-            $stderrEarly = isset($pipes[2]) ? stream_get_contents($pipes[2]) : '';
-            if (isset($pipes[1]) && is_resource($pipes[1])) {
-                fclose($pipes[1]);
-            }
-            if (isset($pipes[2]) && is_resource($pipes[2])) {
-                fclose($pipes[2]);
-            }
-            @proc_close($process);
-
-            if ($tmpOutFile && file_exists($tmpOutFile)) {
-                @unlink($tmpOutFile);
-            }
-
-            Log::warning('Networth: stdin pipe closed before payload write', [
-                'stderr' => mb_substr((string) $stderrEarly, 0, 500),
-            ]);
-
-            return $this->fallbackNetworth($purse, $bankBalance, $member);
-        }
-
-        // Read stdout/stderr concurrently to avoid deadlocks and truncated output.
-        stream_set_blocking($pipes[1], false);
-        stream_set_blocking($pipes[2], false);
-
-        $stdout = '';
+        // Read any stderr output for logging.
         $stderr = '';
-        $open = [1 => true, 2 => true];
-        // Keep API responsive: networth subprocess may occasionally stall.
-        // Fallback pricing is good enough for this request when that happens.
-        $deadline = microtime(true) + 18.0;
-
-        while ($open[1] || $open[2]) {
-            $read = [];
-            if ($open[1]) {
-                $read[] = $pipes[1];
-            }
-            if ($open[2]) {
-                $read[] = $pipes[2];
-            }
-
-            $write = null;
-            $except = null;
-            $ready = @stream_select($read, $write, $except, 1, 0);
-
-            if ($ready === false) {
-                break;
-            }
-
-            if ($ready > 0) {
-                foreach ($read as $stream) {
-                    $idx = ($stream === $pipes[1]) ? 1 : 2;
-                    $chunk = fread($stream, 8192);
-
-                    if ($chunk !== false && $chunk !== '') {
-                        if ($idx === 1) {
-                            $stdout .= $chunk;
-                        } else {
-                            $stderr .= $chunk;
-                        }
-                    }
-
-                    if (feof($stream)) {
-                        fclose($stream);
-                        $open[$idx] = false;
-                    }
-                }
-            }
-
-            if (microtime(true) > $deadline) {
-                proc_terminate($process);
-                Log::warning('Networth: Node.js process timeout');
-                break;
-            }
-        }
-
-        if ($open[1]) {
-            fclose($pipes[1]);
-        }
-        if ($open[2]) {
+        if (isset($pipes[2]) && is_resource($pipes[2])) {
+            stream_set_blocking($pipes[2], false);
+            $stderr = (string) @stream_get_contents($pipes[2]);
             fclose($pipes[2]);
         }
 
+        if (! $finished) {
+            // Force-kill the hung process.
+            $status = proc_get_status($process);
+            $pid = $status['pid'] ?? 0;
+
+            if ($isWin && $pid > 0) {
+                // taskkill /F /T kills the process tree reliably on Windows.
+                @exec("taskkill /F /T /PID {$pid} 2>NUL");
+            } else {
+                @proc_terminate($process, 9); // SIGKILL
+            }
+
+            usleep(100000); // Wait 100ms for process to die
+            @proc_close($process);
+
+            @unlink($tmpInFile);
+            @unlink($tmpOutFile);
+
+            $elapsed = round(microtime(true) - $startTime, 2);
+            Log::warning("Networth: Node.js process timeout after {$elapsed}s", [
+                'stderr' => mb_substr($stderr, 0, 500),
+            ]);
+
+            return $this->fallbackNetworth($purse, $bankBalance, $member);
+        }
+
         $exitCode = proc_close($process);
+        @unlink($tmpInFile);
+
+        $elapsed = round(microtime(true) - $startTime, 2);
+        Log::info("Networth: Node.js completed in {$elapsed}s (exit={$exitCode})");
 
         if ($exitCode !== 0) {
             Log::warning('Networth: Node.js script failed', [
                 'exitCode' => $exitCode,
                 'stderr'   => mb_substr($stderr, 0, 500),
             ]);
-            if ($tmpOutFile && file_exists($tmpOutFile)) {
-                @unlink($tmpOutFile);
-            }
+            @unlink($tmpOutFile);
             return $this->fallbackNetworth($purse, $bankBalance, $member);
         }
 
+        // Read result from the output file.
         $result = null;
-
         if ($tmpOutFile && file_exists($tmpOutFile)) {
             $filePayload = @file_get_contents($tmpOutFile);
             @unlink($tmpOutFile);
             if ($filePayload !== false && trim($filePayload) !== '') {
-                $result = $this->decodeNodeJsonOutput($filePayload);
+                try {
+                    $result = json_decode($filePayload, true, 512, JSON_THROW_ON_ERROR | JSON_INVALID_UTF8_SUBSTITUTE);
+                } catch (\Throwable $e) {
+                    Log::warning('Networth: JSON decode failed', ['error' => $e->getMessage()]);
+                }
             }
         }
 
-        if ($result === null) {
-            $result = $this->decodeNodeJsonOutput($stdout);
-        }
-
         if (! $result || ! isset($result['networth'])) {
-            Log::warning('Networth: invalid JSON output from Node.js', [
-                'stdout' => mb_substr($stdout, 0, 500),
-            ]);
-            return $this->fallbackNetworth($purse, $bankBalance);
+            Log::warning('Networth: invalid output from Node.js');
+            return $this->fallbackNetworth($purse, $bankBalance, $member);
         }
 
         return [
@@ -1439,123 +1279,6 @@ class SkyCryptProxyController extends Controller
     }
 
     /**
-     * Decode JSON output from Node script.
-     * Handles extra log lines and invalid UTF-8 gracefully.
-     */
-    private function decodeNodeJsonOutput(string $stdout): ?array
-    {
-        $clean = trim($stdout);
-
-        if ($clean === '') {
-            return null;
-        }
-
-        // Preferred format: marker-wrapped base64 payload.
-        $startMarker = '__SKYBLOCKHUB_JSON_START__';
-        $endMarker = '__SKYBLOCKHUB_JSON_END__';
-        $startPos = strpos($clean, $startMarker);
-        $endPos = strpos($clean, $endMarker);
-
-        if ($startPos !== false && $endPos !== false && $endPos > $startPos) {
-            $base64 = substr($clean, $startPos + strlen($startMarker), $endPos - ($startPos + strlen($startMarker)));
-            $json = base64_decode(trim($base64), true);
-
-            if ($json !== false) {
-                try {
-                    $decoded = json_decode($json, true, 512, JSON_THROW_ON_ERROR | JSON_INVALID_UTF8_SUBSTITUTE);
-                    return is_array($decoded) ? $decoded : null;
-                } catch (\Throwable $e) {
-                    Log::warning('Networth: marker payload decode failed', [
-                        'error' => $e->getMessage(),
-                    ]);
-                }
-            }
-        }
-
-        try {
-            // Fast path: stdout is already pure JSON.
-            $decoded = json_decode($clean, true, 512, JSON_THROW_ON_ERROR | JSON_INVALID_UTF8_SUBSTITUTE);
-            return is_array($decoded) ? $decoded : null;
-        } catch (\Throwable $e) {
-            // Slow path: extract first balanced JSON object if logs polluted stdout.
-            $candidate = $this->extractFirstJsonObject($clean);
-            if ($candidate === null) {
-                Log::warning('Networth: JSON decode failed', [
-                    'error' => $e->getMessage(),
-                ]);
-                return null;
-            }
-
-            try {
-                $decoded = json_decode($candidate, true, 512, JSON_THROW_ON_ERROR | JSON_INVALID_UTF8_SUBSTITUTE);
-                return is_array($decoded) ? $decoded : null;
-            } catch (\Throwable $e2) {
-                Log::warning('Networth: JSON decode failed', [
-                    'error' => $e2->getMessage(),
-                ]);
-                return null;
-            }
-        }
-    }
-
-    /**
-     * Extract first balanced JSON object from mixed stdout logs.
-     */
-    private function extractFirstJsonObject(string $text): ?string
-    {
-        $start = strpos($text, '{');
-        if ($start === false) {
-            return null;
-        }
-
-        $depth = 0;
-        $inString = false;
-        $escape = false;
-        $len = strlen($text);
-
-        for ($i = $start; $i < $len; $i++) {
-            $ch = $text[$i];
-
-            if ($inString) {
-                if ($escape) {
-                    $escape = false;
-                    continue;
-                }
-
-                if ($ch === '\\') {
-                    $escape = true;
-                    continue;
-                }
-
-                if ($ch === '"') {
-                    $inString = false;
-                }
-
-                continue;
-            }
-
-            if ($ch === '"') {
-                $inString = true;
-                continue;
-            }
-
-            if ($ch === '{') {
-                $depth++;
-                continue;
-            }
-
-            if ($ch === '}') {
-                $depth--;
-                if ($depth === 0) {
-                    return substr($text, $start, $i - $start + 1);
-                }
-            }
-        }
-
-        return null;
-    }
-
-    /**
      * Fallback networth when Node.js calculation fails.
      */
     private function fallbackNetworth(float $purse, float $bank, ?array $member = null): array
@@ -1565,9 +1288,22 @@ class SkyCryptProxyController extends Controller
             'itemPricesById'   => [],
         ];
 
+        // Sum all item values from pricesById (contains every priced item)
+        $itemTotal = 0.0;
+        $unsoulboundItemTotal = 0.0;
+        foreach ($fallbackMaps['itemPricesById'] as $entries) {
+            foreach ($entries as $entry) {
+                $price = (float) ($entry['price'] ?? 0);
+                $itemTotal += $price;
+                if (! ($entry['soulbound'] ?? false)) {
+                    $unsoulboundItemTotal += $price;
+                }
+            }
+        }
+
         return [
-            'networth'             => $purse + $bank,
-            'unsoulboundNetworth'  => $purse + $bank,
+            'networth'             => $purse + $bank + $itemTotal,
+            'unsoulboundNetworth'  => $purse + $bank + $unsoulboundItemTotal,
             'purse'                => $purse,
             'bank'                 => $bank,
             'personalBank'         => 0,
