@@ -54,12 +54,25 @@ class HandleInertiaRequests extends Middleware
     {
         $mayor = app(MayorService::class)->getCurrentMayorData();
         $perkState = app(PerkService::class)->buildState($mayor);
+        $mayorPerks = array_values((array) ($mayor['perks'] ?? []));
+
+        $activePerkCount = count(array_filter($mayorPerks, function ($perk) {
+            if (! is_array($perk)) {
+                return false;
+            }
+
+            $name = trim((string) ($perk['name'] ?? ''));
+            $description = trim((string) ($perk['description'] ?? ''));
+
+            return $name !== '' || $description !== '';
+        }));
 
         return [
             'name' => $mayor['name'] ?? 'Unknown',
             'last_updated' => $mayor['last_updated'] ?? null,
-            'perks' => array_slice((array) ($mayor['perks'] ?? []), 0, 2),
-            'active_perk_count' => count(array_filter((array) ($perkState['active_perks'] ?? []))),
+            'perks' => $mayorPerks,
+            'active_perk_count' => $activePerkCount,
+            'recognized_active_perks' => count(array_filter((array) ($perkState['active_perks'] ?? []))),
         ];
     }
 }

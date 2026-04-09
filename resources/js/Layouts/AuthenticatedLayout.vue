@@ -1,5 +1,6 @@
 <script setup>
 import { computed, ref } from 'vue';
+import ApplicationLogo from '@/Components/ApplicationLogo.vue';
 import AuthSlidePanel from '@/Components/AuthSlidePanel.vue';
 import Dropdown from '@/Components/Dropdown.vue';
 import DropdownLink from '@/Components/DropdownLink.vue';
@@ -16,6 +17,7 @@ const mayorPerkSummary = computed(() => {
     const count = Number(currentMayor.value?.active_perk_count ?? 0);
     return count === 1 ? '1 active perk' : `${count} active perks`;
 });
+const mayorPerks = computed(() => Array.isArray(currentMayor.value?.perks) ? currentMayor.value.perks : []);
 
 const currentLocale = ref(document.documentElement.lang || 'en');
 
@@ -55,8 +57,9 @@ function logout() {
 
                         <!-- Left: Logo -->
                         <div class="flex shrink-0 items-center">
-                            <Link :href="route('dashboard')" class="flex items-center">
-                                <span class="text-sm font-bold tracking-wide text-white">SKYBLOCKHUB</span>
+                            <Link :href="route('dashboard')" class="flex items-center gap-2">
+                                <ApplicationLogo tone="light" class="h-7 w-7 shrink-0" />
+                                <span class="text-sm font-bold tracking-wide text-white">SkyblockHub</span>
                             </Link>
                         </div>
 
@@ -121,14 +124,40 @@ function logout() {
                         <!-- Right: Mayor + Lang + Auth -->
                         <div class="hidden items-center gap-4 md:flex">
                             <!-- Mayor info -->
-                            <Link
-                                v-if="currentMayor?.name"
-                                :href="route('mayors')"
-                                class="hidden text-[11px] leading-tight text-neutral transition hover:text-white lg:block"
-                            >
-                                <div class="font-semibold text-white">{{ currentMayor.name }}</div>
-                                <div>{{ mayorPerkSummary }}</div>
-                            </Link>
+                            <Dropdown v-if="currentMayor?.name" align="right" width="96">
+                                <template #trigger>
+                                    <button class="hidden text-right text-[11px] leading-tight text-neutral transition hover:text-white lg:block">
+                                        <div class="font-semibold text-white">{{ currentMayor.name }}</div>
+                                        <div>{{ mayorPerkSummary }}</div>
+                                    </button>
+                                </template>
+                                <template #content>
+                                    <div class="px-4 pt-3 pb-2">
+                                        <div class="text-[10px] font-bold uppercase tracking-[0.22em] text-white/70">Current mayor</div>
+                                        <div class="mt-1 text-sm font-semibold text-white">{{ currentMayor.name }}</div>
+                                        <div class="mt-1 text-xs text-white">{{ mayorPerkSummary }}</div>
+                                    </div>
+
+                                    <div class="border-t border-white/[0.06] px-4 py-3">
+                                        <div class="mb-2 text-[10px] font-bold uppercase tracking-[0.22em] text-white/70">Perks</div>
+
+                                        <div v-if="mayorPerks.length" class="mayor-perk-list">
+                                            <div v-for="(perk, index) in mayorPerks" :key="`${perk.name}-${index}`" class="mayor-perk-item">
+                                                <div class="mayor-perk-name">{{ perk.name }}</div>
+                                                <div v-if="perk.description" class="mayor-perk-description">{{ perk.description }}</div>
+                                            </div>
+                                        </div>
+                                        <div v-else class="text-xs text-white">No perk details available yet.</div>
+
+                                        <Link
+                                            :href="route('mayors')"
+                                            class="mt-3 inline-flex text-[11px] font-semibold text-profit transition hover:text-white"
+                                        >
+                                            See more information
+                                        </Link>
+                                    </div>
+                                </template>
+                            </Dropdown>
 
                             <!-- GitHub Star -->
                             <a
@@ -347,5 +376,34 @@ function logout() {
 .mobile-link-active {
     color: #fff;
     background: rgba(255, 255, 255, 0.06);
+}
+
+/* ── Mayor dropdown perks (aligned with Mayors page style) ── */
+.mayor-perk-list {
+    display: grid;
+    gap: 14px;
+}
+
+.mayor-perk-item {
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    padding: 0;
+    font-family: 'Courier New', monospace;
+    letter-spacing: 0.15px;
+}
+
+.mayor-perk-name {
+    color: #e879f9;
+    font-size: 13px;
+    font-weight: 700;
+    margin-bottom: 2px;
+    text-shadow: 0 0 8px rgba(232, 121, 249, 0.15);
+}
+
+.mayor-perk-description {
+    color: #ffffff;
+    font-size: 12px;
+    line-height: 1.25rem;
 }
 </style>

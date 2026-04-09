@@ -15,6 +15,7 @@ const props = defineProps({
     skinName: { type: String, default: null },
     width:  { type: Number, default: 200 },
     height: { type: Number, default: 400 },
+    zoom: { type: Number, default: 0.9 },
 });
 
 const canvasRef = ref(null);
@@ -55,7 +56,7 @@ async function initViewer() {
         width: props.width,
         height: props.height,
         skin: skinUrl,
-        zoom: 0.9,
+        zoom: props.zoom,
         fov: 50,
         animation: new IdleAnimation(),
         background: null,
@@ -99,6 +100,33 @@ watch(() => props.skinName, () => {
         viewer.loadSkin(skinUrl);
     } else {
         nextTick(() => initViewer());
+    }
+});
+
+watch(() => [props.width, props.height], () => {
+    if (!viewer) {
+        nextTick(() => initViewer());
+        return;
+    }
+
+    if (typeof viewer.setSize === 'function') {
+        viewer.setSize(props.width, props.height);
+    } else {
+        viewer.width = props.width;
+        viewer.height = props.height;
+    }
+
+    if (typeof viewer.render === 'function') {
+        viewer.render();
+    }
+});
+
+watch(() => props.zoom, () => {
+    if (viewer) {
+        viewer.zoom = props.zoom;
+        if (typeof viewer.render === 'function') {
+            viewer.render();
+        }
     }
 });
 

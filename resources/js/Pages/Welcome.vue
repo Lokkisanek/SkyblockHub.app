@@ -1,6 +1,7 @@
 <script setup>
 import { ref } from 'vue';
 import { Head, Link, router } from '@inertiajs/vue3';
+import ApplicationLogo from '@/Components/ApplicationLogo.vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 
 defineProps({
@@ -11,34 +12,28 @@ defineProps({
 });
 
 const searchUsername = ref('');
+const siteOrigin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:8000';
+const canonicalUrl = `${siteOrigin}/`;
+const pageTitle = 'Hypixel SkyBlock Tools - Bazaar Flips, NPC Arbitrage, Profiles';
+const pageDescription = 'SkyblockHub is a clean Hypixel SkyBlock dashboard for Bazaar flips, NPC arbitrage, profile analysis, mayor perks, and event timing.';
 
 const featureCards = [
     {
         id: 'bazaar',
-        title: 'Bazaar Flip Scanner',
-        subtitle: 'Real-time spread and margin tracking',
-        description: 'Filter by true profit, volume and margin to find stable flips in seconds.',
+        title: 'Bazaar Flips',
+        subtitle: 'Live spread and margin',
+        description: 'Find practical opportunities quickly on live market data.',
         metric: 'Live market deltas',
         routeName: 'bazaar',
         accent: 'emerald',
         layout: 'main',
     },
     {
-        id: 'events',
-        title: 'Event Timer',
-        subtitle: 'Cycle-accurate planning',
-        description: 'Track Dark Auction, Jacob, Zoo and mayor-boosted windows with countdown precision.',
-        metric: 'Always on schedule',
-        routeName: 'event-timer',
-        accent: 'indigo',
-        layout: 'sidebar',
-    },
-    {
         id: 'npc',
         title: 'NPC Arbitrage',
-        subtitle: 'Low-risk coin printing',
-        description: 'Instantly compare Bazaar buy prices with NPC sell values and rank best opportunities.',
-        metric: '1.5x+ opportunities',
+        subtitle: 'Fast price comparison',
+        description: 'Compare Bazaar buys vs NPC sells in one table.',
+        metric: 'Low-friction route',
         routeName: 'npc-flips',
         accent: 'amber',
         layout: 'twin',
@@ -46,29 +41,39 @@ const featureCards = [
     {
         id: 'profiles',
         title: 'Profile Stats',
-        subtitle: 'SkyCrypt style analytics',
-        description: 'Inspect gear, skills, pets, dungeons and collections in one optimized panel.',
+        subtitle: 'Complete profile view',
+        description: 'Inspect gear, skills, pets, dungeons, and collections.',
         metric: 'Deep account visibility',
         routeName: 'profile-stats',
         accent: 'emerald',
         layout: 'twin',
     },
     {
+        id: 'events',
+        title: 'Event Timer',
+        subtitle: 'Cycle-aware planning',
+        description: 'Track key events with clear countdowns.',
+        metric: 'Always on schedule',
+        routeName: 'event-timer',
+        accent: 'indigo',
+        layout: 'sidebar',
+    },
+    {
         id: 'mayors',
-        title: 'Mayor Intelligence',
-        subtitle: 'Election and perk awareness',
-        description: 'See active mayor effects, candidate groups and strategic impact on money routes.',
+        title: 'Mayors',
+        subtitle: 'Perks and cycle context',
+        description: 'See active perks and upcoming election context.',
         metric: 'Meta-ready decisions',
         routeName: 'mayors',
         accent: 'indigo',
-        layout: 'main',
+        layout: 'sidebar',
     },
     {
-        id: 'privacy',
-        title: 'About the Project',
-        subtitle: 'Open source & community',
-        description: 'Learn about SkyblockHub, the developer behind it, and how you can support the project.',
-        metric: 'Open source',
+        id: 'about',
+        title: 'About Project',
+        subtitle: 'Open source',
+        description: 'See project details and support options.',
+        metric: 'Community driven',
         routeName: 'about',
         accent: 'amber',
         layout: 'sidebar',
@@ -85,9 +90,9 @@ function submitSearch() {
 }
 
 function cardLayoutClass(layout) {
-    if (layout === 'main') return 'md:col-span-4';
+    if (layout === 'main') return 'md:col-span-3';
     if (layout === 'sidebar') return 'md:col-span-2';
-    return 'md:col-span-3';
+    return 'md:col-span-2';
 }
 
 function cardAccentClass(accent) {
@@ -104,54 +109,106 @@ function metricColorClass(accent) {
 </script>
 
 <template>
-    <Head title="SkyblockHub" />
+    <Head>
+        <title>{{ pageTitle }}</title>
+        <meta head-key="description" name="description" :content="pageDescription" />
+        <meta head-key="robots" name="robots" content="index,follow" />
+        <link head-key="canonical" rel="canonical" :href="canonicalUrl" />
+        <meta head-key="og:title" property="og:title" :content="`${pageTitle} - SkyblockHub`" />
+        <meta head-key="og:description" property="og:description" :content="pageDescription" />
+        <meta head-key="og:type" property="og:type" content="website" />
+        <meta head-key="og:image" property="og:image" :content="`${siteOrigin}/img/logo-white.webp`" />
+        <meta head-key="twitter:card" name="twitter:card" content="summary_large_image" />
+        <meta head-key="twitter:title" name="twitter:title" :content="`${pageTitle} - SkyblockHub`" />
+        <meta head-key="twitter:description" name="twitter:description" :content="pageDescription" />
+    </Head>
 
     <AuthenticatedLayout>
         <div class="pt-14 pb-20 sm:pt-16 sm:pb-24 lg:pt-20 lg:pb-28">
             <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                <section class="animate-rise-up animate-delay-1 mb-16">
-                    <h1 class="mx-auto max-w-5xl text-center text-5xl font-black leading-[1.05] tracking-tight text-white sm:text-6xl lg:text-8xl">
-                        Skyblock Intelligence. Simplified
+                <section class="animate-rise-up animate-delay-1 mb-12">
+                    <div class="mx-auto mb-6 flex w-fit items-center gap-3 rounded-full border border-white/10 bg-white/5 px-4 py-2 backdrop-blur-sm">
+                        <ApplicationLogo tone="light" class="h-7 w-7 shrink-0" />
+                        <span class="text-[10px] font-bold uppercase tracking-[0.24em] text-white/75">SkyblockHub</span>
+                    </div>
+
+                    <h1 class="mx-auto max-w-6xl text-center text-6xl font-black leading-[1.02] tracking-tight text-white sm:text-7xl lg:text-8xl">
+                        Make better SkyBlock decisions faster
                     </h1>
 
-                    <p class="mx-auto mt-6 max-w-2xl text-center text-base leading-relaxed text-white/60 sm:text-lg lg:text-xl">
-                        Real-time Bazaar tracking, profile analytics, and event countdowns. Everything you need to dominate the Hub, all in one place.
+                    <p class="mx-auto mt-6 max-w-3xl text-center text-lg leading-relaxed text-white/80 sm:text-xl lg:text-2xl">
+                        One clean dashboard for flips, profiles, mayor perks, and event timing.
                     </p>
                 </section>
 
-                <section class="animate-rise-up animate-delay-2 mb-12">
-                    <div class="mx-auto w-full max-w-2xl rounded-2xl border border-border/80 bg-surface-900/75 p-3 shadow-[0_16px_40px_rgba(0,0,0,0.35)] backdrop-blur-sm">
+                <section class="animate-rise-up animate-delay-2 mb-10">
+                    <div class="mx-auto w-full max-w-3xl rounded-2xl border border-border/80 bg-surface-900/75 p-3 shadow-[0_16px_40px_rgba(0,0,0,0.35)] backdrop-blur-sm">
                         <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
                             <div class="relative flex-1">
-                                <svg class="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                                    <path fill-rule="evenodd" d="M8.5 3a5.5 5.5 0 104.35 8.87l2.64 2.64a1 1 0 001.42-1.42l-2.64-2.64A5.5 5.5 0 008.5 3zm-3.5 5.5a3.5 3.5 0 117 0 3.5 3.5 0 01-7 0z" clip-rule="evenodd" />
-                                </svg>
+                                <div class="pointer-events-none absolute left-4 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-white/5 shadow-[0_0_0_1px_rgba(255,255,255,0.02)]">
+                                    <ApplicationLogo tone="light" class="h-4 w-4" />
+                                </div>
                                 <input
                                     v-model="searchUsername"
                                     type="text"
-                                    placeholder="Search player..."
-                                    class="w-full rounded-xl border border-border/80 bg-surface-800/80 py-3 pl-11 pr-4 text-sm text-white placeholder:text-neutral/80 transition focus:border-profit/70 focus:outline-none focus:ring-2 focus:ring-profit/25"
+                                    placeholder="Search SkyBlock player..."
+                                    class="w-full rounded-xl border border-border/80 bg-surface-800/80 py-3 pl-14 pr-4 text-base text-white placeholder:text-neutral/80 transition focus:border-profit/70 focus:outline-none focus:ring-2 focus:ring-profit/25"
                                     @keyup.enter="submitSearch"
                                 />
                             </div>
                             <button
                                 @click="submitSearch"
-                                class="inline-flex h-[46px] items-center justify-center rounded-xl border border-profit/35 bg-profit/20 px-6 text-sm font-semibold text-profit transition hover:bg-profit/30 hover:text-white"
+                                class="inline-flex h-[46px] items-center justify-center rounded-xl border border-profit/35 bg-profit/20 px-6 text-base font-semibold text-profit transition hover:bg-profit/30 hover:text-white"
                             >
-                                Search
+                                Open profile
                             </button>
                         </div>
                     </div>
-                    <p class="mt-3 text-center text-xs text-white/50">After search, you will be redirected to Profile Stats with the entered username.</p>
+                    <p class="mt-3 text-center text-sm text-white/65">Enter a username and jump straight into profile stats.</p>
                 </section>
 
-                <section class="animate-rise-up animate-delay-3">
+                <section class="animate-rise-up animate-delay-3 mb-12">
+                    <div class="mx-auto max-w-5xl rounded-3xl border border-white/10 bg-surface-900/75 p-6 shadow-[0_24px_60px_rgba(0,0,0,0.28)] backdrop-blur-md sm:p-7">
+                        <div class="grid gap-6 md:grid-cols-[1.3fr_1fr] md:items-start">
+                            <div>
+                                <p class="text-[10px] font-bold uppercase tracking-[0.24em] text-white/55">Login</p>
+                                <h2 class="mt-2 text-3xl font-semibold leading-tight text-white sm:text-4xl">Log in to unlock full experience</h2>
+                                <p class="mt-3 text-base leading-relaxed text-white/75 sm:text-lg">Connect with Discord and keep all your tools in one flow.</p>
+
+                                <a
+                                    v-if="canLogin"
+                                    :href="route('auth.discord')"
+                                    class="mt-5 inline-flex items-center justify-center rounded-xl border border-profit/40 bg-profit/15 px-6 py-3 text-base font-semibold text-profit transition hover:bg-profit/30 hover:text-white"
+                                >
+                                    Continue with Discord
+                                </a>
+                                <Link
+                                    v-else
+                                    :href="route('dashboard')"
+                                    class="mt-5 inline-flex items-center justify-center rounded-xl border border-white/15 bg-white/5 px-6 py-3 text-base font-semibold text-white transition hover:bg-white/10"
+                                >
+                                    Open Dashboard
+                                </Link>
+                            </div>
+                            <div class="rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5">
+                                <p class="text-[10px] font-bold uppercase tracking-[0.22em] text-white/55">Benefits (you define later)</p>
+                                <ul class="mt-3 space-y-2 text-sm leading-relaxed text-white/90 sm:text-base">
+                                    <li>- Benefit #1 (placeholder)</li>
+                                    <li>- Benefit #2 (placeholder)</li>
+                                    <li>- Benefit #3 (placeholder)</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="animate-rise-up animate-delay-4">
                     <div class="mb-4 flex items-center justify-between">
-                        <h2 class="text-sm font-semibold uppercase tracking-[0.18em] text-white/45">What You Can Use Right Now</h2>
-                        <div class="text-xs text-white/40">Interactive overview</div>
+                        <h2 class="text-base font-semibold uppercase tracking-[0.18em] text-white/60">What You Can Use Right Now</h2>
+                        <div class="text-sm text-white/50">Modules</div>
                     </div>
 
-                    <div class="grid grid-cols-1 gap-4 md:grid-cols-6">
+                    <div class="grid grid-cols-1 gap-4 md:grid-cols-5">
                         <Link
                             v-for="(card, index) in featureCards"
                             :key="card.id"
@@ -164,11 +221,12 @@ function metricColorClass(accent) {
                                     {{ card.metric }}
                                 </span>
 
-                                <h3 class="text-[15px] font-semibold text-white">{{ card.title }}</h3>
-                                <p class="mt-2 text-[13px] leading-relaxed text-white/50">{{ card.description }}</p>
+                                <h3 class="text-[17px] font-semibold text-white">{{ card.title }}</h3>
+                                <p class="mt-1 text-[11px] font-medium uppercase tracking-[0.18em] text-white/45">{{ card.subtitle }}</p>
+                                <p class="mt-2 text-[14px] leading-relaxed text-white/70">{{ card.description }}</p>
                             </div>
 
-                            <div class="mt-5 flex items-center gap-1 text-xs font-medium text-white/40 transition group-hover:text-white/70">
+                            <div class="mt-5 flex items-center gap-1 text-xs font-medium text-white/50 transition group-hover:text-white/80">
                                 Explore
                                 <svg class="h-3 w-3 transition-transform group-hover:translate-x-0.5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd" /></svg>
                             </div>
@@ -178,7 +236,6 @@ function metricColorClass(accent) {
             </div>
         </div>
 
-        <!-- Footer -->
         <footer class="footer-wrapper relative">
             <div class="slime-glow-footer-container">
                 <div class="slime-glow-footer"></div>
@@ -186,9 +243,11 @@ function metricColorClass(accent) {
 
             <div class="relative z-10 mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
                 <div class="grid grid-cols-2 gap-8 sm:grid-cols-4">
-
                     <div class="col-span-2 sm:col-span-1">
-                        <Link :href="route('dashboard')" class="text-sm font-bold tracking-wide text-white">SKYBLOCKHUB</Link>
+                        <Link :href="route('dashboard')" class="flex items-center gap-2 text-sm font-bold tracking-wide text-white">
+                            <ApplicationLogo tone="light" class="h-7 w-7 shrink-0" />
+                            <span>SkyblockHub</span>
+                        </Link>
                         <p class="mt-2 text-xs leading-relaxed text-white/30">Skyblock intelligence platform. Real-time data, zero ads.</p>
                     </div>
 
@@ -219,7 +278,6 @@ function metricColorClass(accent) {
                             <li><Link :href="route('terms')" class="text-xs text-white/35 transition hover:text-white">Terms of Service</Link></li>
                         </ul>
                     </div>
-
                 </div>
 
                 <div class="mt-8 flex flex-col items-center justify-between gap-3 border-t border-white/[0.06] pt-6 sm:flex-row">
@@ -232,7 +290,6 @@ function metricColorClass(accent) {
 </template>
 
 <style scoped>
-/* ── Footer ── */
 .footer-wrapper {
     background: linear-gradient(180deg, rgba(16, 16, 16, 0.95) 0%, rgba(16, 16, 16, 0.88) 100%);
     backdrop-filter: blur(16px);
@@ -280,19 +337,20 @@ function metricColorClass(accent) {
 
 @keyframes footerSlimeDrift {
     0%, 100% { left: 75%; }
-    33%      { left: 40%; }
-    66%      { left: 10%; }
+    33% { left: 40%; }
+    66% { left: 10%; }
 }
 
 @keyframes footerSlimeBounce {
     0%, 100% { transform: translateY(4px); }
-    50%      { transform: translateY(-6px); }
+    50% { transform: translateY(-6px); }
 }
 
 @keyframes footerSlimePulse {
     0%, 100% { opacity: 0.5; }
-    50%      { opacity: 1; }
+    50% { opacity: 1; }
 }
+
 .animate-rise-up {
     opacity: 0;
     transform: translateY(26px);
@@ -300,41 +358,16 @@ function metricColorClass(accent) {
     will-change: transform, opacity;
 }
 
-.animate-delay-1 {
-    animation-delay: 80ms;
-}
-
-.animate-delay-2 {
-    animation-delay: 170ms;
-}
-
-.animate-delay-3 {
-    animation-delay: 260ms;
-}
-
-.animate-delay-card-1 {
-    animation-delay: 320ms;
-}
-
-.animate-delay-card-2 {
-    animation-delay: 380ms;
-}
-
-.animate-delay-card-3 {
-    animation-delay: 440ms;
-}
-
-.animate-delay-card-4 {
-    animation-delay: 500ms;
-}
-
-.animate-delay-card-5 {
-    animation-delay: 560ms;
-}
-
-.animate-delay-card-6 {
-    animation-delay: 620ms;
-}
+.animate-delay-1 { animation-delay: 80ms; }
+.animate-delay-2 { animation-delay: 170ms; }
+.animate-delay-3 { animation-delay: 260ms; }
+.animate-delay-4 { animation-delay: 320ms; }
+.animate-delay-card-1 { animation-delay: 360ms; }
+.animate-delay-card-2 { animation-delay: 420ms; }
+.animate-delay-card-3 { animation-delay: 480ms; }
+.animate-delay-card-4 { animation-delay: 540ms; }
+.animate-delay-card-5 { animation-delay: 600ms; }
+.animate-delay-card-6 { animation-delay: 660ms; }
 
 @keyframes riseUpIn {
     0% {

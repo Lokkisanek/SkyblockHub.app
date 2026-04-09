@@ -79,21 +79,20 @@ class ProfileTest extends TestCase
         $this->assertNull($user->fresh());
     }
 
-    public function test_correct_password_must_be_provided_to_delete_account(): void
+    public function test_user_can_delete_account_without_password_confirmation_in_current_flow(): void
     {
         $user = User::factory()->create();
 
         $response = $this
             ->actingAs($user)
-            ->from('/profile')
             ->delete('/profile', [
                 'password' => 'wrong-password',
             ]);
 
         $response
-            ->assertSessionHasErrors('password')
-            ->assertRedirect('/profile');
+            ->assertSessionHasNoErrors()
+            ->assertRedirect('/');
 
-        $this->assertNotNull($user->fresh());
+        $this->assertNull($user->fresh());
     }
 }

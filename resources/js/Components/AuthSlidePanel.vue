@@ -1,4 +1,5 @@
 <script setup>
+import ApplicationLogo from '@/Components/ApplicationLogo.vue';
 import { watch, onMounted, onUnmounted } from 'vue';
 
 const props = defineProps({
@@ -70,6 +71,14 @@ onUnmounted(() => {
                 </button>
 
                 <div class="flex flex-1 flex-col justify-center px-8 py-12">
+                    <div class="mb-6 flex items-center gap-3">
+                        <ApplicationLogo tone="light" class="h-10 w-10 shrink-0" />
+                        <div>
+                            <p class="text-[10px] font-semibold uppercase tracking-[0.22em] text-neutral">SkyblockHub</p>
+                            <p class="text-xs text-neutral/70">Hypixel SkyBlock intelligence</p>
+                        </div>
+                    </div>
+
                     <h2 class="mb-2 text-2xl font-bold tracking-wide text-white">Welcome to SkyblockHub</h2>
                     <p class="mb-8 text-[13px] text-neutral">
                         Sign in or create an account using one of the options below.
