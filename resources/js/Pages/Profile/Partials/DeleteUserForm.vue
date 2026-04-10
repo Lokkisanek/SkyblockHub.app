@@ -52,6 +52,7 @@ const closeModal = () => {
                 <p class="mt-1 text-sm text-neutral">
                     Po smazání účtu budou všechna data trvale odstraněna.
                     Tato akce je nevratná.
+                    Pokud mas aktivni subscription plan, bude automaticky zrusen.
                 </p>
 
                 <div class="mt-6 flex justify-end">

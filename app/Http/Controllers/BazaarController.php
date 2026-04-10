@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Jobs\FetchHypixelBazaarJob;
 use App\Models\BazaarPrice;
+use App\Services\SubscriptionFeatureService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -11,8 +12,15 @@ use Inertia\Response;
 
 class BazaarController extends Controller
 {
+    public function __construct(
+        private readonly SubscriptionFeatureService $subscriptionFeatureService,
+    ) {
+    }
+
     public function index(Request $request): Response
     {
+        $subscriptionFeatures = $this->subscriptionFeatureService->forUser($request->user());
+
         if ($request->boolean('refresh')) {
             app(FetchHypixelBazaarJob::class)->handle();
         }
@@ -144,6 +152,46 @@ class BazaarController extends Controller
             ->orderByRaw("MIN({$hourlyInstabuysSql}, {$hourlyInstasellsSql}) DESC")
             ->first();
 
+        $topFlipsLimit = max(1, min(3, (int) ($subscriptionFeatures['top_flips_limit'] ?? 1)));
+        $topFlipsRows = (clone $bestPicksBase)
+            ->orderByRaw("{$coinsPerHourSql} DESC")
+            ->limit($topFlipsLimit)
+            ->get();
+
+        $topFlips = $topFlipsRows->map(function ($row) use ($subscriptionFeatures) {
+            $record = [
+                'product_id' => $row->product_id,
+                'name' => $row->name,
+                'coins_per_hour' => (float) ($row->coins_per_hour ?? 0),
+                'margin' => (float) ($row->margin ?? 0),
+                'hourly_instabuys' => (float) ($row->hourly_instabuys ?? 0),
+                'hourly_instasells' => (float) ($row->hourly_instasells ?? 0),
+            ];
+
+            if ($subscriptionFeatures['can_ai_flips'] ?? false) {
+                $record['trust_score'] = $this->calculateTrustScore($record);
+            }
+
+            return $record;
+        })->values();
+
+        $aiInsights = [];
+        if ($subscriptionFeatures['can_ai_flips'] ?? false) {
+            $aiInsights = $topFlips
+                ->map(function (array $row) {
+                    $risk = $row['trust_score'] >= 80 ? 'Low risk' : ($row['trust_score'] >= 60 ? 'Medium risk' : 'High risk');
+
+                    return [
+                        'product_id' => $row['product_id'],
+                        'name' => $row['name'],
+                        'trust_score' => $row['trust_score'],
+                        'risk' => $risk,
+                    ];
+                })
+                ->values()
+                ->all();
+        }
+
         return Inertia::render('Bazaar/Index', [
             'items'   => $items,
             'best_picks' => [
@@ -151,6 +199,9 @@ class BazaarController extends Controller
                 'margin' => $bestMargin,
                 'throughput' => $bestThroughput,
             ],
+            'top_flips' => $topFlips,
+            'ai_insights' => $aiInsights,
+            'subscriptionFeatures' => $subscriptionFeatures,
             'filters' => [
                 'search'   => $search,
                 'category' => $category,
@@ -162,5 +213,24 @@ class BazaarController extends Controller
                 'min_margin_percent' => $minMarginPercent,
             ],
         ]);
+    }
+
+    /**
+     * @param array<string, mixed> $row
+     */
+    private function calculateTrustScore(array $row): int
+    {
+        $coinsPerHour = max(0.0, (float) ($row['coins_per_hour'] ?? 0));
+        $margin = max(0.0, (float) ($row['margin'] ?? 0));
+        $throughput = min(
+            max(0.0, (float) ($row['hourly_instabuys'] ?? 0)),
+            max(0.0, (float) ($row['hourly_instasells'] ?? 0))
+        );
+
+        $profitScore = min(40, (int) floor($coinsPerHour / 25000));
+        $liquidityScore = min(40, (int) floor($throughput / 75));
+        $marginScore = min(20, (int) floor($margin / 1500));
+
+        return max(1, min(100, $profitScore + $liquidityScore + $marginScore));
     }
 }

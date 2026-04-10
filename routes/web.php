@@ -1,11 +1,13 @@
 <?php
 
 use App\Http\Controllers\BazaarController;
+use App\Http\Controllers\BillingController;
 use App\Http\Controllers\BinSniperController;
 use App\Http\Controllers\CraftingArbitrageController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DungeonPartyController;
 use App\Http\Controllers\EventsController;
+use App\Http\Controllers\LeaderboardsController;
 use App\Http\Controllers\MayorController;
 use App\Http\Controllers\NpcFlipsController;
 use App\Http\Controllers\PortfolioController;
@@ -30,6 +32,7 @@ Route::get('/npc-flips', [NpcFlipsController::class, 'index'])->name('npc-flips'
 Route::get('/profile-stats', [ProfileStatsController::class, 'index'])->name('profile-stats');
 Route::get('/event-timer', [EventsController::class, 'index'])->name('event-timer');
 Route::get('/mayors', [MayorController::class, 'index'])->name('mayors');
+Route::get('/leaderboards', [LeaderboardsController::class, 'index'])->name('leaderboards');
 
 Route::get('/about', function () {
     return Inertia::render('About');
@@ -44,6 +47,12 @@ Route::get('/terms', function () {
 })->name('terms');
 
 Route::middleware('auth')->group(function () {
+    Route::get('/billing', [BillingController::class, 'index'])->name('billing');
+    Route::post('/billing/checkout', [BillingController::class, 'checkout'])->name('billing.checkout');
+    Route::post('/billing/trial', [BillingController::class, 'startTrial'])->name('billing.trial');
+    Route::post('/billing/cancel', [BillingController::class, 'cancel'])->name('billing.cancel');
+    Route::get('/billing/success', [BillingController::class, 'success'])->name('billing.success');
+
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');

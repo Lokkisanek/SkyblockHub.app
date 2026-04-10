@@ -12,6 +12,7 @@ const props = defineProps({
     dashboard: { type: Object, default: null },
     widgetTemplates: { type: Array, default: () => [] },
     dashboardLimits: { type: Object, default: () => ({ free_slots: 1, total_slots: 3, unlocked_slots: 1, locked_slots: [2, 3] }) },
+    subscriptionFeatures: { type: Object, default: () => ({ priority_widget_updates: false }) },
     activeSlotIndex: { type: Number, default: 1 },
     liveWidgetData: { type: Object, default: () => ({ items: {}, event: null }) },
 });
@@ -30,9 +31,11 @@ const interaction = ref(null);
 const selectedWidgetId = ref(null);
 const dragGhost = ref(null);
 const resizeObserver = ref(null);
+const layoutUndoStack = ref([]);
+const initialEditSnapshot = ref(null);
 
-const gridColumns = computed(() => Number(props.dashboard?.grid_columns ?? 10));
-const gridRows = computed(() => Number(props.dashboard?.grid_rows ?? 10));
+const gridColumns = computed(() => Number(props.dashboard?.grid_columns ?? 20));
+const gridRows = computed(() => Number(props.dashboard?.grid_rows ?? 20));
 const canvasAspectRatio = computed(() => `${gridColumns.value}/${gridRows.value}`);
 const canOpenEdit = computed(() => props.canEditDashboard);
 
@@ -57,9 +60,75 @@ const slotCards = computed(() => {
     }));
 });
 
-const profileWidgetTypes = new Set(['profile_watcher', 'profile_stats_widget', 'skin_view_widget', 'inventory_gui_widget']);
+const profileWidgetTypes = new Set(['skin_view_widget', 'inventory_gui_widget']);
 const totalGridCells = computed(() => gridColumns.value * gridRows.value);
 const selectedWidget = computed(() => widgets.value.find((widget) => widget.clientId === selectedWidgetId.value) ?? null);
+const visibilityStatusLabel = computed(() => (isPublic.value ? 'Public dashboard' : 'Private dashboard'));
+
+function cloneWidgetSnapshot(widget) {
+    return {
+        id: widget.id ?? null,
+        clientId: widget.clientId,
+        type: widget.type,
+        title: widget.title,
+        x: Number(widget.x),
+        y: Number(widget.y),
+        w: Number(widget.w),
+        h: Number(widget.h),
+        settings: JSON.parse(JSON.stringify(widget.settings ?? {})),
+        pulse: false,
+    };
+}
+
+function currentLayoutSnapshot() {
+    return {
+        isPublic: Boolean(isPublic.value),
+        widgets: widgets.value.map((widget) => cloneWidgetSnapshot(widget)),
+    };
+}
+
+function applyLayoutSnapshot(snapshot) {
+    if (!snapshot) {
+        return;
+    }
+
+    isPublic.value = Boolean(snapshot.isPublic);
+    widgets.value = (snapshot.widgets ?? []).map((widget) => cloneWidgetSnapshot(widget));
+
+    if (selectedWidgetId.value && !widgets.value.some((widget) => widget.clientId === selectedWidgetId.value)) {
+        selectedWidgetId.value = null;
+    }
+
+    dragGhost.value = null;
+    interaction.value = null;
+}
+
+function pushUndoSnapshot(snapshot = currentLayoutSnapshot()) {
+    layoutUndoStack.value = [...layoutUndoStack.value, snapshot].slice(-40);
+}
+
+function undoLayoutChange() {
+    if (!props.canEditDashboard || !editMode.value || layoutUndoStack.value.length === 0) {
+        return;
+    }
+
+    const previous = layoutUndoStack.value[layoutUndoStack.value.length - 1];
+    layoutUndoStack.value = layoutUndoStack.value.slice(0, -1);
+    applyLayoutSnapshot(previous);
+    markDirty();
+    clearFeedbackSoon('Undid last layout change.');
+}
+
+function resetLayoutChanges() {
+    if (!props.canEditDashboard || !editMode.value || !initialEditSnapshot.value) {
+        return;
+    }
+
+    pushUndoSnapshot();
+    applyLayoutSnapshot(initialEditSnapshot.value);
+    isDirty.value = false;
+    clearFeedbackSoon('Layout reset to edit start state.');
+}
 
 function templateForType(type) {
     return templateMap.value[type] ?? null;
@@ -203,6 +272,7 @@ function beginWidgetInteraction(mode, widget, event) {
         offsetX: 0,
         offsetY: 0,
         moved: false,
+        beforeSnapshot: currentLayoutSnapshot(),
     };
 
     selectedWidgetId.value = widget.clientId;
@@ -262,6 +332,7 @@ function onGlobalPointerUp() {
     const widget = widgets.value.find((entry) => entry.clientId === interaction.value.widgetId);
     if (widget) {
         if (interaction.value.moved) {
+            pushUndoSnapshot(interaction.value.beforeSnapshot);
             markDirty();
         }
 
@@ -325,10 +396,15 @@ function toggleEditMode() {
     }
 
     editMode.value = !editMode.value;
-    if (!editMode.value) {
+    if (editMode.value) {
+        initialEditSnapshot.value = currentLayoutSnapshot();
+        layoutUndoStack.value = [];
+    } else {
         showTemplateModal.value = false;
         selectedWidgetId.value = null;
         dragGhost.value = null;
+        layoutUndoStack.value = [];
+        initialEditSnapshot.value = null;
     }
 }
 
@@ -353,6 +429,8 @@ function addWidget(template) {
         clearFeedbackSoon('No free space left in the dashboard canvas.');
         return;
     }
+
+    pushUndoSnapshot();
 
     widgets.value.push({
         id: null,
@@ -383,6 +461,8 @@ function removeWidget(clientId) {
     if (!props.canEditDashboard) {
         return;
     }
+
+    pushUndoSnapshot();
 
     widgets.value = widgets.value.filter((widget) => widget.clientId !== clientId);
     markDirty();
@@ -444,28 +524,6 @@ function profilePayload(widget) {
     }
 
     return profilePayloadByUsername.value[key] ?? null;
-}
-
-function itemLiveData(widget) {
-    const key = (widget.settings?.item_name ?? '').trim().toLowerCase();
-    if (!key) {
-        return null;
-    }
-
-    return props.liveWidgetData?.items?.[key] ?? null;
-}
-
-function openTargetHref(widget) {
-    if (widget.type === 'item_flip_watcher') {
-        return route('bazaar');
-    }
-
-    if (widget.type === 'event_timer_watcher') {
-        return route('event-timer');
-    }
-
-    const username = (widget.settings?.username ?? '').trim();
-    return username ? route('profile-stats', { username }) : route('profile-stats');
 }
 
 function buildProfilePayload(apiData) {
@@ -574,6 +632,44 @@ function widgetProfileData(widget) {
     return payload?.error ? null : payload;
 }
 
+function widgetStatusText(widget) {
+    const key = profileKey(widget);
+    const username = (widget.settings?.username ?? '').trim();
+
+    if (!username) {
+        return 'No profile data';
+    }
+
+    if (profileLoadingByUsername.value[key]) {
+        return 'Loading';
+    }
+
+    const payload = profilePayload(widget);
+    if (payload?.error) {
+        if ((payload.error || '').toLowerCase().includes('no profile')) {
+            return 'No profile data';
+        }
+
+        return 'Invalid username';
+    }
+
+    if (!widgetProfileData(widget)) {
+        return 'No profile data';
+    }
+
+    return '';
+}
+
+function widgetStatusClass(widget) {
+    const text = widgetStatusText(widget);
+
+    if (text === 'Invalid username') {
+        return 'widget-state-copy widget-state-copy--error';
+    }
+
+    return 'widget-state-copy';
+}
+
 const profileSignature = computed(() =>
     widgets.value
         .filter((widget) => profileWidgetTypes.has(widget.type))
@@ -646,44 +742,60 @@ onBeforeUnmount(() => {
                     {{ feedback }}
                 </div>
 
+                <div class="mb-4 flex flex-wrap items-center gap-2">
+                    <span v-if="subscriptionFeatures?.priority_widget_updates" class="visibility-chip visibility-chip--public">Priority widget updates: ON</span>
+                    <span v-else class="visibility-chip visibility-chip--private">Priority widget updates: OFF</span>
+                    <Link v-if="!subscriptionFeatures?.priority_widget_updates && !requiresLogin" :href="route('billing')" class="apple-secondary-button">Upgrade to VIP/MVP</Link>
+                </div>
+
+                <div v-if="!requiresLogin" class="slot-strip">
+                    <Link
+                        v-for="slot in slotCards"
+                        :key="slot.index"
+                        :href="slot.isLocked ? '#' : route('dashboard', { slot: slot.index })"
+                        @click="slot.isLocked && $event.preventDefault()"
+                        class="slot-chip"
+                        :class="{
+                            'slot-chip--active': slot.isActive,
+                            'slot-chip--locked': slot.isLocked,
+                        }"
+                        :aria-disabled="slot.isLocked"
+                        :tabindex="slot.isLocked ? -1 : 0"
+                    >
+                        <span>Slot {{ slot.index }}</span>
+                        <small>{{ slot.isLocked ? 'Locked' : (slot.isActive ? 'Active' : 'Open') }}</small>
+                    </Link>
+                </div>
+
                 <div class="dashboard-toolbar-row">
                     <div class="dashboard-toolbar-spacer"></div>
                     <div class="dashboard-toolbar-actions" v-if="editMode">
                         <div v-if="selectedWidget" class="dashboard-toolbar-settings">
                             <label class="widget-field-label">Widget data</label>
 
-                            <template v-if="selectedWidget.type === 'profile_watcher' || selectedWidget.type === 'profile_stats_widget'">
+                            <template v-if="selectedWidget.type === 'skin_view_widget'">
                                 <input v-model="selectedWidget.settings.username" class="widget-input widget-input--compact" placeholder="Minecraft username" @input="markDirty" />
-                                <div class="dashboard-toolbar-checks">
-                                    <label><input v-model="selectedWidget.settings.track_skin" type="checkbox" @change="markDirty" /> Skin</label>
-                                    <label><input v-model="selectedWidget.settings.track_skills" type="checkbox" @change="markDirty" /> Skills</label>
-                                    <label><input v-model="selectedWidget.settings.track_inventory" type="checkbox" @change="markDirty" /> Inventory</label>
-                                    <label v-if="selectedWidget.type === 'profile_stats_widget'"><input v-model="selectedWidget.settings.track_equipment" type="checkbox" @change="markDirty" /> Equipment</label>
-                                </div>
-                            </template>
-
-                            <template v-else-if="selectedWidget.type === 'skin_view_widget'">
-                                <input v-model="selectedWidget.settings.username" class="widget-input widget-input--compact" placeholder="Minecraft username" @input="markDirty" />
-                            </template>
-
-                            <template v-else-if="selectedWidget.type === 'inventory_gui_widget'">
-                                <input v-model="selectedWidget.settings.username" class="widget-input widget-input--compact" placeholder="Minecraft username" @input="markDirty" />
-                                <label class="dashboard-toolbar-checks"><input v-model="selectedWidget.settings.show_hotbar" type="checkbox" @change="markDirty" /> Show hotbar</label>
-                            </template>
-
-                            <template v-else-if="selectedWidget.type === 'item_flip_watcher'">
-                                <input v-model="selectedWidget.settings.item_name" class="widget-input widget-input--compact" placeholder="Item name" @input="markDirty" />
                             </template>
 
                             <template v-else>
-                                <input v-model="selectedWidget.settings.event_name" class="widget-input widget-input--compact" placeholder="Event name" @input="markDirty" />
+                                <input v-model="selectedWidget.settings.username" class="widget-input widget-input--compact" placeholder="Minecraft username" @input="markDirty" />
+                                <label class="dashboard-toolbar-checks"><input v-model="selectedWidget.settings.show_hotbar" type="checkbox" @change="markDirty" /> Show hotbar</label>
                             </template>
                         </div>
 
                         <label class="dashboard-toggle-row dashboard-toggle-row--compact">
-                            <span>Private</span>
+                            <span>Public</span>
                             <input v-model="isPublic" type="checkbox" @change="markDirty" />
                         </label>
+                        <span class="visibility-chip" :class="{ 'visibility-chip--public': isPublic, 'visibility-chip--private': !isPublic }">
+                            {{ visibilityStatusLabel }}
+                        </span>
+                        <button class="apple-secondary-button" :disabled="layoutUndoStack.length === 0" @click="undoLayoutChange">
+                            Undo
+                        </button>
+                        <button class="apple-secondary-button" :disabled="!isDirty" @click="resetLayoutChanges">
+                            Reset
+                        </button>
                         <button class="apple-primary-button" @click="openAddWidgetsModal">Add Widgets</button>
                         <button class="apple-save-button" :disabled="!isDirty || isSaving" @click="saveDashboard">
                             {{ isSaving ? 'Saving...' : 'Save Changes' }}
@@ -730,65 +842,20 @@ onBeforeUnmount(() => {
                                 </header>
 
                                 <div class="dashboard-widget__content">
-                                    <template v-if="widget.type === 'profile_watcher' || widget.type === 'profile_stats_widget'">
-                                        <div v-if="profileLoadingByUsername[profileKey(widget)]" class="widget-state-copy"></div>
-                                        <div v-else-if="profilePayload(widget)?.error" class="widget-state-copy widget-state-copy--error"></div>
-                                        <div v-else-if="widgetProfileData(widget)" class="widget-profile-grid">
-                                            <div class="widget-profile-grid__hero">
-                                                <img
-                                                    v-if="widgetProfileData(widget).uuid && widget.settings.track_skin"
-                                                    :src="`https://mc-heads.net/avatar/${widgetProfileData(widget).uuid}/96`"
-                                                    alt="Profile skin"
-                                                    class="widget-profile-avatar"
-                                                />
-                                            </div>
-
-                                            <div v-if="widget.settings.track_inventory" class="widget-mini-inventory-wrap">
-                                                <InventoryGrid :items="widgetProfileData(widget).currentData.inventory ?? []" :showHotbar="false" :style="inventoryGridStyle(widget, false)" />
-                                            </div>
-                                        </div>
-                                        <div v-else class="widget-state-copy"></div>
-                                    </template>
-
-                                    <template v-else-if="widget.type === 'skin_view_widget'">
-                                        <div v-if="profileLoadingByUsername[profileKey(widget)]" class="widget-state-copy"></div>
-                                        <div v-else-if="profilePayload(widget)?.error" class="widget-state-copy widget-state-copy--error"></div>
+                                    <template v-if="widget.type === 'skin_view_widget'">
+                                        <div v-if="widgetStatusText(widget)" :class="widgetStatusClass(widget)">{{ widgetStatusText(widget) }}</div>
                                         <div v-else-if="widgetProfileData(widget)" class="widget-skin-preview">
                                             <PlayerModel :uuid="widgetProfileData(widget).uuid" :width="skinModelSize(widget).width" :height="skinModelSize(widget).height" :zoom="0.72" />
                                         </div>
-                                        <div v-else class="widget-state-copy"></div>
-                                    </template>
-
-                                    <template v-else-if="widget.type === 'inventory_gui_widget'">
-                                        <div v-if="profileLoadingByUsername[profileKey(widget)]" class="widget-state-copy"></div>
-                                        <div v-else-if="profilePayload(widget)?.error" class="widget-state-copy widget-state-copy--error"></div>
-                                        <div v-else-if="widgetProfileData(widget)" class="widget-inventory-panel">
-                                            <InventoryGrid :items="widgetProfileData(widget).currentData.inventory ?? []" :showHotbar="Boolean(widget.settings.show_hotbar)" :style="inventoryGridStyle(widget, Boolean(widget.settings.show_hotbar))" />
-                                        </div>
-                                        <div v-else class="widget-state-copy"></div>
-                                    </template>
-
-                                    <template v-else-if="widget.type === 'item_flip_watcher'">
-                                        <div v-if="itemLiveData(widget)" class="widget-flip-panel">
-                                            <div class="widget-flip-values">
-                                                <div>
-                                                    <strong>{{ Number(itemLiveData(widget).buy_price || 0).toLocaleString() }}</strong>
-                                                </div>
-                                                <div>
-                                                    <strong>{{ Number(itemLiveData(widget).sell_price || 0).toLocaleString() }}</strong>
-                                                </div>
-                                                <div>
-                                                    <strong :class="Number(itemLiveData(widget).margin || 0) >= 0 ? 'text-emerald-300' : 'text-rose-300'">{{ Number(itemLiveData(widget).margin || 0).toLocaleString(undefined, { maximumFractionDigits: 2 }) }}</strong>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div v-else class="widget-state-copy"></div>
+                                        <div v-else class="widget-state-copy">No profile data</div>
                                     </template>
 
                                     <template v-else>
-                                        <div class="widget-timer-panel">
-                                            <div class="widget-timer-ring"></div>
+                                        <div v-if="widgetStatusText(widget)" :class="widgetStatusClass(widget)">{{ widgetStatusText(widget) }}</div>
+                                        <div v-else-if="widgetProfileData(widget)" class="widget-inventory-panel">
+                                            <InventoryGrid :items="widgetProfileData(widget).currentData.inventory ?? []" :showHotbar="Boolean(widget.settings.show_hotbar)" :style="inventoryGridStyle(widget, Boolean(widget.settings.show_hotbar))" />
                                         </div>
+                                        <div v-else class="widget-state-copy">No profile data</div>
                                     </template>
                                 </div>
 
@@ -837,28 +904,8 @@ onBeforeUnmount(() => {
                                     </div>
                                 </template>
 
-                                <template v-else-if="template.preview === 'stats'">
-                                    <div class="mini-stats-preview">
-                                        <div class="mini-stats-preview__avatar"></div>
-                                        <div class="mini-stats-preview__lines">
-                                            <span></span>
-                                            <span></span>
-                                            <span></span>
-                                        </div>
-                                    </div>
-                                </template>
-
-                                <template v-else-if="template.preview === 'flip'">
-                                    <div class="mini-chart-preview">
-                                        <span v-for="bar in 12" :key="bar" :style="{ height: `${24 + (bar % 5) * 12}px` }"></span>
-                                    </div>
-                                </template>
-
                                 <template v-else>
-                                    <div class="mini-timer-preview">
-                                        <div class="mini-timer-preview__ring"></div>
-                                        <div class="mini-timer-preview__text">Timer</div>
-                                    </div>
+                                    <div class="widget-state-copy">Preview unavailable</div>
                                 </template>
                             </div>
 
@@ -1150,54 +1197,6 @@ onBeforeUnmount(() => {
     gap: clamp(2px, 0.35vw, 6px);
 }
 
-.widget-flip-panel {
-    display: grid;
-    gap: 10px;
-}
-
-.widget-flip-values {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 8px;
-}
-
-.widget-flip-values div {
-    border-radius: 0;
-    border: 0;
-    background: transparent;
-    padding: 0;
-}
-
-.widget-flip-values span {
-    display: block;
-    font-size: 10px;
-    text-transform: uppercase;
-    letter-spacing: 0.18em;
-    color: rgba(255, 255, 255, 0.45);
-}
-
-.widget-flip-values strong {
-    display: block;
-    margin-top: 6px;
-    font-size: 14px;
-    color: white;
-}
-
-.widget-timer-panel {
-    display: grid;
-    place-items: center;
-    gap: 10px;
-}
-
-.widget-timer-ring {
-    width: 126px;
-    height: 126px;
-    border-radius: 999px;
-    border: 10px solid rgba(255, 255, 255, 0.09);
-    border-top-color: rgba(16, 185, 129, 0.78);
-    border-right-color: rgba(96, 165, 250, 0.6);
-}
-
 .dashboard-drag-ghost {
     border-radius: 10px;
     border: 1px solid rgba(80, 170, 255, 0.5);
@@ -1205,12 +1204,6 @@ onBeforeUnmount(() => {
     box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
     pointer-events: none;
     z-index: 0;
-}
-
-.widget-timer-copy {
-    display: grid;
-    gap: 4px;
-    text-align: center;
 }
 
 .dashboard-toggle-row {
@@ -1231,10 +1224,32 @@ onBeforeUnmount(() => {
     min-width: 140px;
 }
 
+.visibility-chip {
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    padding: 7px 12px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+}
+
+.visibility-chip--public {
+    border-color: rgba(16, 185, 129, 0.42);
+    background: rgba(16, 185, 129, 0.12);
+    color: #b7fbd6;
+}
+
+.visibility-chip--private {
+    border-color: rgba(245, 158, 11, 0.36);
+    background: rgba(245, 158, 11, 0.1);
+    color: #fde68a;
+}
+
 .slot-strip {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 8px;
+    margin-bottom: 14px;
 }
 
 .slot-chip {
@@ -1260,6 +1275,7 @@ onBeforeUnmount(() => {
 }
 
 .apple-primary-button,
+.apple-secondary-button,
 .apple-save-button,
 .apple-control-button {
     border-radius: 999px;
@@ -1273,6 +1289,7 @@ onBeforeUnmount(() => {
 }
 
 .apple-primary-button:hover,
+.apple-secondary-button:hover,
 .apple-save-button:hover,
 .apple-control-button:hover {
     transform: translateY(-1px);
@@ -1280,6 +1297,7 @@ onBeforeUnmount(() => {
 }
 
 .apple-primary-button:disabled,
+.apple-secondary-button:disabled,
 .apple-save-button:disabled,
 .apple-control-button:disabled {
     cursor: not-allowed;
@@ -1290,6 +1308,11 @@ onBeforeUnmount(() => {
 .apple-primary-button {
     border-color: rgba(96, 165, 250, 0.36);
     background: linear-gradient(180deg, rgba(96, 165, 250, 0.22), rgba(96, 165, 250, 0.12));
+}
+
+.apple-secondary-button {
+    border-color: rgba(148, 163, 184, 0.38);
+    background: linear-gradient(180deg, rgba(148, 163, 184, 0.2), rgba(148, 163, 184, 0.1));
 }
 
 .apple-save-button {
@@ -1380,83 +1403,6 @@ onBeforeUnmount(() => {
 .mini-inventory-slot--filled {
     background: linear-gradient(180deg, rgba(96, 165, 250, 0.35), rgba(96, 165, 250, 0.12));
     border-color: rgba(96, 165, 250, 0.36);
-}
-
-.mini-stats-preview {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    width: 100%;
-    padding: 18px;
-}
-
-.mini-stats-preview__avatar {
-    width: 64px;
-    height: 92px;
-    border-radius: 18px;
-    background: linear-gradient(180deg, rgba(96, 165, 250, 0.35), rgba(16, 185, 129, 0.18));
-}
-
-.mini-stats-preview__lines {
-    display: flex;
-    flex: 1;
-    flex-direction: column;
-    gap: 10px;
-}
-
-.mini-stats-preview__lines span {
-    display: block;
-    height: 12px;
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.07);
-}
-
-.mini-stats-preview__lines span:nth-child(2) {
-    width: 80%;
-}
-
-.mini-stats-preview__lines span:nth-child(3) {
-    width: 60%;
-}
-
-.mini-chart-preview {
-    display: flex;
-    align-items: flex-end;
-    gap: 8px;
-    width: 100%;
-    min-height: 220px;
-    padding: 18px;
-}
-
-.mini-chart-preview span {
-    flex: 1;
-    border-radius: 999px 999px 8px 8px;
-    background: linear-gradient(180deg, rgba(96, 165, 250, 0.92), rgba(16, 185, 129, 0.5));
-}
-
-.mini-timer-preview {
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 100%;
-    min-height: 220px;
-}
-
-.mini-timer-preview__ring {
-    width: 124px;
-    height: 124px;
-    border-radius: 999px;
-    border: 10px solid rgba(255, 255, 255, 0.09);
-    border-top-color: rgba(16, 185, 129, 0.72);
-    border-right-color: rgba(96, 165, 250, 0.6);
-}
-
-.mini-timer-preview__text {
-    position: absolute;
-    font-size: 14px;
-    font-weight: 700;
-    color: rgba(255, 255, 255, 0.88);
 }
 
 .fade-scale-enter-active,

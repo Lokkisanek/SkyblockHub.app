@@ -159,7 +159,44 @@ class DashboardFeatureTest extends TestCase
             ->post('/dashboard/save', [
                 'slot_index' => 2,
                 'is_public' => false,
-                'widgets' => [],
+                'widgets' => [
+                    [
+                        'type' => 'skin_view_widget',
+                        'title' => 'Locked slot attempt',
+                        'x' => 1,
+                        'y' => 1,
+                        'w' => 3,
+                        'h' => 5,
+                        'settings' => ['username' => 'Lokkisanek'],
+                    ],
+                ],
+            ]);
+
+        $response->assertSessionHasErrors('dashboard')->assertRedirect('/dashboard');
+    }
+
+    public function test_widget_outside_20x20_grid_is_rejected(): void
+    {
+        $user = User::factory()->create([
+            'is_mc_linked' => true,
+        ]);
+
+        $response = $this->actingAs($user)
+            ->from('/dashboard')
+            ->post('/dashboard/save', [
+                'slot_index' => 1,
+                'is_public' => false,
+                'widgets' => [
+                    [
+                        'type' => 'inventory_gui_widget',
+                        'title' => 'Too far right',
+                        'x' => 14,
+                        'y' => 1,
+                        'w' => 8,
+                        'h' => 6,
+                        'settings' => ['username' => 'Lokkisanek', 'show_hotbar' => false],
+                    ],
+                ],
             ]);
 
         $response->assertSessionHasErrors('dashboard')->assertRedirect('/dashboard');

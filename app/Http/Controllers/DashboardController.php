@@ -2,14 +2,12 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\BazaarProduct;
 use App\Models\UserDashboard;
 use App\Services\DashboardEntitlementService;
-use App\Services\MayorService;
+use App\Services\SubscriptionFeatureService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -29,7 +27,7 @@ class DashboardController extends Controller
 
     public function __construct(
         private readonly DashboardEntitlementService $entitlementService,
-        private readonly MayorService $mayorService,
+        private readonly SubscriptionFeatureService $subscriptionFeatureService,
     ) {
     }
 
@@ -38,16 +36,14 @@ class DashboardController extends Controller
         $user = $request->user();
         $slotIndex = max((int) $request->query('slot', 1), 1);
         $limits = $this->entitlementService->getDashboardLimits($user);
+        $subscriptionFeatures = $this->subscriptionFeatureService->forUser($user);
 
         if (! $this->entitlementService->canAccessSlot($user, $slotIndex)) {
             $slotIndex = 1;
         }
 
         $dashboard = null;
-        $liveWidgetData = [
-            'items' => [],
-            'event' => null,
-        ];
+        $liveWidgetData = $this->buildLiveWidgetData();
 
         if ($user) {
             $dashboard = UserDashboard::query()
@@ -78,7 +74,6 @@ class DashboardController extends Controller
                 $dashboard->refresh()->load('widgets');
             }
 
-            $liveWidgetData = $this->buildLiveWidgetData($dashboard);
         }
 
         return Inertia::render('Dashboard', [
@@ -105,6 +100,7 @@ class DashboardController extends Controller
                 ])->values(),
             ] : null,
             'dashboardLimits' => $limits,
+            'subscriptionFeatures' => $subscriptionFeatures,
             'liveWidgetData' => $liveWidgetData,
             'widgetTemplates' => $this->widgetTemplates(),
         ]);
@@ -311,62 +307,11 @@ class DashboardController extends Controller
     /**
      * @return array<string, mixed>
      */
-    private function buildLiveWidgetData(UserDashboard $dashboard): array
+    private function buildLiveWidgetData(): array
     {
-        $itemNames = $dashboard->widgets
-            ->where('type', 'item_flip_watcher')
-            ->map(fn ($widget) => trim((string) ($widget->settings['item_name'] ?? '')))
-            ->filter()
-            ->map(fn (string $name) => Str::lower($name))
-            ->unique()
-            ->values();
-
-        $items = [];
-
-        if ($itemNames->isNotEmpty()) {
-            $rows = BazaarProduct::query()
-                ->join('bazaar_prices', 'bazaar_products.product_id', '=', 'bazaar_prices.product_id')
-                ->select([
-                    'bazaar_products.name',
-                    'bazaar_products.product_id',
-                    'bazaar_prices.buy_price',
-                    'bazaar_prices.sell_price',
-                    'bazaar_prices.buy_moving_week',
-                    'bazaar_prices.sell_moving_week',
-                    'bazaar_prices.updated_at',
-                ])
-                ->whereIn(DB::raw('LOWER(bazaar_products.name)'), $itemNames->all())
-                ->get();
-
-            $items = $rows->mapWithKeys(function ($row) {
-                $buy = (float) $row->buy_price;
-                $sell = (float) $row->sell_price;
-                $margin = ($buy * 0.9875) - $sell;
-
-                return [
-                    Str::lower((string) $row->name) => [
-                        'name' => $row->name,
-                        'product_id' => $row->product_id,
-                        'buy_price' => $buy,
-                        'sell_price' => $sell,
-                        'margin' => $margin,
-                        'buy_moving_week' => (float) $row->buy_moving_week,
-                        'sell_moving_week' => (float) $row->sell_moving_week,
-                        'updated_at' => optional($row->updated_at)?->toIso8601String(),
-                    ],
-                ];
-            })->all();
-        }
-
-        $mayor = $this->mayorService->getCurrentMayorData();
-
         return [
-            'items' => $items,
-            'event' => [
-                'mayor_name' => $mayor['name'] ?? 'Unknown',
-                'election' => $mayor['election'] ?? null,
-                'last_updated' => $mayor['last_updated'] ?? null,
-            ],
+            'items' => [],
+            'event' => null,
         ];
     }
 }

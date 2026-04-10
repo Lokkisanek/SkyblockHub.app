@@ -3,23 +3,19 @@
 namespace App\Services;
 
 use App\Models\User;
-use App\Models\UserEntitlement;
 
 class DashboardEntitlementService
 {
+    public function __construct(
+        private readonly SubscriptionFeatureService $subscriptionFeatureService,
+    ) {
+    }
+
     public function getDashboardLimits(?User $user): array
     {
         $totalSlots = 3;
-        $unlockedSlots = 1;
-        $entitlement = null;
-
-        if ($user) {
-            $entitlement = UserEntitlement::query()->where('user_id', $user->id)->first();
-
-            if ($entitlement && $entitlement->status === 'active') {
-                $unlockedSlots = max(1, min($totalSlots, (int) $entitlement->dashboard_slots_unlocked));
-            }
-        }
+        $features = $this->subscriptionFeatureService->forUser($user);
+        $unlockedSlots = max(1, min($totalSlots, (int) ($features['dashboard_slots_unlocked'] ?? 1)));
 
         $lockedSlots = [];
         for ($slot = 1; $slot <= $totalSlots; $slot++) {
@@ -34,7 +30,7 @@ class DashboardEntitlementService
             'unlocked_slots' => $unlockedSlots,
             'locked_slots' => $lockedSlots,
             'paywall_provider' => 'stripe',
-            'has_active_entitlement' => (bool) ($entitlement && $entitlement->status === 'active'),
+            'has_active_entitlement' => (bool) ($features['has_active_entitlement'] ?? false),
         ];
     }
 

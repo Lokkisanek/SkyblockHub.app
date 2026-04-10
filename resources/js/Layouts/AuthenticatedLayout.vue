@@ -108,6 +108,14 @@ function logout() {
                                     Event Timer
                                 </Link>
 
+                                <Link
+                                    :href="route('leaderboards')"
+                                    class="nav-link"
+                                    :class="{ active: isActive('leaderboards') }"
+                                >
+                                    Leaderboards
+                                </Link>
+
                                 <template v-if="isTestingAdmin">
                                     <Link :href="route('dungeon-party')" class="nav-link" :class="{ active: isActive('dungeon-party') }">
                                         Party Finder
@@ -242,6 +250,9 @@ function logout() {
                         </Link>
                         <Link :href="route('event-timer')" class="mobile-link" :class="{ 'mobile-link-active': isActive('event-timer') }">
                             Event Timer
+                        </Link>
+                        <Link :href="route('leaderboards')" class="mobile-link" :class="{ 'mobile-link-active': isActive('leaderboards') }">
+                            Leaderboards
                         </Link>
                         <template v-if="isTestingAdmin">
                             <Link :href="route('dungeon-party')" class="mobile-link" :class="{ 'mobile-link-active': isActive('dungeon-party') }">Party Finder</Link>

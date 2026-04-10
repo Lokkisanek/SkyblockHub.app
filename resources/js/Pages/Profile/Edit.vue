@@ -25,6 +25,14 @@ const props = defineProps({
         type: String,
         default: null,
     },
+    subscriptionFeatures: {
+        type: Object,
+        default: () => ({}),
+    },
+    paymentStatus: {
+        type: Object,
+        default: () => ({}),
+    },
 });
 
 const showLinkModal = ref(false);
@@ -34,6 +42,7 @@ const mcForm = useForm({
 });
 
 const unlinkForm = useForm({});
+const cancelSubscriptionForm = useForm({});
 
 function linkDirect() {
     mcForm.post(route('mc.link.direct'), {
@@ -165,6 +174,53 @@ function linkDirect() {
                 </div>
 
                 <!-- Danger zone -->
+                <div class="rounded-lg border border-border bg-surface-800 p-5 sm:p-6">
+                    <section class="max-w-xl">
+                        <header>
+                            <h2 class="text-base font-semibold text-white">Payments</h2>
+                            <p class="mt-1 text-sm text-neutral">Current payment state, tier and cancellation controls.</p>
+                        </header>
+
+                        <div class="mt-4 space-y-2 text-sm text-neutral">
+                            <p>
+                                Tier:
+                                <strong class="text-white">{{ String(paymentStatus.tier || 'free').toUpperCase() }}</strong>
+                            </p>
+                            <p>
+                                Status:
+                                <strong class="text-white">{{ paymentStatus.status || 'inactive' }}</strong>
+                            </p>
+                            <p v-if="paymentStatus.trialEndsAt">
+                                Trial ends at:
+                                <strong class="text-white">{{ paymentStatus.trialEndsAt }}</strong>
+                            </p>
+                            <p v-if="paymentStatus.currentPeriodEndsAt">
+                                Current period ends at:
+                                <strong class="text-white">{{ paymentStatus.currentPeriodEndsAt }}</strong>
+                            </p>
+                        </div>
+
+                        <div class="mt-4 flex items-center gap-2">
+                            <button
+                                v-if="paymentStatus.hasSubscription"
+                                @click="cancelSubscriptionForm.post(route('billing.cancel'), { preserveScroll: true })"
+                                :disabled="cancelSubscriptionForm.processing"
+                                class="rounded-md border border-red-400/30 bg-red-500/10 px-3 py-1.5 text-xs font-medium text-red-200 hover:bg-red-500/20 disabled:opacity-50 transition-colors"
+                            >
+                                <span v-if="cancelSubscriptionForm.processing">Cancelling...</span>
+                                <span v-else>Cancel subscription</span>
+                            </button>
+
+                            <a
+                                :href="route('billing')"
+                                class="rounded-md border border-border bg-surface-700 px-3 py-1.5 text-xs font-medium text-neutral hover:bg-surface-600 hover:text-white transition-colors"
+                            >
+                                Open VIP/MVP billing
+                            </a>
+                        </div>
+                    </section>
+                </div>
+
                 <div class="rounded-lg border border-border bg-surface-800 p-5 sm:p-6">
                     <DeleteUserForm class="max-w-xl" />
                 </div>

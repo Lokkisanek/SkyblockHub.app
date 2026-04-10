@@ -76,58 +76,51 @@
         </div>
       </div>
 
-      <!-- Best picks highlight cards -->
+      <!-- Top flips (tier gated) -->
       <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <div class="rounded-xl border border-yellow-400/70 bg-[radial-gradient(circle_at_top,rgba(250,204,21,0.14),rgba(15,23,42,0.8))] p-4 text-center shadow-[0_0_0_1px_rgba(251,191,36,0.35)]">
-          <h3 class="text-xs font-semibold uppercase tracking-wide text-yellow-200">Best Coins/Hour</h3>
-          <div v-if="best_picks?.coins_per_hour" class="mt-3 flex flex-col items-center">
-            <img
-              :src="getTextureUrl(best_picks.coins_per_hour.product_id)"
-              :data-fallback="getTextureFallbackUrl(best_picks.coins_per_hour.product_id)"
-              :alt="best_picks.coins_per_hour.name"
-              class="h-12 w-12 object-contain"
-              loading="lazy"
-              @error="handleTextureError"
-            />
-            <div class="mt-2 font-semibold text-white">{{ best_picks.coins_per_hour.name }}</div>
-            <div class="text-sm text-positive">{{ formatCompact(best_picks.coins_per_hour.coins_per_hour) }}/hr</div>
-          </div>
-          <div v-else class="mt-3 text-sm text-text-secondary">No data</div>
+        <div
+          v-for="index in 3"
+          :key="`top-flip-${index}`"
+          class="rounded-xl border bg-surface-800 p-4 text-center"
+          :class="index === 1 ? 'border-yellow-400/70 bg-[radial-gradient(circle_at_top,rgba(250,204,21,0.14),rgba(15,23,42,0.8))]' : 'border-border'"
+        >
+          <h3 class="text-xs font-semibold uppercase tracking-wide" :class="index === 1 ? 'text-yellow-200' : 'text-cyan-200'">Top Flip #{{ index }}</h3>
+          <template v-if="top_flips?.[index - 1]">
+            <div class="mt-3 flex flex-col items-center">
+              <img
+                :src="getTextureUrl(top_flips[index - 1].product_id)"
+                :data-fallback="getTextureFallbackUrl(top_flips[index - 1].product_id)"
+                :alt="top_flips[index - 1].name"
+                class="h-12 w-12 object-contain"
+                loading="lazy"
+                @error="handleTextureError"
+              />
+              <div class="mt-2 font-semibold text-white">{{ top_flips[index - 1].name }}</div>
+              <div class="text-sm text-positive">{{ formatCompact(top_flips[index - 1].coins_per_hour) }}/hr</div>
+            </div>
+          </template>
+          <template v-else>
+            <div class="mt-3 text-sm text-text-secondary">
+              <span v-if="index > 1">Locked in Free. Upgrade to VIP/MVP for Top 3 flips.</span>
+              <span v-else>No data</span>
+            </div>
+          </template>
         </div>
+      </div>
 
-        <div class="rounded-xl border border-border bg-surface-800 p-4 text-center">
-          <h3 class="text-xs font-semibold uppercase tracking-wide text-cyan-200">Best Margin</h3>
-          <div v-if="best_picks?.margin" class="mt-3 flex flex-col items-center">
-            <img
-              :src="getTextureUrl(best_picks.margin.product_id)"
-              :data-fallback="getTextureFallbackUrl(best_picks.margin.product_id)"
-              :alt="best_picks.margin.name"
-              class="h-12 w-12 object-contain"
-              loading="lazy"
-              @error="handleTextureError"
-            />
-            <div class="mt-2 font-semibold text-white">{{ best_picks.margin.name }}</div>
-            <div class="text-sm text-text-secondary">{{ formatCoins(best_picks.margin.margin) }}/item</div>
+      <div v-if="subscriptionFeatures?.can_ai_flips" class="rounded-xl border border-cyan-400/30 bg-cyan-400/10 p-4">
+        <h3 class="text-sm font-semibold text-cyan-100">AI Flip Control Panel</h3>
+        <p class="mt-1 text-xs text-cyan-100/70">AI tracks market behavior and assigns trust score to top opportunities.</p>
+        <div class="mt-3 grid gap-2 sm:grid-cols-2">
+          <div v-for="insight in ai_insights" :key="`ai-${insight.product_id}`" class="rounded-lg border border-cyan-300/30 bg-surface-800/70 p-3">
+            <p class="text-sm font-semibold text-white">{{ insight.name }}</p>
+            <p class="text-xs text-cyan-100/80">Trust score: {{ insight.trust_score }}/100</p>
+            <p class="text-xs text-cyan-100/70">{{ insight.risk }}</p>
           </div>
-          <div v-else class="mt-3 text-sm text-text-secondary">No data</div>
         </div>
-
-        <div class="rounded-xl border border-border bg-surface-800 p-4 text-center">
-          <h3 class="text-xs font-semibold uppercase tracking-wide text-rose-200">Highest Throughput</h3>
-          <div v-if="best_picks?.throughput" class="mt-3 flex flex-col items-center">
-            <img
-              :src="getTextureUrl(best_picks.throughput.product_id)"
-              :data-fallback="getTextureFallbackUrl(best_picks.throughput.product_id)"
-              :alt="best_picks.throughput.name"
-              class="h-12 w-12 object-contain"
-              loading="lazy"
-              @error="handleTextureError"
-            />
-            <div class="mt-2 font-semibold text-white">{{ best_picks.throughput.name }}</div>
-            <div class="text-sm text-text-secondary">{{ formatCompact(Math.min(best_picks.throughput.hourly_instabuys, best_picks.throughput.hourly_instasells)) }}/hr</div>
-          </div>
-          <div v-else class="mt-3 text-sm text-text-secondary">No data</div>
-        </div>
+      </div>
+      <div v-else class="rounded-xl border border-border bg-surface-800 p-4 text-sm text-text-secondary">
+        AI-controlled flips and trust score are available in MVP.
       </div>
 
       <!-- Table -->
@@ -288,6 +281,9 @@ import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 const props = defineProps({
   items: Object,
   best_picks: Object,
+  top_flips: Array,
+  ai_insights: Array,
+  subscriptionFeatures: Object,
   filters: Object,
 })
 
@@ -306,7 +302,7 @@ const sortBy = ref(props.filters.sort || 'coins_per_hour')
 const sortDir = ref(props.filters.dir || 'desc')
 const isRefreshing = ref(false)
 
-const AUTO_REFRESH_INTERVAL_SECONDS = 180
+const AUTO_REFRESH_INTERVAL_SECONDS = Number(props.subscriptionFeatures?.refresh_seconds || 180)
 const autoRefreshRemainingSeconds = ref(AUTO_REFRESH_INTERVAL_SECONDS)
 
 let debounceTimer = null
@@ -510,7 +506,7 @@ function trendClass(direction) {
 
 // --- Row styling ---
 function rowClass(item) {
-  if (props.best_picks?.coins_per_hour?.product_id === item.product_id) {
+  if (props.top_flips?.[0]?.product_id === item.product_id) {
     return 'bg-yellow-500/10 border-l-2 border-yellow-400'
   }
   return ''
