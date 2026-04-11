@@ -3,6 +3,7 @@
 use App\Http\Controllers\BazaarController;
 use App\Http\Controllers\BillingController;
 use App\Http\Controllers\BinSniperController;
+use App\Http\Controllers\CookieConsentController;
 use App\Http\Controllers\CraftingArbitrageController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DungeonPartyController;
@@ -19,10 +20,13 @@ use Inertia\Inertia;
 
 Route::get('/', function () {
     return Inertia::render('Welcome', [
+        'canLogin' => !auth()->check(),
         'laravelVersion' => Application::VERSION,
         'phpVersion' => PHP_VERSION,
     ]);
 });
+
+Route::post('/cookie-consent', [CookieConsentController::class, 'store'])->name('cookie-consent.store');
 
 Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 Route::post('/dashboard/save', [DashboardController::class, 'save'])->middleware('auth')->name('dashboard.save');

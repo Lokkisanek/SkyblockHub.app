@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue';
 import ApplicationLogo from '@/Components/ApplicationLogo.vue';
 import AuthSlidePanel from '@/Components/AuthSlidePanel.vue';
+import CookieConsent from '@/Components/CookieConsent.vue';
 import Dropdown from '@/Components/Dropdown.vue';
 import DropdownLink from '@/Components/DropdownLink.vue';
 import { Link, usePage, router } from '@inertiajs/vue3';
@@ -281,6 +282,9 @@ function logout() {
 
             <!-- Auth Slide Panel -->
             <AuthSlidePanel :show="showAuthPanel" @close="showAuthPanel = false" />
+
+            <!-- Cookie Consent -->
+            <CookieConsent />
         </div>
     </div>
 </template>

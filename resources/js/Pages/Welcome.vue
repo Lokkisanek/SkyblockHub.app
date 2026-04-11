@@ -21,62 +21,47 @@ const featureCards = [
     {
         id: 'bazaar',
         title: 'Bazaar Flips',
-        subtitle: 'Live spread and margin',
-        description: 'Find practical opportunities quickly on live market data.',
-        metric: 'Live market deltas',
+        subtitle: 'Real-time spreads & margins',
+        description: 'Find the most profitable Bazaar flips instantly with live market data and volume indicators.',
+        icon: '📊',
         routeName: 'bazaar',
         accent: 'emerald',
-        layout: 'main',
     },
     {
         id: 'npc',
         title: 'NPC Arbitrage',
-        subtitle: 'Fast price comparison',
-        description: 'Compare Bazaar buys vs NPC sells in one table.',
-        metric: 'Low-friction route',
+        subtitle: 'Buy low, sell to NPC',
+        description: 'Compare Bazaar buy prices vs NPC sell values in one table. Easy, low-risk coins.',
+        icon: '🪙',
         routeName: 'npc-flips',
         accent: 'amber',
-        layout: 'twin',
     },
     {
         id: 'profiles',
         title: 'Profile Stats',
-        subtitle: 'Complete profile view',
-        description: 'Inspect gear, skills, pets, dungeons, and collections.',
-        metric: 'Deep account visibility',
+        subtitle: 'Full account breakdown',
+        description: 'Inspect gear, skills, pets, dungeons, collections, and networth for any player.',
+        icon: '🔍',
         routeName: 'profile-stats',
         accent: 'emerald',
-        layout: 'twin',
     },
     {
         id: 'events',
         title: 'Event Timer',
-        subtitle: 'Cycle-aware planning',
-        description: 'Track key events with clear countdowns.',
-        metric: 'Always on schedule',
+        subtitle: 'Never miss a cycle',
+        description: 'Track SkyBlock events with clear countdowns so you always show up on time.',
+        icon: '⏱️',
         routeName: 'event-timer',
         accent: 'indigo',
-        layout: 'sidebar',
     },
     {
         id: 'mayors',
-        title: 'Mayors',
-        subtitle: 'Perks and cycle context',
-        description: 'See active perks and upcoming election context.',
-        metric: 'Meta-ready decisions',
+        title: 'Mayor Intel',
+        subtitle: 'Perks & election context',
+        description: 'See the current mayor\'s active perks and plan around the upcoming election.',
+        icon: '🏛️',
         routeName: 'mayors',
         accent: 'indigo',
-        layout: 'sidebar',
-    },
-    {
-        id: 'about',
-        title: 'About Project',
-        subtitle: 'Open source',
-        description: 'See project details and support options.',
-        metric: 'Community driven',
-        routeName: 'about',
-        accent: 'amber',
-        layout: 'sidebar',
     },
 ];
 
@@ -89,22 +74,10 @@ function submitSearch() {
     router.get(route('profile-stats'), { username });
 }
 
-function cardLayoutClass(layout) {
-    if (layout === 'main') return 'md:col-span-3';
-    if (layout === 'sidebar') return 'md:col-span-2';
-    return 'md:col-span-2';
-}
-
 function cardAccentClass(accent) {
     if (accent === 'emerald') return 'card-accent-emerald';
     if (accent === 'amber') return 'card-accent-amber';
     return 'card-accent-indigo';
-}
-
-function metricColorClass(accent) {
-    if (accent === 'emerald') return 'text-emerald-400/80';
-    if (accent === 'amber') return 'text-amber-400/80';
-    return 'text-indigo-400/80';
 }
 </script>
 
@@ -137,7 +110,7 @@ function metricColorClass(accent) {
                     </h1>
 
                     <p class="mx-auto mt-6 max-w-3xl text-center text-lg leading-relaxed text-white/80 sm:text-xl lg:text-2xl">
-                        One clean dashboard for flips, profiles, mayor perks, and event timing.
+                        Real-time Bazaar flips, NPC arbitrage, AI-powered signals, and profile intel — all in one place. Zero ads, zero bloat.
                     </p>
                 </section>
 
@@ -168,67 +141,135 @@ function metricColorClass(accent) {
                 </section>
 
                 <section class="animate-rise-up animate-delay-3 mb-12">
-                    <div class="mx-auto max-w-5xl rounded-3xl border border-white/10 bg-surface-900/75 p-6 shadow-[0_24px_60px_rgba(0,0,0,0.28)] backdrop-blur-md sm:p-7">
-                        <div class="grid gap-6 md:grid-cols-[1.3fr_1fr] md:items-start">
-                            <div>
-                                <p class="text-[10px] font-bold uppercase tracking-[0.24em] text-white/55">Login</p>
-                                <h2 class="mt-2 text-3xl font-semibold leading-tight text-white sm:text-4xl">Log in to unlock full experience</h2>
-                                <p class="mt-3 text-base leading-relaxed text-white/75 sm:text-lg">Connect with Discord and keep all your tools in one flow.</p>
+                    <div class="mx-auto max-w-5xl">
+                        <!-- Discord Login CTA (guests) -->
+                        <div v-if="canLogin" class="mb-10 rounded-2xl border border-[#5865F2]/25 bg-[#5865F2]/[0.06] p-8 text-center shadow-[0_16px_48px_rgba(88,101,242,0.08)] backdrop-blur-sm sm:p-10">
+                            <div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl border border-[#5865F2]/30 bg-[#5865F2]/15">
+                                <svg class="h-8 w-8 text-[#5865F2]" viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg>
+                            </div>
+                            <h2 class="text-2xl font-bold text-white sm:text-3xl">Get started in seconds</h2>
+                            <p class="mx-auto mt-3 max-w-lg text-base text-white/60">Connect your Discord account to unlock the dashboard, start a free trial, and access every tool.</p>
+                            <a
+                                :href="route('auth.discord')"
+                                class="mt-6 inline-flex items-center justify-center gap-3 rounded-xl border border-[#5865F2]/50 bg-[#5865F2] px-8 py-3.5 text-base font-bold text-white shadow-[0_4px_20px_rgba(88,101,242,0.35)] transition hover:bg-[#4752C4] hover:shadow-[0_4px_24px_rgba(88,101,242,0.5)]"
+                            >
+                                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg>
+                                Log in with Discord
+                            </a>
+                        </div>
+                        <!-- Logged-in CTA -->
+                        <div v-else class="mb-10 text-center">
+                            <Link
+                                :href="route('dashboard')"
+                                class="inline-flex items-center justify-center gap-2 rounded-xl border border-profit/40 bg-profit/15 px-8 py-4 text-lg font-semibold text-profit transition hover:bg-profit/30 hover:text-white"
+                            >
+                                Open Dashboard
+                            </Link>
+                        </div>
 
-                                <a
-                                    v-if="canLogin"
-                                    :href="route('auth.discord')"
-                                    class="mt-5 inline-flex items-center justify-center rounded-xl border border-profit/40 bg-profit/15 px-6 py-3 text-base font-semibold text-profit transition hover:bg-profit/30 hover:text-white"
-                                >
-                                    Continue with Discord
-                                </a>
+                        <!-- Pricing Cards -->
+                        <div class="grid gap-6 md:grid-cols-2">
+                            <!-- VIP -->
+                            <div class="rounded-2xl border border-white/10 bg-surface-900/75 p-6 shadow-[0_16px_40px_rgba(0,0,0,0.25)] backdrop-blur-sm">
+                                <p class="text-[10px] font-bold uppercase tracking-[0.24em] text-emerald-400/80">VIP</p>
+                                <p class="mt-3 text-4xl font-black text-white">$4.99<span class="text-lg font-medium text-white/45">/month</span></p>
+                                <ul class="mt-5 space-y-2.5 text-sm leading-relaxed text-white/75">
+                                    <li class="flex items-center gap-2">
+                                        <svg class="h-4 w-4 shrink-0 text-emerald-400/70" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd" /></svg>
+                                        Top 3 flips highlighted
+                                    </li>
+                                    <li class="flex items-center gap-2">
+                                        <svg class="h-4 w-4 shrink-0 text-emerald-400/70" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd" /></svg>
+                                        Faster refresh rate
+                                    </li>
+                                    <li class="flex items-center gap-2">
+                                        <svg class="h-4 w-4 shrink-0 text-emerald-400/70" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd" /></svg>
+                                        Priority widget updates
+                                    </li>
+                                    <li class="flex items-center gap-2">
+                                        <svg class="h-4 w-4 shrink-0 text-emerald-400/70" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd" /></svg>
+                                        VIP tag in leaderboards
+                                    </li>
+                                    <li class="flex items-center gap-2">
+                                        <svg class="h-4 w-4 shrink-0 text-emerald-400/70" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd" /></svg>
+                                        +2 dashboard slots
+                                    </li>
+                                </ul>
                                 <Link
-                                    v-else
-                                    :href="route('dashboard')"
-                                    class="mt-5 inline-flex items-center justify-center rounded-xl border border-white/15 bg-white/5 px-6 py-3 text-base font-semibold text-white transition hover:bg-white/10"
+                                    :href="route('billing')"
+                                    class="mt-6 flex w-full items-center justify-center rounded-xl border border-emerald-400/30 bg-emerald-500/10 py-3 text-sm font-semibold text-emerald-400 transition hover:bg-emerald-500/20 hover:text-emerald-300"
                                 >
-                                    Open Dashboard
+                                    Subscribe VIP
                                 </Link>
                             </div>
-                            <div class="rounded-2xl border border-white/10 bg-white/5 p-4 sm:p-5">
-                                <p class="text-[10px] font-bold uppercase tracking-[0.22em] text-white/55">Benefits (you define later)</p>
-                                <ul class="mt-3 space-y-2 text-sm leading-relaxed text-white/90 sm:text-base">
-                                    <li>- Benefit #1 (placeholder)</li>
-                                    <li>- Benefit #2 (placeholder)</li>
-                                    <li>- Benefit #3 (placeholder)</li>
+
+                            <!-- MVP (highlighted) -->
+                            <div class="relative rounded-2xl border border-amber-400/25 bg-surface-900/75 p-6 shadow-[0_16px_40px_rgba(0,0,0,0.25),0_0_60px_rgba(251,191,36,0.06)] backdrop-blur-sm">
+                                <span class="absolute -top-3 right-5 rounded-full border border-amber-400/40 bg-amber-500/15 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-amber-400">7-Day Free Trial</span>
+                                <p class="text-[10px] font-bold uppercase tracking-[0.24em] text-amber-400/80">MVP</p>
+                                <p class="mt-3 text-4xl font-black text-white">$8.99<span class="text-lg font-medium text-white/45">/month</span></p>
+                                <ul class="mt-5 space-y-2.5 text-sm leading-relaxed text-white/75">
+                                    <li class="flex items-center gap-2">
+                                        <svg class="h-4 w-4 shrink-0 text-amber-400/70" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd" /></svg>
+                                        Everything from VIP
+                                    </li>
+                                    <li class="flex items-center gap-2">
+                                        <svg class="h-4 w-4 shrink-0 text-amber-400/70" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd" /></svg>
+                                        AI-controlled flips section
+                                    </li>
+                                    <li class="flex items-center gap-2">
+                                        <svg class="h-4 w-4 shrink-0 text-amber-400/70" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd" /></svg>
+                                        AI trust score &amp; risk signals
+                                    </li>
+                                    <li class="flex items-center gap-2">
+                                        <svg class="h-4 w-4 shrink-0 text-amber-400/70" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd" /></svg>
+                                        MVP tag in leaderboards
+                                    </li>
                                 </ul>
+                                <Link
+                                    :href="route('billing')"
+                                    class="mt-6 flex w-full items-center justify-center rounded-xl border border-amber-400/40 bg-amber-500/15 py-3 text-sm font-bold text-amber-400 transition hover:bg-amber-500/25 hover:text-amber-300"
+                                >
+                                    Start 7-Day Free Trial
+                                </Link>
+                                <Link
+                                    :href="route('billing')"
+                                    class="mt-2 flex w-full items-center justify-center rounded-xl border border-white/10 bg-white/5 py-3 text-sm font-semibold text-white/70 transition hover:bg-white/10 hover:text-white"
+                                >
+                                    Subscribe MVP
+                                </Link>
                             </div>
                         </div>
                     </div>
                 </section>
 
                 <section class="animate-rise-up animate-delay-4">
-                    <div class="mb-4 flex items-center justify-between">
-                        <h2 class="text-base font-semibold uppercase tracking-[0.18em] text-white/60">What You Can Use Right Now</h2>
-                        <div class="text-sm text-white/50">Modules</div>
+                    <div class="mb-6 text-center">
+                        <h2 class="text-xl font-bold text-white sm:text-2xl">Everything you need, free to use</h2>
+                        <p class="mt-2 text-sm text-white/50">All core modules are available without an account.</p>
                     </div>
 
-                    <div class="grid grid-cols-1 gap-4 md:grid-cols-5">
+                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                         <Link
                             v-for="(card, index) in featureCards"
                             :key="card.id"
                             :href="route(card.routeName)"
-                            class="feature-card group flex flex-col justify-between rounded-xl border border-white/[0.06] p-5"
-                            :class="[cardAccentClass(card.accent), cardLayoutClass(card.layout), `animate-rise-up animate-delay-card-${index + 1}`]"
+                            class="feature-card group flex flex-col justify-between rounded-2xl border border-white/[0.07] p-6"
+                            :class="[cardAccentClass(card.accent), `animate-rise-up animate-delay-card-${index + 1}`]"
                         >
                             <div>
-                                <span class="mb-3 inline-block text-[10px] font-bold uppercase tracking-widest" :class="metricColorClass(card.accent)">
-                                    {{ card.metric }}
-                                </span>
+                                <div class="mb-4 flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-lg">
+                                    {{ card.icon }}
+                                </div>
 
-                                <h3 class="text-[17px] font-semibold text-white">{{ card.title }}</h3>
-                                <p class="mt-1 text-[11px] font-medium uppercase tracking-[0.18em] text-white/45">{{ card.subtitle }}</p>
-                                <p class="mt-2 text-[14px] leading-relaxed text-white/70">{{ card.description }}</p>
+                                <h3 class="text-lg font-bold text-white">{{ card.title }}</h3>
+                                <p class="mt-1 text-xs font-medium uppercase tracking-[0.16em] text-white/40">{{ card.subtitle }}</p>
+                                <p class="mt-3 text-sm leading-relaxed text-white/60">{{ card.description }}</p>
                             </div>
 
-                            <div class="mt-5 flex items-center gap-1 text-xs font-medium text-white/50 transition group-hover:text-white/80">
-                                Explore
-                                <svg class="h-3 w-3 transition-transform group-hover:translate-x-0.5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd" /></svg>
+                            <div class="mt-5 flex items-center gap-1.5 text-xs font-semibold text-white/40 transition group-hover:text-white/80">
+                                Open module
+                                <svg class="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd" /></svg>
                             </div>
                         </Link>
                     </div>
