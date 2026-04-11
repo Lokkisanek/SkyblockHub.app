@@ -240,6 +240,10 @@ function cardAccentClass(accent) {
                                 </Link>
                             </div>
                         </div>
+
+                        <p class="mt-5 text-center text-xs text-white/30">
+                            <Link :href="route('pricing')" class="underline decoration-white/20 underline-offset-2 transition hover:text-white/60">Compare all plans &amp; read the FAQ</Link>
+                        </p>
                     </div>
                 </section>
 
@@ -315,6 +319,7 @@ function cardAccentClass(accent) {
                     <div>
                         <h3 class="text-[10px] font-bold uppercase tracking-widest text-white/40">Legal</h3>
                         <ul class="mt-3 space-y-2">
+                            <li><Link :href="route('pricing')" class="text-xs text-white/35 transition hover:text-white">Pricing &amp; FAQ</Link></li>
                             <li><Link :href="route('privacy')" class="text-xs text-white/35 transition hover:text-white">Privacy Policy</Link></li>
                             <li><Link :href="route('terms')" class="text-xs text-white/35 transition hover:text-white">Terms of Service</Link></li>
                         </ul>

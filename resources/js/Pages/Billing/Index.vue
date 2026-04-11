@@ -1,6 +1,6 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head, router, usePage } from '@inertiajs/vue3';
+import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 
 const props = defineProps({
@@ -112,6 +112,10 @@ function checkout(tier) {
                         </div>
                     </section>
                 </div>
+
+                <p class="mt-4 text-center text-xs text-white/35">
+                    <Link :href="route('pricing')" class="underline decoration-white/20 underline-offset-2 transition hover:text-white/60">Compare all plans, read the FAQ &amp; refund policy</Link>
+                </p>
 
                 <div v-if="showTrialConfirmModal" class="modal-backdrop" @click.self="showTrialConfirmModal = false">
                     <div class="modal-card">
