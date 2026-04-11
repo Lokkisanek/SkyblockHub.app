@@ -29,6 +29,8 @@ const notificationPermission = ref(typeof Notification !== 'undefined' ? Notific
 const swRegistration = ref(null);
 const supportsTimestampTrigger = ref(typeof window !== 'undefined' && 'TimestampTrigger' in window);
 const notifyEnabled = reactive({});
+const notifyDeniedFlash = ref(false);
+const notifyConfirmKey = ref(null);
 const sentKeys = ref(new Set());
 
 const NOTIFY_LEAD_SECONDS = 5 * 60;
@@ -87,6 +89,21 @@ const EVENT_ITEM_OVERRIDES = {
     dark_auction: { skyblock_id: 'DARK_QUEENS_SOUL_DROP', texture_path: '/item/record_13', rarity: 'MYTHIC' },
     jacob: { skyblock_id: 'JACOBS_TICKET', texture_path: '/item/paper', rarity: 'EPIC' },
     dwarven_king: { texture_path: '/item/gold_nugget', rarity: 'RARE' },
+};
+
+const NOTIFICATION_ICON_MAP = {
+    'dark-auction': 'https://sky.coflnet.com/static/icon/DARK_QUEENS_SOUL_DROP',
+    'jacobs-contest': 'https://sky.coflnet.com/static/icon/JACOBS_TICKET',
+    'traveling-zoo': 'https://sky.coflnet.com/static/icon/PET_CAKE',
+    'mythological-ritual': 'https://sky.coflnet.com/static/icon/DAEDALUS_AXE',
+    'dungeon-rush': '/img/textures/eye_of_ender.png',
+    'spooky-festival': 'https://sky.coflnet.com/static/icon/PET_ITEM_SPOOKY_CUPCAKE',
+    'bank-interest': '/img/textures/gold_ingot.png',
+    'cult-fallen-star': 'https://sky.coflnet.com/static/icon/GREAT_SPOOK_ARTIFACT',
+    'season-of-jerry': '/img/textures/snowball.png',
+    'new-year-celebration': 'https://sky.coflnet.com/static/icon/NEW_YEAR_CAKE_BAG',
+    'election-over': '/img/textures/record_11.png',
+    'election-cycle': '/img/textures/record_11.png',
 };
 
 const selectedCalendarDay = ref(1);
@@ -739,7 +756,9 @@ function saveNotifyPrefs() {
     if (notifyEnabled.election_cycle) {
         enabledKeys.push('election_cycle');
     }
-    localStorage.setItem(NOTIFY_PREFS_KEY, JSON.stringify(enabledKeys));
+    try {
+        localStorage.setItem(NOTIFY_PREFS_KEY, JSON.stringify(enabledKeys));
+    } catch { /* quota / private-browsing */ }
 }
 
 function loadSentNotificationKeys() {
@@ -803,6 +822,8 @@ async function scheduleTimestampTrigger(eventCard) {
     await swRegistration.value.showNotification(`${eventCard.name} starts soon`, {
         body: `${eventCard.name} starts in 5 minutes.`,
         tag: `event-timer-${eventCard.key}`,
+        icon: getNotificationIcon(eventCard.key),
+        badge: '/favicon.ico',
         renotify: false,
         timestamp: fireAt,
         showTrigger: trigger,
@@ -813,32 +834,69 @@ async function scheduleTimestampTrigger(eventCard) {
     });
 }
 
+function getNotificationIcon(eventKey) {
+    return NOTIFICATION_ICON_MAP[eventKey] || '/img/logo-white.webp';
+}
+
 async function notifyNow(title, body, tag, data = {}) {
-    if (swRegistration.value?.active) {
-        swRegistration.value.active.postMessage({
-            type: 'SHOW_NOTIFICATION',
-            payload: { title, body, tag, data },
-        });
-        return;
+    console.log('[EventTimer] notifyNow called:', { title, tag, swReg: !!swRegistration.value, permission: Notification?.permission });
+
+    const icon = getNotificationIcon(data.eventKey || tag.replace('event-timer-confirm-', '').replace('event-timer-now-', ''));
+    const badge = '/favicon.ico';
+
+    // Prefer showing via SW registration (works even when tab is in background).
+    const reg = swRegistration.value;
+    if (reg) {
+        try {
+            await reg.showNotification(title, { body, tag, icon, badge, renotify: false, data });
+            console.log('[EventTimer] SW showNotification success');
+            return;
+        } catch (err) {
+            console.warn('[EventTimer] SW showNotification failed, falling back:', err);
+        }
     }
 
     if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-        new Notification(title, { body, tag, data });
+        console.log('[EventTimer] Using fallback new Notification()');
+        new Notification(title, { body, tag, icon, data });
+    } else {
+        console.warn('[EventTimer] Cannot show notification — no SW, no permission');
     }
 }
 
 async function toggleNotify(eventCard) {
     const enabled = !notifyEnabled[eventCard.key];
+    console.log('[EventTimer] toggleNotify:', eventCard.key, 'enabling:', enabled);
 
     if (enabled) {
         const granted = await requestNotificationPermission();
-        if (!granted) return;
+        console.log('[EventTimer] Permission result:', granted, Notification?.permission);
+        if (!granted) {
+            notifyDeniedFlash.value = true;
+            setTimeout(() => { notifyDeniedFlash.value = false; }, 4000);
+            return;
+        }
     }
 
     notifyEnabled[eventCard.key] = enabled;
     saveNotifyPrefs();
 
     if (enabled) {
+        notifyConfirmKey.value = eventCard.key;
+        setTimeout(() => { if (notifyConfirmKey.value === eventCard.key) notifyConfirmKey.value = null; }, 3000);
+
+        // Immediate confirmation so the user knows it works.
+        try {
+            await notifyNow(
+                `${eventCard.name} — notifications on`,
+                `You'll be notified 5 minutes before ${eventCard.name} starts.`,
+                `event-timer-confirm-${eventCard.key}`,
+                { eventKey: eventCard.key },
+            );
+        } catch (err) {
+            console.error('[EventTimer] Confirmation notification failed:', err);
+        }
+
         try {
             await scheduleTimestampTrigger(eventCard);
         } catch {
@@ -859,7 +917,7 @@ function runNotificationTick() {
         const sentKey = buildSentKey(eventCard.key, eventCard.nextStart);
 
         // In-tab fallback notification when the lead window hits.
-        if (nowSec >= notifyUnix && nowSec < notifyUnix + 20 && !sentKeys.value.has(sentKey)) {
+        if (nowSec >= notifyUnix && nowSec < notifyUnix + 60 && !sentKeys.value.has(sentKey)) {
             sentKeys.value.add(sentKey);
             saveSentNotificationKeys();
 
@@ -895,9 +953,21 @@ onMounted(() => {
     notifyTickId = setInterval(() => {
         runNotificationTick();
     }, 15000);
+
+    // Catch up on missed notification windows when the tab regains focus.
+    document.addEventListener('visibilitychange', onVisibilityChange);
 });
 
+function onVisibilityChange() {
+    if (document.visibilityState === 'visible') {
+        nowMs.value = Date.now();
+        runNotificationTick();
+    }
+}
+
 onBeforeUnmount(() => {
+    document.removeEventListener('visibilitychange', onVisibilityChange);
+
     if (timerId !== null) {
         clearInterval(timerId);
         timerId = null;
@@ -1033,10 +1103,17 @@ onBeforeUnmount(() => {
                                     :class="event.notifyEnabled
                                         ? 'border-green-400/50 bg-green-500/10 text-green-300'
                                         : 'border-border bg-surface-700 text-neutral hover:text-white'"
-                                    @click="toggleNotify(event)"
+                                    @click.stop="toggleNotify(event)"
                                 >
                                     {{ event.notifyEnabled ? 'Notify me: ON' : 'Notify me' }}
                                 </button>
+
+                                <p v-if="notifyConfirmKey === event.key" class="mt-1.5 text-[10px] font-medium text-green-400 transition-opacity">
+                                    ✓ You'll be notified 5 min before this event.
+                                </p>
+                                <p v-else-if="notifyDeniedFlash" class="mt-1 text-[10px] text-red-400">
+                                    Notifications are blocked. Enable them in your browser's site settings.
+                                </p>
                             </div>
                         </div>
                     </Transition>

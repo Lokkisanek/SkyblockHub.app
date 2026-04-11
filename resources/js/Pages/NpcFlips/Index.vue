@@ -327,6 +327,7 @@ const autoRefreshRemainingSeconds = ref(AUTO_REFRESH_INTERVAL_SECONDS)
 let debounceTimer = null
 let autoRefreshTickTimer = null
 const DEFAULT_ITEM_TEXTURE = '/img/textures/chest.png'
+const COFLNET_ICON_BASE = 'https://sky.coflnet.com/static/icon/'
 const SKYCRYPT_ICON_BASE = 'https://sky.shiiyu.moe/api/item/'
 
 const PRODUCT_TEXTURE_OVERRIDES = {
@@ -452,8 +453,8 @@ function toggleCompactor() {
 function getFlipTextureUrl(flip) {
   const productId = String(flip.product_id || '').toUpperCase()
 
-  // Primary source: SkyCrypt/shiiyu icon renderer has high coverage for head items.
-  return SKYCRYPT_ICON_BASE + encodeURIComponent(productId)
+  // Primary source: Coflnet icon renderer has best coverage for SkyBlock items.
+  return COFLNET_ICON_BASE + encodeURIComponent(productId)
 }
 
 function getFlipTextureFallbackUrl(flip) {

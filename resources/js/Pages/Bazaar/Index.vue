@@ -309,6 +309,7 @@ let debounceTimer = null
 let echoChannel = null
 let autoRefreshTickTimer = null
 
+const COFLNET_ICON_BASE = 'https://sky.coflnet.com/static/icon/'
 const SKYCRYPT_ICON_BASE = 'https://sky.shiiyu.moe/api/item/'
 const DEFAULT_ITEM_TEXTURE = '/img/textures/chest.png'
 
@@ -413,15 +414,12 @@ function goToPage(page) {
 
 // --- Texture helpers ---
 function getTextureUrl(productId) {
-  return SKYCRYPT_ICON_BASE + encodeURIComponent(String(productId || '').toUpperCase())
+  return COFLNET_ICON_BASE + encodeURIComponent(String(productId || '').toUpperCase())
 }
 
 function getTextureFallbackUrl(productId) {
-  const normalized = String(productId || '').toLowerCase().replace(/:/g, '_')
-  if (normalized.startsWith('enchanted_')) {
-    return '/img/textures/' + normalized.replace(/^enchanted_/, '') + '.png'
-  }
-  return DEFAULT_ITEM_TEXTURE
+  const pid = String(productId || '').toUpperCase()
+  return SKYCRYPT_ICON_BASE + encodeURIComponent(pid)
 }
 
 function handleTextureError(event) {

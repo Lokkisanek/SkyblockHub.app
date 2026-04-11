@@ -245,7 +245,7 @@ onUnmounted(() => {
                                     <div class="flex items-center gap-1.5">
                                         <img
                                             v-if="!failedIcons.has(recipe.product_id)"
-                                            :src="`https://sky.shiiyu.moe/item/${recipe.product_id}`"
+                                            :src="`https://sky.coflnet.com/static/icon/${recipe.product_id}`"
                                             :alt="recipe.name"
                                             class="w-4 h-4 flex-shrink-0"
                                             @error="onIconError(recipe.product_id)"
@@ -281,7 +281,7 @@ onUnmounted(() => {
                                             >
                                                 <img
                                                     v-if="!failedIcons.has(ing.item_id)"
-                                                    :src="`https://sky.shiiyu.moe/item/${ing.item_id}`"
+                                                    :src="`https://sky.coflnet.com/static/icon/${ing.item_id}`"
                                                     :alt="ing.name"
                                                     class="w-4 h-4 flex-shrink-0"
                                                     @error="onIconError(ing.item_id)"

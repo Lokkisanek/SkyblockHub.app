@@ -3,6 +3,7 @@ import { computed, ref } from 'vue';
 import ApplicationLogo from '@/Components/ApplicationLogo.vue';
 import AuthSlidePanel from '@/Components/AuthSlidePanel.vue';
 import CookieConsent from '@/Components/CookieConsent.vue';
+import SurveyPopup from '@/Components/SurveyPopup.vue';
 import Dropdown from '@/Components/Dropdown.vue';
 import DropdownLink from '@/Components/DropdownLink.vue';
 import { Link, usePage, router } from '@inertiajs/vue3';
@@ -58,7 +59,7 @@ function logout() {
 
                         <!-- Left: Logo -->
                         <div class="flex shrink-0 items-center">
-                            <Link :href="route('dashboard')" class="flex items-center gap-2">
+                            <Link href="/" class="flex items-center gap-2">
                                 <ApplicationLogo tone="light" class="h-7 w-7 shrink-0" />
                                 <span class="text-sm font-bold tracking-wide text-white">SkyblockHub</span>
                             </Link>
@@ -285,6 +286,9 @@ function logout() {
 
             <!-- Cookie Consent -->
             <CookieConsent />
+
+            <!-- Survey Popup -->
+            <SurveyPopup />
         </div>
     </div>
 </template>
