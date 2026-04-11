@@ -4,6 +4,9 @@ import { router, useForm } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head } from '@inertiajs/vue3';
 import KarmaVoter from '@/Components/KarmaVoter.vue';
+import { useI18n } from 'vue-i18n';
+
+const { t } = useI18n();
 
 const props = defineProps({
     listings: Object,
@@ -55,11 +58,11 @@ function removeListing() {
 function timeAgo(dateStr) {
     const diff = Date.now() - new Date(dateStr).getTime();
     const mins = Math.floor(diff / 60000);
-    if (mins < 1) return 'just now';
-    if (mins < 60) return `${mins}m ago`;
+    if (mins < 1) return t('dungeonParty.justNow');
+    if (mins < 60) return t('dungeonParty.minsAgo', { mins });
     const hrs = Math.floor(mins / 60);
-    if (hrs < 24) return `${hrs}h ago`;
-    return `${Math.floor(hrs / 24)}d ago`;
+    if (hrs < 24) return t('dungeonParty.hrsAgo', { hrs });
+    return t('dungeonParty.daysAgo', { days: Math.floor(hrs / 24) });
 }
 
 function classColor(cls) {
@@ -75,7 +78,7 @@ function classColor(cls) {
 </script>
 
 <template>
-    <Head title="Party Finder" />
+    <Head :title="t('dungeonParty.title')" />
 
     <AuthenticatedLayout>
         <div class="py-4">
@@ -83,29 +86,29 @@ function classColor(cls) {
 
                 <!-- Header row -->
                 <div class="mb-4 flex items-center justify-between">
-                    <h2 class="text-sm font-semibold text-white uppercase tracking-wide">Dungeon Party Finder</h2>
+                    <h2 class="text-sm font-semibold text-white uppercase tracking-wide">{{ t('dungeonParty.heading') }}</h2>
                     <button
                         v-if="!myListing"
                         @click="showForm = !showForm"
                         class="px-3 py-1 text-xs font-medium border border-border bg-surface-700 text-neutral hover:text-white rounded-none"
                     >
-                        {{ showForm ? 'Cancel' : '+ List Yourself' }}
+                        {{ showForm ? t('dungeonParty.cancel') : t('dungeonParty.listYourself') }}
                     </button>
                     <button
                         v-else
                         @click="removeListing"
                         class="px-3 py-1 text-xs font-medium border border-loss text-loss hover:bg-surface-700 rounded-none"
                     >
-                        Remove My Listing
+                        {{ t('dungeonParty.removeListing') }}
                     </button>
                 </div>
 
                 <!-- Create Listing Form -->
                 <div v-if="showForm && !myListing" class="mb-4 border border-border bg-surface-800 p-4">
-                    <div class="text-[10px] uppercase tracking-wider text-neutral mb-3">Create Listing</div>
+                    <div class="text-[10px] uppercase tracking-wider text-neutral mb-3">{{ t('dungeonParty.createListing') }}</div>
                     <form @submit.prevent="submit" class="grid grid-cols-2 md:grid-cols-5 gap-3">
                         <div>
-                            <label class="block text-[10px] text-neutral uppercase mb-1">Floor</label>
+                            <label class="block text-[10px] text-neutral uppercase mb-1">{{ t('dungeonParty.floor') }}</label>
                             <select
                                 v-model="form.floor"
                                 class="w-full bg-surface-700 border border-border rounded-none px-2 py-1 text-xs text-white focus:outline-none"
@@ -114,7 +117,7 @@ function classColor(cls) {
                             </select>
                         </div>
                         <div>
-                            <label class="block text-[10px] text-neutral uppercase mb-1">Class</label>
+                            <label class="block text-[10px] text-neutral uppercase mb-1">{{ t('dungeonParty.class') }}</label>
                             <select
                                 v-model="form.class"
                                 class="w-full bg-surface-700 border border-border rounded-none px-2 py-1 text-xs text-white focus:outline-none"
@@ -123,7 +126,7 @@ function classColor(cls) {
                             </select>
                         </div>
                         <div>
-                            <label class="block text-[10px] text-neutral uppercase mb-1">Cata Level</label>
+                            <label class="block text-[10px] text-neutral uppercase mb-1">{{ t('dungeonParty.cataLevel') }}</label>
                             <input
                                 v-model.number="form.catacombs_level"
                                 type="number"
@@ -133,12 +136,12 @@ function classColor(cls) {
                             />
                         </div>
                         <div class="col-span-2 md:col-span-1">
-                            <label class="block text-[10px] text-neutral uppercase mb-1">Note</label>
+                            <label class="block text-[10px] text-neutral uppercase mb-1">{{ t('dungeonParty.note') }}</label>
                             <input
                                 v-model="form.note"
                                 type="text"
                                 maxlength="255"
-                                placeholder="e.g. S+ runs only"
+                                :placeholder="t('dungeonParty.notePlaceholder')"
                                 class="w-full bg-surface-700 border border-border rounded-none px-2 py-1 text-xs text-white placeholder-neutral focus:outline-none"
                             />
                         </div>
@@ -148,7 +151,7 @@ function classColor(cls) {
                                 :disabled="form.processing"
                                 class="w-full px-3 py-1.5 text-xs font-medium border border-border bg-surface-600 text-white hover:bg-surface-500 rounded-none disabled:opacity-50"
                             >
-                                Submit
+                                {{ t('dungeonParty.submit') }}
                             </button>
                         </div>
                     </form>
@@ -164,7 +167,7 @@ function classColor(cls) {
                         @change="applyFilters"
                         class="bg-surface-800 border border-border rounded-none px-2 py-1 text-xs text-white focus:outline-none"
                     >
-                        <option value="">All Floors</option>
+                        <option value="">{{ t('dungeonParty.allFloors') }}</option>
                         <option v-for="f in floors" :key="f" :value="f">{{ f }}</option>
                     </select>
                     <select
@@ -172,7 +175,7 @@ function classColor(cls) {
                         @change="applyFilters"
                         class="bg-surface-800 border border-border rounded-none px-2 py-1 text-xs text-white focus:outline-none"
                     >
-                        <option value="">All Classes</option>
+                        <option value="">{{ t('dungeonParty.allClasses') }}</option>
                         <option v-for="c in classes" :key="c" :value="c">{{ c }}</option>
                     </select>
                 </div>
@@ -182,13 +185,13 @@ function classColor(cls) {
                     <table class="w-full text-xs">
                         <thead>
                             <tr class="bg-surface-700 text-neutral uppercase tracking-wider">
-                                <th class="px-3 py-2 text-left border-b border-border">Player</th>
-                                <th class="px-3 py-2 text-left border-b border-border">Floor</th>
-                                <th class="px-3 py-2 text-left border-b border-border">Class</th>
-                                <th class="px-3 py-2 text-right border-b border-border">Cata Lvl</th>
-                                <th class="px-3 py-2 text-left border-b border-border">Note</th>
-                                <th class="px-3 py-2 text-right border-b border-border">Posted</th>
-                                <th class="px-3 py-2 text-center border-b border-border">Karma</th>
+                                <th class="px-3 py-2 text-left border-b border-border">{{ t('leaderboards.player') }}</th>
+                                <th class="px-3 py-2 text-left border-b border-border">{{ t('dungeonParty.floor') }}</th>
+                                <th class="px-3 py-2 text-left border-b border-border">{{ t('dungeonParty.class') }}</th>
+                                <th class="px-3 py-2 text-right border-b border-border">{{ t('dungeonParty.cataLvl') }}</th>
+                                <th class="px-3 py-2 text-left border-b border-border">{{ t('dungeonParty.note') }}</th>
+                                <th class="px-3 py-2 text-right border-b border-border">{{ t('dungeonParty.posted') }}</th>
+                                <th class="px-3 py-2 text-center border-b border-border">{{ t('leaderboards.karma') }}</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -224,7 +227,7 @@ function classColor(cls) {
                             </tr>
                             <tr v-if="listings.data.length === 0">
                                 <td colspan="7" class="px-3 py-6 text-center text-neutral">
-                                    No players looking for a party right now.
+                                    {{ t('dungeonParty.noPlayers') }}
                                 </td>
                             </tr>
                         </tbody>

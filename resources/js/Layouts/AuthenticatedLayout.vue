@@ -1,5 +1,6 @@
 <script setup>
 import { computed, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 import ApplicationLogo from '@/Components/ApplicationLogo.vue';
 import AuthSlidePanel from '@/Components/AuthSlidePanel.vue';
 import CookieConsent from '@/Components/CookieConsent.vue';
@@ -8,6 +9,8 @@ import Dropdown from '@/Components/Dropdown.vue';
 import DropdownLink from '@/Components/DropdownLink.vue';
 import { Link, usePage, router } from '@inertiajs/vue3';
 
+const { locale } = useI18n();
+
 const showingNavigationDropdown = ref(false);
 const showAuthPanel = ref(false);
 const page = usePage();
@@ -15,16 +18,22 @@ const page = usePage();
 const user = computed(() => page.props.auth?.user ?? null);
 const currentMayor = computed(() => page.props.currentMayor ?? null);
 const isTestingAdmin = computed(() => Boolean(page.props.auth?.testing_admin));
+const experimentalModules = computed(() => page.props.navigation?.experimental_modules ?? {});
+const canAccessCrafting = computed(() => isTestingAdmin.value && Boolean(experimentalModules.value.crafting));
+const canAccessDungeonParty = computed(() => isTestingAdmin.value && Boolean(experimentalModules.value.dungeon_party));
+const canAccessPortfolio = computed(() => isTestingAdmin.value && Boolean(experimentalModules.value.portfolio));
+const canAccessBinSniper = computed(() => isTestingAdmin.value && Boolean(experimentalModules.value.bin_sniper));
 const mayorPerkSummary = computed(() => {
     const count = Number(currentMayor.value?.active_perk_count ?? 0);
     return count === 1 ? '1 active perk' : `${count} active perks`;
 });
 const mayorPerks = computed(() => Array.isArray(currentMayor.value?.perks) ? currentMayor.value.perks : []);
 
-const currentLocale = ref(document.documentElement.lang || 'en');
-
-function switchLocale(locale) {
-    currentLocale.value = locale;
+function toggleLocale() {
+    const next = locale.value === 'en' ? 'cs' : 'en';
+    locale.value = next;
+    localStorage.setItem('locale', next);
+    document.documentElement.lang = next;
 }
 
 const displayName = computed(() => {
@@ -37,7 +46,7 @@ function isActive(routeName) {
 }
 
 function isBazaarActive() {
-    return route().current('bazaar') || route().current('npc-flips') || (isTestingAdmin.value && route().current('crafting'));
+    return route().current('bazaar') || route().current('npc-flips') || (canAccessCrafting.value && route().current('crafting'));
 }
 
 function logout() {
@@ -72,7 +81,7 @@ function logout() {
                                     class="nav-link"
                                     :class="{ active: isActive('dashboard') }"
                                 >
-                                    Dashboard
+                                    {{ $t('nav.dashboard') }}
                                 </Link>
 
                                 <Dropdown align="left" width="48">
@@ -81,16 +90,16 @@ function logout() {
                                             class="nav-link inline-flex items-center gap-1"
                                             :class="{ active: isBazaarActive() }"
                                         >
-                                            Bazaar
+                                            {{ $t('nav.bazaar') }}
                                             <svg class="h-3 w-3 opacity-50" viewBox="0 0 20 20" fill="currentColor">
                                                 <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
                                             </svg>
                                         </button>
                                     </template>
                                     <template #content>
-                                        <DropdownLink :href="route('bazaar')">Flips</DropdownLink>
-                                        <DropdownLink :href="route('npc-flips')">NPC Flips</DropdownLink>
-                                        <DropdownLink v-if="isTestingAdmin" :href="route('crafting')">Crafting Flips</DropdownLink>
+                                        <DropdownLink :href="route('bazaar')">{{ $t('nav.flips') }}</DropdownLink>
+                                        <DropdownLink :href="route('npc-flips')">{{ $t('nav.npcFlips') }}</DropdownLink>
+                                        <DropdownLink v-if="canAccessCrafting" :href="route('crafting')">{{ $t('nav.craftingFlips') }}</DropdownLink>
                                     </template>
                                 </Dropdown>
 
@@ -99,7 +108,7 @@ function logout() {
                                     class="nav-link"
                                     :class="{ active: isActive('profile-stats') }"
                                 >
-                                    Profile Stats
+                                    {{ $t('nav.profileStats') }}
                                 </Link>
 
                                 <Link
@@ -107,7 +116,7 @@ function logout() {
                                     class="nav-link"
                                     :class="{ active: isActive('event-timer') }"
                                 >
-                                    Event Timer
+                                    {{ $t('nav.eventTimer') }}
                                 </Link>
 
                                 <Link
@@ -115,18 +124,18 @@ function logout() {
                                     class="nav-link"
                                     :class="{ active: isActive('leaderboards') }"
                                 >
-                                    Leaderboards
+                                    {{ $t('nav.leaderboards') }}
                                 </Link>
 
-                                <template v-if="isTestingAdmin">
-                                    <Link :href="route('dungeon-party')" class="nav-link" :class="{ active: isActive('dungeon-party') }">
-                                        Party Finder
+                                <template v-if="canAccessDungeonParty || canAccessPortfolio || canAccessBinSniper">
+                                    <Link v-if="canAccessDungeonParty" :href="route('dungeon-party')" class="nav-link" :class="{ active: isActive('dungeon-party') }">
+                                        {{ $t('nav.partyFinder') }}
                                     </Link>
-                                    <Link :href="route('portfolio')" class="nav-link" :class="{ active: isActive('portfolio') }">
-                                        Portfolio
+                                    <Link v-if="canAccessPortfolio" :href="route('portfolio')" class="nav-link" :class="{ active: isActive('portfolio') }">
+                                        {{ $t('nav.portfolio') }}
                                     </Link>
-                                    <Link :href="route('bin-sniper')" class="nav-link" :class="{ active: isActive('bin-sniper') }">
-                                        BIN Sniper
+                                    <Link v-if="canAccessBinSniper" :href="route('bin-sniper')" class="nav-link" :class="{ active: isActive('bin-sniper') }">
+                                        {{ $t('nav.binSniper') }}
                                     </Link>
                                 </template>
                             </div>
@@ -181,6 +190,15 @@ function logout() {
                                 </svg>
                             </a>
 
+                            <!-- Locale toggle -->
+                            <button
+                                @click="toggleLocale"
+                                class="text-xs font-medium text-white/50 transition hover:text-white"
+                                :title="locale === 'en' ? 'Přepnout do češtiny' : 'Switch to English'"
+                            >
+                                {{ locale === 'en' ? 'CZ' : 'EN' }}
+                            </button>
+
                             <!-- Auth: Login/Register or Profile -->
                             <template v-if="user">
                                 <Dropdown align="right" width="48">
@@ -193,12 +211,12 @@ function logout() {
                                         </button>
                                     </template>
                                     <template #content>
-                                        <DropdownLink :href="route('profile.edit')">Settings</DropdownLink>
+                                        <DropdownLink :href="route('profile.edit')">{{ $t('nav.settings') }}</DropdownLink>
                                         <button
                                             class="block w-full px-4 py-2 text-start text-xs leading-5 text-neutral hover:bg-surface-500 hover:text-white focus:bg-surface-500 focus:outline-none"
                                             @click="logout"
                                         >
-                                            Log Out
+                                            {{ $t('nav.logOut') }}
                                         </button>
                                     </template>
                                 </Dropdown>
@@ -208,7 +226,7 @@ function logout() {
                                     @click="showAuthPanel = true"
                                     class="text-xs font-medium text-white transition hover:text-white/70"
                                 >
-                                    Login
+                                    {{ $t('nav.login') }}
                                 </button>
                             </template>
                         </div>
@@ -235,41 +253,47 @@ function logout() {
                 >
                     <div class="space-y-1 px-4 pb-4 pt-3">
                         <Link :href="route('dashboard')" class="mobile-link" :class="{ 'mobile-link-active': isActive('dashboard') }">
-                            Dashboard
+                            {{ $t('nav.dashboard') }}
                         </Link>
-                        <div class="px-2 pb-1 pt-3 text-[10px] font-semibold uppercase tracking-widest text-neutral">Bazaar</div>
+                        <div class="px-2 pb-1 pt-3 text-[10px] font-semibold uppercase tracking-widest text-neutral">{{ $t('nav.bazaar') }}</div>
                         <Link :href="route('bazaar')" class="mobile-link ps-6" :class="{ 'mobile-link-active': isActive('bazaar') }">
-                            Flips
+                            {{ $t('nav.flips') }}
                         </Link>
                         <Link :href="route('npc-flips')" class="mobile-link ps-6" :class="{ 'mobile-link-active': isActive('npc-flips') }">
-                            NPC Flips
+                            {{ $t('nav.npcFlips') }}
                         </Link>
-                        <Link v-if="isTestingAdmin" :href="route('crafting')" class="mobile-link ps-6" :class="{ 'mobile-link-active': isActive('crafting') }">
-                            Crafting Flips
+                        <Link v-if="canAccessCrafting" :href="route('crafting')" class="mobile-link ps-6" :class="{ 'mobile-link-active': isActive('crafting') }">
+                            {{ $t('nav.craftingFlips') }}
                         </Link>
                         <Link :href="route('profile-stats')" class="mobile-link" :class="{ 'mobile-link-active': isActive('profile-stats') }">
-                            Profile Stats
+                            {{ $t('nav.profileStats') }}
                         </Link>
                         <Link :href="route('event-timer')" class="mobile-link" :class="{ 'mobile-link-active': isActive('event-timer') }">
-                            Event Timer
+                            {{ $t('nav.eventTimer') }}
                         </Link>
                         <Link :href="route('leaderboards')" class="mobile-link" :class="{ 'mobile-link-active': isActive('leaderboards') }">
-                            Leaderboards
+                            {{ $t('nav.leaderboards') }}
                         </Link>
-                        <template v-if="isTestingAdmin">
-                            <Link :href="route('dungeon-party')" class="mobile-link" :class="{ 'mobile-link-active': isActive('dungeon-party') }">Party Finder</Link>
-                            <Link :href="route('portfolio')" class="mobile-link" :class="{ 'mobile-link-active': isActive('portfolio') }">Portfolio</Link>
-                            <Link :href="route('bin-sniper')" class="mobile-link" :class="{ 'mobile-link-active': isActive('bin-sniper') }">BIN Sniper</Link>
+                        <template v-if="canAccessDungeonParty || canAccessPortfolio || canAccessBinSniper">
+                            <Link v-if="canAccessDungeonParty" :href="route('dungeon-party')" class="mobile-link" :class="{ 'mobile-link-active': isActive('dungeon-party') }">{{ $t('nav.partyFinder') }}</Link>
+                            <Link v-if="canAccessPortfolio" :href="route('portfolio')" class="mobile-link" :class="{ 'mobile-link-active': isActive('portfolio') }">{{ $t('nav.portfolio') }}</Link>
+                            <Link v-if="canAccessBinSniper" :href="route('bin-sniper')" class="mobile-link" :class="{ 'mobile-link-active': isActive('bin-sniper') }">{{ $t('nav.binSniper') }}</Link>
                         </template>
 
                         <!-- Mobile auth -->
                         <div class="mt-3 flex items-center gap-3 border-t border-white/10 pt-3">
+                            <button
+                                @click="toggleLocale"
+                                class="text-xs font-medium text-white/50 hover:text-white"
+                            >
+                                {{ locale === 'en' ? 'CZ' : 'EN' }}
+                            </button>
                             <template v-if="user">
                                 <span class="text-xs text-white">{{ displayName }}</span>
-                                <button @click="logout" class="text-xs text-neutral hover:text-white">Log Out</button>
+                                <button @click="logout" class="text-xs text-neutral hover:text-white">{{ $t('nav.logOut') }}</button>
                             </template>
                             <template v-else>
-                                <button @click="showAuthPanel = true" class="text-xs font-medium text-purple-400 hover:text-white">Login</button>
+                                <button @click="showAuthPanel = true" class="text-xs font-medium text-purple-400 hover:text-white">{{ $t('nav.login') }}</button>
                             </template>
                         </div>
                     </div>

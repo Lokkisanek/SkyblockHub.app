@@ -3,6 +3,7 @@ import { ref, computed } from 'vue';
 import { Head, useForm, router } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Line } from 'vue-chartjs';
+import { useI18n } from 'vue-i18n';
 import {
     Chart as ChartJS,
     CategoryScale,
@@ -28,6 +29,8 @@ const props = defineProps({
 });
 
 const tab = ref('open'); // 'open' | 'closed'
+
+const { t } = useI18n();
 const showAddForm = ref(false);
 const searchBazaar = ref('');
 
@@ -104,7 +107,7 @@ const chartConfig = computed(() => ({
         labels: props.chartData.labels || [],
         datasets: [
             {
-                label: 'Portfolio Value',
+                label: t('portfolio.chartValueLabel'),
                 data: props.chartData.value || [],
                 borderColor: '#55FF55',
                 backgroundColor: 'transparent',
@@ -115,7 +118,7 @@ const chartConfig = computed(() => ({
                 fill: false,
             },
             {
-                label: 'Invested',
+                label: t('portfolio.chartInvestedLabel'),
                 data: props.chartData.invested || [],
                 borderColor: '#AAAAAA',
                 backgroundColor: 'transparent',
@@ -144,7 +147,7 @@ const chartConfig = computed(() => ({
                 borderWidth: 1,
                 cornerRadius: 2,
                 callbacks: {
-                    label: (ctx) => `${ctx.dataset.label}: ${fmt(ctx.parsed.y)} coins`,
+                    label: (ctx) => `${ctx.dataset.label}: ${fmt(ctx.parsed.y)} ${t('portfolio.coins')}`,
                 },
             },
         },
@@ -167,28 +170,28 @@ const chartConfig = computed(() => ({
 </script>
 
 <template>
-    <Head title="Portfolio Tracker" />
+    <Head :title="t('portfolio.title')" />
 
     <AuthenticatedLayout>
         <div class="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
             <!-- Summary Cards -->
             <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
                 <div class="bg-surface-800 border border-border p-3">
-                    <div class="text-[10px] uppercase text-neutral tracking-wider">Invested</div>
+                    <div class="text-[10px] uppercase text-neutral tracking-wider">{{ t('portfolio.invested') }}</div>
                     <div class="text-base font-semibold text-white mt-1">{{ fmt(totalInvested) }}</div>
                 </div>
                 <div class="bg-surface-800 border border-border p-3">
-                    <div class="text-[10px] uppercase text-neutral tracking-wider">Current Value</div>
+                    <div class="text-[10px] uppercase text-neutral tracking-wider">{{ t('portfolio.currentValue') }}</div>
                     <div class="text-base font-semibold text-white mt-1">{{ fmt(totalCurrentValue) }}</div>
                 </div>
                 <div class="bg-surface-800 border border-border p-3">
-                    <div class="text-[10px] uppercase text-neutral tracking-wider">Unrealised P&L</div>
+                    <div class="text-[10px] uppercase text-neutral tracking-wider">{{ t('portfolio.unrealisedPL') }}</div>
                     <div class="text-base font-semibold mt-1" :class="pnlClass(unrealisedPnl)">
                         {{ unrealisedPnl >= 0 ? '+' : '' }}{{ fmt(unrealisedPnl) }}
                     </div>
                 </div>
                 <div class="bg-surface-800 border border-border p-3">
-                    <div class="text-[10px] uppercase text-neutral tracking-wider">Realised P&L</div>
+                    <div class="text-[10px] uppercase text-neutral tracking-wider">{{ t('portfolio.realisedPL') }}</div>
                     <div class="text-base font-semibold mt-1" :class="pnlClass(realisedPnl)">
                         {{ realisedPnl >= 0 ? '+' : '' }}{{ fmt(realisedPnl) }}
                     </div>
@@ -197,7 +200,7 @@ const chartConfig = computed(() => ({
 
             <!-- Chart -->
             <div class="bg-surface-800 border border-border p-4 mb-4" v-if="chartData.labels && chartData.labels.length > 0">
-                <div class="text-[10px] uppercase text-neutral tracking-wider mb-3">30-Day Portfolio Value</div>
+                <div class="text-[10px] uppercase text-neutral tracking-wider mb-3">{{ t('portfolio.chartTitle') }}</div>
                 <div class="h-56">
                     <Line :data="chartConfig.data" :options="chartConfig.options" />
                 </div>
@@ -211,33 +214,33 @@ const chartConfig = computed(() => ({
                         class="px-3 py-1 text-xs font-medium border"
                         :class="tab === 'open' ? 'bg-surface-600 border-border-light text-white' : 'bg-surface-800 border-border text-neutral hover:text-white'"
                     >
-                        Open Positions
+                        {{ t('portfolio.openPositions') }}
                     </button>
                     <button
                         @click="tab = 'closed'"
                         class="px-3 py-1 text-xs font-medium border"
                         :class="tab === 'closed' ? 'bg-surface-600 border-border-light text-white' : 'bg-surface-800 border-border text-neutral hover:text-white'"
                     >
-                        Closed Positions
+                        {{ t('portfolio.closedPositions') }}
                     </button>
                 </div>
                 <button
                     @click="showAddForm = !showAddForm"
                     class="px-3 py-1 text-xs font-medium bg-surface-700 border border-border text-white hover:bg-surface-600"
                 >
-                    + Add Position
+                    {{ t('portfolio.addPosition') }}
                 </button>
             </div>
 
             <!-- Add Position Form -->
             <div v-if="showAddForm" class="bg-surface-800 border border-border p-4 mb-4">
-                <div class="text-[10px] uppercase text-neutral tracking-wider mb-3">New Position</div>
+                <div class="text-[10px] uppercase text-neutral tracking-wider mb-3">{{ t('portfolio.newPosition') }}</div>
                 <form @submit.prevent="submitAdd" class="grid grid-cols-1 sm:grid-cols-5 gap-3">
                     <div class="relative sm:col-span-2">
                         <input
                             v-model="searchBazaar"
                             type="text"
-                            placeholder="Search Bazaar item…"
+                            :placeholder="t('portfolio.searchBazaarItem')"
                             class="w-full bg-surface-700 border border-border text-xs text-white px-2 py-1.5 placeholder-neutral focus:outline-none focus:border-border-light"
                         />
                         <div
@@ -259,14 +262,14 @@ const chartConfig = computed(() => ({
                         v-model="form.buy_price"
                         type="number"
                         step="0.01"
-                        placeholder="Buy Price"
+                        :placeholder="t('portfolio.buyPricePlaceholder')"
                         class="bg-surface-700 border border-border text-xs text-white px-2 py-1.5 placeholder-neutral focus:outline-none focus:border-border-light"
                     />
                     <input
                         v-model="form.quantity"
                         type="number"
                         min="1"
-                        placeholder="Qty"
+                        :placeholder="t('portfolio.qtyPlaceholder')"
                         class="bg-surface-700 border border-border text-xs text-white px-2 py-1.5 placeholder-neutral focus:outline-none focus:border-border-light"
                     />
                     <button
@@ -274,7 +277,7 @@ const chartConfig = computed(() => ({
                         :disabled="form.processing || !form.product_id"
                         class="bg-surface-600 border border-border text-xs text-white px-3 py-1.5 hover:bg-surface-500 disabled:opacity-40"
                     >
-                        Add
+                        {{ t('portfolio.add') }}
                     </button>
                 </form>
             </div>
@@ -284,12 +287,12 @@ const chartConfig = computed(() => ({
                 <table class="w-full text-xs">
                     <thead>
                         <tr class="border-b border-border text-[10px] uppercase text-neutral tracking-wider">
-                            <th class="text-left px-3 py-2">Item</th>
-                            <th class="text-right px-3 py-2">Qty</th>
-                            <th class="text-right px-3 py-2">Buy Price</th>
-                            <th class="text-right px-3 py-2">Current</th>
-                            <th class="text-right px-3 py-2">P&L</th>
-                            <th class="text-right px-3 py-2">Actions</th>
+                            <th class="text-left px-3 py-2">{{ t('portfolio.item') }}</th>
+                            <th class="text-right px-3 py-2">{{ t('portfolio.qty') }}</th>
+                            <th class="text-right px-3 py-2">{{ t('portfolio.buyPrice') }}</th>
+                            <th class="text-right px-3 py-2">{{ t('portfolio.current') }}</th>
+                            <th class="text-right px-3 py-2">{{ t('portfolio.pl') }}</th>
+                            <th class="text-right px-3 py-2">{{ t('portfolio.actions') }}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -306,12 +309,12 @@ const chartConfig = computed(() => ({
                                 {{ (((currentPrices[pos.product_id] ?? pos.buy_price) - pos.buy_price) * pos.quantity) >= 0 ? '+' : '' }}{{ fmt(((currentPrices[pos.product_id] ?? pos.buy_price) - pos.buy_price) * pos.quantity) }}
                             </td>
                             <td class="px-3 py-2 text-right whitespace-nowrap">
-                                <button @click="sellPosition(pos)" class="text-profit hover:underline mr-2">Sell</button>
-                                <button @click="deletePosition(pos.id)" class="text-loss hover:underline">Del</button>
+                                <button @click="sellPosition(pos)" class="text-profit hover:underline mr-2">{{ t('portfolio.sell') }}</button>
+                                <button @click="deletePosition(pos.id)" class="text-loss hover:underline">{{ t('portfolio.del') }}</button>
                             </td>
                         </tr>
                         <tr v-if="!openPositions.length">
-                            <td colspan="6" class="px-3 py-6 text-center text-neutral">No open positions. Add one above.</td>
+                            <td colspan="6" class="px-3 py-6 text-center text-neutral">{{ t('portfolio.noOpenPositions') }}</td>
                         </tr>
                     </tbody>
                 </table>
@@ -322,12 +325,12 @@ const chartConfig = computed(() => ({
                 <table class="w-full text-xs">
                     <thead>
                         <tr class="border-b border-border text-[10px] uppercase text-neutral tracking-wider">
-                            <th class="text-left px-3 py-2">Item</th>
-                            <th class="text-right px-3 py-2">Qty</th>
-                            <th class="text-right px-3 py-2">Buy</th>
-                            <th class="text-right px-3 py-2">Sell</th>
-                            <th class="text-right px-3 py-2">P&L</th>
-                            <th class="text-right px-3 py-2">Closed</th>
+                            <th class="text-left px-3 py-2">{{ t('portfolio.item') }}</th>
+                            <th class="text-right px-3 py-2">{{ t('portfolio.qty') }}</th>
+                            <th class="text-right px-3 py-2">{{ t('portfolio.buy') }}</th>
+                            <th class="text-right px-3 py-2">{{ t('portfolio.sell') }}</th>
+                            <th class="text-right px-3 py-2">{{ t('portfolio.pl') }}</th>
+                            <th class="text-right px-3 py-2">{{ t('portfolio.closed') }}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -346,7 +349,7 @@ const chartConfig = computed(() => ({
                             <td class="px-3 py-2 text-right text-neutral">{{ new Date(pos.sold_at).toLocaleDateString() }}</td>
                         </tr>
                         <tr v-if="!closedPositions.length">
-                            <td colspan="6" class="px-3 py-6 text-center text-neutral">No closed positions yet.</td>
+                            <td colspan="6" class="px-3 py-6 text-center text-neutral">{{ t('portfolio.noClosedPositions') }}</td>
                         </tr>
                     </tbody>
                 </table>

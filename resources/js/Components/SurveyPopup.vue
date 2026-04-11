@@ -38,25 +38,25 @@ function dismiss() {
             v-if="visible"
             class="fixed bottom-5 left-5 z-50 w-full max-w-sm rounded-2xl border border-white/10 bg-surface-900/95 p-5 shadow-[0_16px_48px_rgba(0,0,0,0.5)] backdrop-blur-xl"
         >
-            <h3 class="text-base font-bold text-white">SkyblockHub Survey</h3>
+            <h3 class="text-base font-bold text-white">{{ $t('survey.title') }}</h3>
             <p class="mt-2 text-sm leading-relaxed text-white/55">
-                Please take a moment to fill out our survey and let us know what you think.
+                {{ $t('survey.description') }}
             </p>
             <p class="mt-2 text-sm leading-relaxed text-white/45">
-                Your feedback is actually really helpful in improving the site.
+                {{ $t('survey.helpful') }}
             </p>
             <div class="mt-4 flex items-center gap-3">
                 <button
                     @click="takeSurvey"
                     class="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-500"
                 >
-                    Take the Survey
+                    {{ $t('survey.take') }}
                 </button>
                 <button
                     @click="dismiss"
                     class="text-sm font-medium text-white/50 transition hover:text-white/80"
                 >
-                    Dismiss
+                    {{ $t('survey.dismiss') }}
                 </button>
             </div>
         </div>

@@ -4,6 +4,9 @@ import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import { Link, useForm, usePage } from '@inertiajs/vue3';
+import { useI18n } from 'vue-i18n';
+
+const { t } = useI18n();
 
 defineProps({
     mustVerifyEmail: {
@@ -26,11 +29,11 @@ const form = useForm({
     <section>
         <header>
             <h2 class="text-base font-semibold text-white">
-                Informace o profilu
+                {{ $t('profile.info.heading') }}
             </h2>
 
             <p class="mt-1 text-sm text-neutral">
-                Uprav své jméno a emailovou adresu.
+                {{ $t('profile.info.description') }}
             </p>
         </header>
 
@@ -39,7 +42,7 @@ const form = useForm({
             class="mt-6 space-y-6"
         >
             <div>
-                <InputLabel for="name" value="Jméno" />
+                <InputLabel for="name" :value="$t('profile.info.name')" />
 
                 <TextInput
                     id="name"
@@ -55,7 +58,7 @@ const form = useForm({
             </div>
 
             <div>
-                <InputLabel for="email" value="Email" />
+                <InputLabel for="email" :value="$t('profile.info.email')" />
 
                 <TextInput
                     id="email"
@@ -71,14 +74,14 @@ const form = useForm({
 
             <div v-if="mustVerifyEmail && user.email_verified_at === null">
                 <p class="mt-2 text-sm text-neutral">
-                    Tvůj email je neověřený.
+                    {{ $t('profile.info.emailUnverified') }}
                     <Link
                         :href="route('verification.send')"
                         method="post"
                         as="button"
                         class="rounded-md text-sm text-[#0bca51] underline hover:text-[#55FF55] focus:outline-none focus:ring-2 focus:ring-[#0bca51] focus:ring-offset-2"
                     >
-                        Klikni pro odeslání ověřovacího emailu.
+                        {{ $t('profile.info.resendVerification') }}
                     </Link>
                 </p>
 
@@ -86,12 +89,12 @@ const form = useForm({
                     v-show="status === 'verification-link-sent'"
                     class="mt-2 text-sm font-medium text-[#55FF55]"
                 >
-                    Nový ověřovací odkaz byl odeslán.
+                    {{ $t('profile.info.verificationSent') }}
                 </div>
             </div>
 
             <div class="flex items-center gap-4">
-                <PrimaryButton :disabled="form.processing">Uložit</PrimaryButton>
+                <PrimaryButton :disabled="form.processing">{{ $t('profile.info.save') }}</PrimaryButton>
 
                 <Transition
                     enter-active-class="transition ease-in-out"
@@ -103,7 +106,7 @@ const form = useForm({
                         v-if="form.recentlySuccessful"
                         class="text-sm text-[#55FF55]"
                     >
-                        Uloženo.
+                        {{ $t('profile.info.saved') }}
                     </p>
                 </Transition>
             </div>

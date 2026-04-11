@@ -3,6 +3,9 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { Head, router } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { getItemTextureUrl } from '@/utils/textures';
+import { useI18n } from 'vue-i18n';
+
+const { t } = useI18n();
 
 const props = defineProps({
     snipes: Array,
@@ -72,11 +75,11 @@ function timeAgo(dateStr) {
     if (!dateStr) return '—';
     const diff = Date.now() - new Date(dateStr).getTime();
     const mins = Math.floor(diff / 60000);
-    if (mins < 1) return 'just now';
-    if (mins < 60) return `${mins}m ago`;
+    if (mins < 1) return t('binSniper.justNow');
+    if (mins < 60) return t('binSniper.minsAgo', { mins });
     const hrs = Math.floor(mins / 60);
-    if (hrs < 24) return `${hrs}h ago`;
-    return `${Math.floor(hrs / 24)}d ago`;
+    if (hrs < 24) return t('binSniper.hrsAgo', { hrs });
+    return t('binSniper.daysAgo', { days: Math.floor(hrs / 24) });
 }
 
 function tierColor(tierName) {
@@ -244,7 +247,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-    <Head title="BIN Sniper Live Feed" />
+    <Head :title="t('binSniper.title')" />
 
     <AuthenticatedLayout>
         <div class="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
@@ -252,14 +255,14 @@ onBeforeUnmount(() => {
                 <input
                     v-model="search"
                     type="text"
-                    placeholder="Search items…"
+                    :placeholder="t('binSniper.searchPlaceholder')"
                     class="bg-surface-800 border border-border text-xs text-white px-3 py-1.5 placeholder-neutral focus:outline-none focus:border-border-light w-56"
                 />
                 <select
                     v-model="tier"
                     class="bg-surface-800 border border-border text-xs text-white px-3 py-1.5 focus:outline-none focus:border-border-light"
                 >
-                    <option value="">All Tiers</option>
+                    <option value="">{{ t('binSniper.allTiers') }}</option>
                     <option value="COMMON">Common</option>
                     <option value="UNCOMMON">Uncommon</option>
                     <option value="RARE">Rare</option>
@@ -272,38 +275,38 @@ onBeforeUnmount(() => {
                     v-model="sort"
                     class="bg-surface-800 border border-border text-xs text-white px-3 py-1.5 focus:outline-none focus:border-border-light"
                 >
-                    <option value="detected_at">Newest</option>
-                    <option value="profit">Profit</option>
-                    <option value="confidence">Confidence</option>
-                    <option value="score">Score</option>
-                    <option value="price">LBIN</option>
+                    <option value="detected_at">{{ t('binSniper.newest') }}</option>
+                    <option value="profit">{{ t('binSniper.profit') }}</option>
+                    <option value="confidence">{{ t('binSniper.confidence') }}</option>
+                    <option value="score">{{ t('binSniper.score') }}</option>
+                    <option value="price">{{ t('binSniper.lbin') }}</option>
                 </select>
                 <button
                     class="bg-surface-700 border border-border px-2 py-1 text-xs text-white hover:bg-surface-600"
                     @click="direction = direction === 'desc' ? 'asc' : 'desc'"
                 >
-                    {{ direction === 'desc' ? 'Desc' : 'Asc' }}
+                    {{ direction === 'desc' ? t('binSniper.desc') : t('binSniper.asc') }}
                 </button>
                 <label class="ml-auto inline-flex items-center gap-2 text-[11px] text-neutral">
                     <input v-model="soundEnabled" type="checkbox" class="accent-profit" />
-                    Ding on high-profit snipes
+                    {{ t('binSniper.dingLabel') }}
                 </label>
                 <button
                     class="border border-border bg-surface-700 px-2 py-1 text-xs text-white hover:bg-surface-600"
                     :disabled="isRefreshing"
                     @click="refreshFeed"
                 >
-                    {{ isRefreshing ? 'Refreshing…' : 'Refresh now' }}
+                    {{ isRefreshing ? t('binSniper.refreshing') : t('binSniper.refreshNow') }}
                 </button>
             </div>
 
             <div class="mb-4 flex flex-wrap gap-4 text-[11px] text-neutral">
-                <span>Feed updated: {{ timeAgo(lastFeedUpdate) }}</span>
-                <span>Refresh time: {{ lastRefreshMs !== null ? `${lastRefreshMs}ms` : '—' }}</span>
-                <span>Min Profit: {{ fmtCoins(constraints?.minimum_profit) }}</span>
-                <span>Min %: {{ constraints?.minimum_percentage }}%</span>
-                <span>Manipulated: ignored</span>
-                <span>Items in feed: {{ feedSnipes.length }}</span>
+                <span>{{ t('binSniper.feedUpdated') }} {{ timeAgo(lastFeedUpdate) }}</span>
+                <span>{{ t('binSniper.refreshTime') }} {{ lastRefreshMs !== null ? `${lastRefreshMs}ms` : '—' }}</span>
+                <span>{{ t('binSniper.minProfit') }} {{ fmtCoins(constraints?.minimum_profit) }}</span>
+                <span>{{ t('binSniper.minPercent') }} {{ constraints?.minimum_percentage }}%</span>
+                <span>{{ t('binSniper.manipulatedIgnored') }}</span>
+                <span>{{ t('binSniper.itemsInFeed') }} {{ feedSnipes.length }}</span>
             </div>
 
             <div v-if="refreshError" class="mb-4 border border-loss/50 bg-loss/10 px-3 py-2 text-xs text-loss">
@@ -330,31 +333,31 @@ onBeforeUnmount(() => {
                             <div class="flex flex-wrap items-center gap-2">
                                 <h3 class="truncate text-sm font-semibold text-white">{{ snipe.item_name }}</h3>
                                 <span class="text-[11px]" :class="tierColor(snipe.tier)">{{ snipe.tier || 'UNKNOWN' }}</span>
-                                <span class="text-[10px] uppercase tracking-wider text-neutral">Seen {{ timeAgo(snipe.detected_at) }}</span>
+                                <span class="text-[10px] uppercase tracking-wider text-neutral">{{ t('binSniper.seen') }} {{ timeAgo(snipe.detected_at) }}</span>
                             </div>
 
                             <div class="mt-2 grid gap-2 text-xs sm:grid-cols-4">
                                 <div class="border border-border/70 bg-surface-700 px-2 py-1">
-                                    <div class="text-[10px] uppercase text-neutral">LBIN Buy</div>
+                                    <div class="text-[10px] uppercase text-neutral">{{ t('binSniper.lbinBuy') }}</div>
                                     <div class="text-rarity-legendary">{{ fmtCoins(snipe.lbin) }}</div>
                                 </div>
                                 <div class="border border-border/70 bg-surface-700 px-2 py-1">
-                                    <div class="text-[10px] uppercase text-neutral">SLBIN List</div>
+                                    <div class="text-[10px] uppercase text-neutral">{{ t('binSniper.slbinList') }}</div>
                                     <div class="text-rarity-legendary">{{ fmtCoins(snipe.slbin) }}</div>
                                 </div>
                                 <div class="border border-border/70 bg-surface-700 px-2 py-1">
-                                    <div class="text-[10px] uppercase text-neutral">Potential Profit</div>
+                                    <div class="text-[10px] uppercase text-neutral">{{ t('binSniper.potentialProfit') }}</div>
                                     <div class="text-profit font-semibold">{{ fmtCoins(snipe.profit_margin) }}</div>
                                 </div>
                                 <div class="border border-border/70 bg-surface-700 px-2 py-1">
-                                    <div class="text-[10px] uppercase text-neutral">Profit %</div>
+                                    <div class="text-[10px] uppercase text-neutral">{{ t('binSniper.profitPercent') }}</div>
                                     <div class="text-profit font-semibold">{{ fmtPercent(snipe.profit_percentage) }}</div>
                                 </div>
                             </div>
 
                             <div class="mt-2 border border-border/70 bg-surface-700 px-2 py-2">
                                 <div class="mb-1 flex items-center justify-between text-[10px] uppercase tracking-wider text-neutral">
-                                    <span>Confidence Score</span>
+                                    <span>{{ t('binSniper.confidenceScore') }}</span>
                                     <span class="text-white">{{ Number(snipe.confidence_score).toFixed(1) }}%</span>
                                 </div>
                                 <div class="h-2 w-full overflow-hidden bg-surface-900">
@@ -366,35 +369,35 @@ onBeforeUnmount(() => {
                             </div>
 
                             <div class="mt-2 grid gap-1 text-[11px] text-neutral sm:grid-cols-2 lg:grid-cols-4">
-                                <span>Score: {{ fmtCoins(snipe.score) }}</span>
-                                <span>Liquidity: {{ Number(snipe.item_liquidity).toFixed(1) }}/100</span>
-                                <span>24h Avg: {{ fmtCoins(snipe.avg_price_24h) }}</span>
-                                <span>Active Auctions: {{ snipe.active_auctions }}</span>
+                                <span>{{ t('binSniper.scoreLabel') }} {{ fmtCoins(snipe.score) }}</span>
+                                <span>{{ t('binSniper.liquidity') }} {{ Number(snipe.item_liquidity).toFixed(1) }}/100</span>
+                                <span>{{ t('binSniper.avg24h') }} {{ fmtCoins(snipe.avg_price_24h) }}</span>
+                                <span>{{ t('binSniper.activeAuctions') }} {{ snipe.active_auctions }}</span>
                             </div>
 
                             <div class="mt-2 border border-border/70 bg-surface-700 px-2 py-2 text-[11px] text-neutral">
-                                <div class="text-[10px] uppercase tracking-wider">Profit Calculator (Instant Relist)</div>
+                                <div class="text-[10px] uppercase tracking-wider">{{ t('binSniper.profitCalculator') }}</div>
                                 <div class="mt-1 grid gap-1 sm:grid-cols-4">
-                                    <span>Buy: {{ fmtCoins(snipe.lbin) }}</span>
-                                    <span>Relist: {{ fmtCoins(snipe.slbin) }}</span>
-                                    <span>Tax (1%): {{ fmtCoins(snipe.tax_amount) }}</span>
-                                    <span class="text-profit">Net: {{ fmtCoins(snipe.profit_after_tax) }}</span>
+                                    <span>{{ t('binSniper.buy') }} {{ fmtCoins(snipe.lbin) }}</span>
+                                    <span>{{ t('binSniper.relist') }} {{ fmtCoins(snipe.slbin) }}</span>
+                                    <span>{{ t('binSniper.tax') }} {{ fmtCoins(snipe.tax_amount) }}</span>
+                                    <span class="text-profit">{{ t('binSniper.net') }} {{ fmtCoins(snipe.profit_after_tax) }}</span>
                                 </div>
                             </div>
                         </div>
 
                         <div class="w-full sm:w-auto">
                             <div class="border border-border bg-surface-700 p-2 text-[11px] text-neutral">
-                                <div class="text-[10px] uppercase tracking-wider">Command</div>
+                                <div class="text-[10px] uppercase tracking-wider">{{ t('binSniper.command') }}</div>
                                 <div class="mt-1 break-all text-white">{{ snipe.viewauction_command }}</div>
                                 <div v-if="isPinned(snipe.auction_uuid)" class="mt-1 text-[10px] text-profit">
-                                    Pinned after copy: {{ pinCountdown(snipe.auction_uuid) }}
+                                    {{ t('binSniper.pinnedAfterCopy') }} {{ pinCountdown(snipe.auction_uuid) }}
                                 </div>
                                 <button
                                     class="mt-2 w-full border border-border-light bg-surface-600 px-2 py-1 text-[11px] text-white hover:bg-surface-500"
                                     @click="copyViewAuction(snipe)"
                                 >
-                                    {{ copiedUuid === snipe.auction_uuid ? 'Copied' : 'Copy /viewauction UUID' }}
+                                    {{ copiedUuid === snipe.auction_uuid ? t('binSniper.copied') : t('binSniper.copyCommand') }}
                                 </button>
                             </div>
                         </div>
@@ -403,7 +406,7 @@ onBeforeUnmount(() => {
             </transition-group>
 
             <div v-if="!feedSnipes.length" class="border border-border bg-surface-800 px-3 py-8 text-center text-xs text-neutral">
-                No snipes passed filters yet. Run <code class="text-white">php artisan bin:fetch</code> and wait for next feed refresh.
+                {{ t('binSniper.noSnipes') }}
             </div>
         </div>
     </AuthenticatedLayout>

@@ -1,7 +1,10 @@
 <script setup>
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { useForm, usePage } from '@inertiajs/vue3';
+import { useI18n } from 'vue-i18n';
 import Modal from '@/Components/Modal.vue';
+
+const { t } = useI18n();
 
 const props = defineProps({
     show: { type: Boolean, default: false },
@@ -14,33 +17,33 @@ const discordUsername = page.props.auth?.user?.discord_username ?? '';
 
 const currentStep = ref(0);
 
-const steps = [
+const steps = computed(() => [
     {
-        title: 'Připoj se na Hypixel',
-        instruction: 'Spusť Minecraft a připoj se na server mc.hypixel.net.',
+        title: t('mcModal.step1Title'),
+        instruction: t('mcModal.step1Desc'),
         icon: '🎮',
     },
     {
-        title: 'Otevři své menu',
-        instruction: 'V lobby klikni pravým tlačítkem na svou hlavu (My Profile).',
+        title: t('mcModal.step2Title'),
+        instruction: t('mcModal.step2Desc'),
         icon: '👤',
     },
     {
-        title: 'Jdi do Social Media',
-        instruction: 'Klikni na ikonku Twitteru (Social Media) a poté na ikonku Discordu.',
+        title: t('mcModal.step3Title'),
+        instruction: t('mcModal.step3Desc'),
         icon: '🐦',
     },
     {
-        title: 'Vlož svůj Discord',
-        instruction: `Do chatu napiš své přesné Discord jméno: ${discordUsername}`,
+        title: t('mcModal.step4Title'),
+        instruction: t('mcModal.step4Desc', { username: discordUsername }),
         icon: '💬',
     },
     {
-        title: 'Potvrď na webu',
-        instruction: 'Zadej své Minecraft jméno a klikni na tlačítko Ověřit.',
+        title: t('mcModal.step5Title'),
+        instruction: t('mcModal.step5Desc'),
         icon: '✅',
     },
-];
+]);
 
 const form = useForm({
     minecraft_username: '',
@@ -79,11 +82,11 @@ function close() {
     <Modal :show="show" @close="close" max-width="lg">
         <div class="p-6">
             <h2 class="text-lg font-medium text-white">
-                Propojit Minecraft účet
+                {{ $t('mcModal.title') }}
             </h2>
 
             <p class="mt-1 text-sm text-neutral">
-                Propoj svůj Minecraft účet přes ověření Discordu na Hypixelu.
+                {{ $t('mcModal.description') }}
             </p>
 
             <!-- Step indicator -->
@@ -123,13 +126,13 @@ function close() {
             <!-- MC Username input (only on last step) -->
             <div v-if="currentStep === steps.length - 1" class="mt-4">
                 <label for="mc-username" class="block text-sm font-medium text-neutral">
-                    Minecraft jméno
+                    {{ $t('mcModal.mcPlaceholder') }}
                 </label>
                 <input
                     id="mc-username"
                     v-model="form.minecraft_username"
                     type="text"
-                    placeholder="Zadej své Minecraft jméno"
+                    :placeholder="$t('mcModal.mcPlaceholder')"
                     class="mt-1 block w-full rounded-md border-border bg-surface-700 text-white shadow-sm placeholder-neutral/50 focus:border-[#0bca51] focus:ring-[#0bca51] sm:text-sm"
                     @keyup.enter="verify"
                 />
@@ -145,7 +148,7 @@ function close() {
                     @click="prev"
                     class="rounded-md border border-border bg-surface-700 px-4 py-2 text-sm font-medium text-neutral hover:bg-surface-600 transition-colors"
                 >
-                    Zpět
+                    {{ $t('mcModal.back') }}
                 </button>
                 <div v-else />
 
@@ -154,7 +157,7 @@ function close() {
                         @click="close"
                         class="rounded-md border border-border bg-surface-700 px-4 py-2 text-sm font-medium text-neutral hover:bg-surface-600 transition-colors"
                     >
-                        Zrušit
+                        {{ $t('mcModal.cancel') }}
                     </button>
 
                     <button
@@ -162,7 +165,7 @@ function close() {
                         @click="next"
                         class="rounded-md bg-[#0bca51] px-4 py-2 text-sm font-medium text-surface-900 hover:bg-[#0ab847] transition-colors"
                     >
-                        Další
+                        {{ $t('mcModal.next') }}
                     </button>
 
                     <button
@@ -171,8 +174,8 @@ function close() {
                         :disabled="form.processing || !form.minecraft_username.trim()"
                         class="rounded-md bg-[#0bca51] px-4 py-2 text-sm font-medium text-surface-900 hover:bg-[#0ab847] disabled:opacity-50 transition-colors"
                     >
-                        <span v-if="form.processing">Ověřuji...</span>
-                        <span v-else>Ověřit propojení</span>
+                        <span v-if="form.processing">{{ $t('mcModal.verifying') }}</span>
+                        <span v-else>{{ $t('mcModal.verify') }}</span>
                     </button>
                 </div>
             </div>

@@ -1,14 +1,14 @@
 <template>
   <AuthenticatedLayout>
-    <Head title="NPC Flips" />
+    <Head :title="t('npc.title')" />
 
     <div class="mx-auto max-w-7xl space-y-6 px-4 py-6 sm:px-6 lg:px-8">
       <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 class="text-3xl font-bold text-white">NPC Flipping</h1>
-          <p class="text-sm text-text-secondary">Best Pick engine: tax-aware profit + volume + stackability.</p>
+          <h1 class="text-3xl font-bold text-white">{{ t('npc.heading') }}</h1>
+          <p class="text-sm text-text-secondary">{{ t('npc.subtitle') }}</p>
           <p class="text-xs text-text-tertiary mt-1">
-            Active tax: {{ (((tax_meta?.rate ?? 0.01) * 100).toFixed(2)) }}% ({{ tax_meta?.source || 'default' }})
+            {{ t('npc.activeTax', { rate: ((tax_meta?.rate ?? 0.01) * 100).toFixed(2), source: tax_meta?.source || 'default' }) }}
           </p>
         </div>
 
@@ -18,53 +18,53 @@
             class="rounded border border-border bg-surface-700 px-4 py-2 text-sm font-medium text-text-primary hover:bg-surface-600"
             :disabled="isRefreshing"
           >
-            {{ isRefreshing ? 'Refreshing...' : 'Refresh Bazaar' }}
+            {{ isRefreshing ? t('common.refreshing') : t('bazaar.refreshBazaar') }}
           </button>
           <span class="text-[11px] text-text-tertiary">
-            Auto refresh in {{ formatCountdown(autoRefreshRemainingSeconds) }}
+            {{ t('common.autoRefreshIn') }} {{ formatCountdown(autoRefreshRemainingSeconds) }}
           </span>
         </div>
       </div>
 
       <div class="grid grid-cols-1 gap-4 sm:grid-cols-4">
         <div>
-          <label class="block text-sm font-medium text-text-primary">Search</label>
+          <label class="block text-sm font-medium text-text-primary">{{ t('common.search') }}</label>
           <input
             v-model="search"
             type="text"
-            placeholder="Item name..."
+            :placeholder="t('npc.itemPlaceholder')"
             class="mt-1 w-full rounded border border-border bg-surface-700 px-3 py-2 text-text-primary placeholder-text-tertiary focus:border-primary focus:outline-none"
             @input="debouncedApplyFilters"
           />
         </div>
 
         <div>
-          <label class="block text-sm font-medium text-text-primary">Sort By</label>
+          <label class="block text-sm font-medium text-text-primary">{{ t('common.sortBy') }}</label>
           <select
             v-model="sortBy"
             class="mt-1 w-full rounded border border-border bg-surface-700 px-3 py-2 text-text-primary focus:border-primary focus:outline-none"
             @change="applyFilters"
           >
-            <option value="best_pick_score">Best Pick Score</option>
-            <option value="profit_per_item">Profit/Item</option>
-            <option value="profit_per_inventory">Profit/Inventory</option>
-            <option value="coins_per_hour">Coins/Hour</option>
-            <option value="time_to_fill_minutes">Time To Fill</option>
-            <option value="max_profit">Max Profit</option>
-            <option value="hours_before_limited">Duration</option>
-            <option value="name">Name</option>
+            <option value="best_pick_score">{{ t('npc.bestPickScore') }}</option>
+            <option value="profit_per_item">{{ t('npc.profitPerItem') }}</option>
+            <option value="profit_per_inventory">{{ t('npc.profitPerInventory') }}</option>
+            <option value="coins_per_hour">{{ t('common.coinsPerHour') }}</option>
+            <option value="time_to_fill_minutes">{{ t('npc.timeToFill') }}</option>
+            <option value="max_profit">{{ t('npc.maxProfit') }}</option>
+            <option value="hours_before_limited">{{ t('npc.duration') }}</option>
+            <option value="name">{{ t('common.name') }}</option>
           </select>
         </div>
 
         <div>
-          <label class="block text-sm font-medium text-text-primary">Direction</label>
+          <label class="block text-sm font-medium text-text-primary">{{ t('common.direction') }}</label>
           <select
             v-model="sortDir"
             class="mt-1 w-full rounded border border-border bg-surface-700 px-3 py-2 text-text-primary focus:border-primary focus:outline-none"
             @change="applyFilters"
           >
-            <option value="desc">Descending</option>
-            <option value="asc">Ascending</option>
+            <option value="desc">{{ t('common.descending') }}</option>
+            <option value="asc">{{ t('common.ascending') }}</option>
           </select>
         </div>
 
@@ -73,7 +73,7 @@
             @click="resetFilters"
             class="w-full rounded border border-border bg-surface-700 px-3 py-2 text-text-primary hover:bg-surface-600"
           >
-            Reset
+            {{ t('common.reset') }}
           </button>
         </div>
       </div>
@@ -86,14 +86,34 @@
             ? 'border-info bg-info/20 text-info'
             : 'border-border bg-surface-700 text-text-secondary'"
         >
-          I have Personal Compactor: {{ hasCompactor ? 'ON' : 'OFF' }}
+          {{ t('npc.compactorLabel') }}{{ hasCompactor ? t('npc.compactorOn') : t('npc.compactorOff') }}
         </button>
-        <span class="text-xs text-text-secondary">When ON, compactable items are evaluated in compressed NPC form.</span>
+        <span class="text-xs text-text-secondary">{{ t('npc.compactorHint') }}</span>
+      </div>
+
+      <div v-if="!isMvp" class="rounded-2xl border border-sky-300/30 bg-[radial-gradient(circle_at_top,rgba(56,189,248,0.2),rgba(15,23,42,0.88))] p-5">
+        <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h3 class="text-base font-semibold text-sky-100">{{ t('npc.upsellTitle') }}</h3>
+            <p class="mt-1 text-sm text-sky-100/80">
+              {{ !isVipOrHigher ? t('npc.upsellFreeDesc') : t('npc.upsellVipDesc') }}
+            </p>
+            <p class="mt-1 text-xs text-sky-100/65">{{ t('npc.upsellCurrentRefresh', { seconds: AUTO_REFRESH_INTERVAL_SECONDS }) }}</p>
+          </div>
+          <div class="flex gap-2">
+            <Link :href="route('billing')" class="rounded-lg bg-sky-400 px-4 py-2 text-xs font-semibold text-black transition hover:bg-sky-300">
+              {{ !isVipOrHigher ? t('npc.upsellFreeCta') : t('npc.upsellVipCta') }}
+            </Link>
+            <Link :href="route('pricing')" class="rounded-lg border border-sky-200/35 bg-black/20 px-4 py-2 text-xs font-semibold text-sky-100 transition hover:bg-black/30">
+              {{ t('npc.upsellCompareCta') }}
+            </Link>
+          </div>
+        </div>
       </div>
 
       <div v-if="best_picks?.overall?.length > 0" class="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <div class="rounded-xl border border-yellow-400/70 bg-[radial-gradient(circle_at_top,rgba(250,204,21,0.14),rgba(15,23,42,0.8))] p-4 text-center shadow-[0_0_0_1px_rgba(251,191,36,0.35)]">
-          <h3 class="text-xs font-semibold uppercase tracking-wide text-yellow-200">Best Overall</h3>
+          <h3 class="text-xs font-semibold uppercase tracking-wide text-yellow-200">{{ t('npc.bestOverall') }}</h3>
           <div v-if="best_picks.overall[0]" class="mt-3 flex flex-col items-center">
             <img
               :src="getFlipTextureUrl(best_picks.overall[0])"
@@ -104,13 +124,13 @@
               @error="handleTextureError"
             />
             <div class="mt-2 font-semibold text-white">{{ best_picks.overall[0].name }}</div>
-            <div class="text-sm text-positive">{{ formatCoins(best_picks.overall[0].profit_per_item) }}/item</div>
-            <div class="text-xs text-text-secondary">Score {{ best_picks.overall[0].best_pick_score.toFixed(1) }}</div>
+            <div class="text-sm text-positive">{{ formatCoins(best_picks.overall[0].profit_per_item) }}{{ t('npc.perItem') }}</div>
+            <div class="text-xs text-text-secondary">{{ t('npc.score', { score: best_picks.overall[0].best_pick_score.toFixed(1) }) }}</div>
           </div>
         </div>
 
         <div class="rounded-xl border border-border bg-surface-800 p-4 text-center">
-          <h3 class="text-xs font-semibold uppercase tracking-wide text-cyan-200">Best Stackable</h3>
+          <h3 class="text-xs font-semibold uppercase tracking-wide text-cyan-200">{{ t('npc.bestStackable') }}</h3>
           <div v-if="best_picks.stackable?.[0]" class="mt-3 flex flex-col items-center">
             <img
               :src="getFlipTextureUrl(best_picks.stackable[0])"
@@ -121,12 +141,12 @@
               @error="handleTextureError"
             />
             <div class="mt-2 font-semibold text-white">{{ best_picks.stackable[0].name }}</div>
-            <div class="text-sm text-text-secondary">{{ formatCoins(best_picks.stackable[0].coins_per_hour) }}/hour</div>
+            <div class="text-sm text-text-secondary">{{ formatCoins(best_picks.stackable[0].coins_per_hour) }}{{ t('npc.perHour') }}</div>
           </div>
         </div>
 
         <div class="rounded-xl border border-border bg-surface-800 p-4 text-center">
-          <h3 class="text-xs font-semibold uppercase tracking-wide text-rose-200">Highest Throughput</h3>
+          <h3 class="text-xs font-semibold uppercase tracking-wide text-rose-200">{{ t('npc.highestThroughput') }}</h3>
           <div v-if="best_picks.hourly_profit[0]" class="mt-3 flex flex-col items-center">
             <img
               :src="getFlipTextureUrl(best_picks.hourly_profit[0])"
@@ -137,7 +157,7 @@
               @error="handleTextureError"
             />
             <div class="mt-2 font-semibold text-white">{{ best_picks.hourly_profit[0].name }}</div>
-            <div class="text-sm text-text-secondary">{{ formatCoins(best_picks.hourly_profit[0].coins_per_hour) }}/hour</div>
+            <div class="text-sm text-text-secondary">{{ formatCoins(best_picks.hourly_profit[0].coins_per_hour) }}{{ t('npc.perHour') }}</div>
           </div>
         </div>
       </div>
@@ -149,52 +169,52 @@
               <tr>
                 <th class="px-4 py-3 text-left font-semibold text-text-primary">
                   <button type="button" class="inline-flex items-center gap-1 hover:text-white" @click="toggleSort('name')">
-                    Item <span class="text-xs text-text-tertiary">{{ sortIndicator('name') }}</span>
+                    {{ t('common.item') }} <span class="text-xs text-text-tertiary">{{ sortIndicator('name') }}</span>
                   </button>
                 </th>
                 <th class="px-4 py-3 text-center font-semibold text-text-primary">
                   <button type="button" class="inline-flex items-center gap-1 hover:text-white" @click="toggleSort('is_stackable')">
-                    Stack <span class="text-xs text-text-tertiary">{{ sortIndicator('is_stackable') }}</span>
+                    {{ t('npc.stack') }} <span class="text-xs text-text-tertiary">{{ sortIndicator('is_stackable') }}</span>
                   </button>
                 </th>
                 <th class="px-4 py-3 text-right font-semibold text-text-primary">
                   <button type="button" class="inline-flex items-center gap-1 hover:text-white" @click="toggleSort('best_pick_score')">
-                    Best Score <span class="text-xs text-text-tertiary">{{ sortIndicator('best_pick_score') }}</span>
+                    {{ t('npc.bestScore') }} <span class="text-xs text-text-tertiary">{{ sortIndicator('best_pick_score') }}</span>
                   </button>
                 </th>
                 <th class="px-4 py-3 text-right font-semibold text-text-primary">
                   <button type="button" class="inline-flex items-center gap-1 hover:text-white" @click="toggleSort('buy_price')">
-                    BZ Buy <span class="text-xs text-text-tertiary">{{ sortIndicator('buy_price') }}</span>
+                    {{ t('npc.bzBuy') }} <span class="text-xs text-text-tertiary">{{ sortIndicator('buy_price') }}</span>
                   </button>
                 </th>
                 <th class="px-4 py-3 text-right font-semibold text-text-primary">
                   <button type="button" class="inline-flex items-center gap-1 hover:text-white" @click="toggleSort('npc_sell_price')">
-                    NPC Sell <span class="text-xs text-text-tertiary">{{ sortIndicator('npc_sell_price') }}</span>
+                    {{ t('npc.npcSell') }} <span class="text-xs text-text-tertiary">{{ sortIndicator('npc_sell_price') }}</span>
                   </button>
                 </th>
                 <th class="px-4 py-3 text-right font-semibold text-text-primary">
                   <button type="button" class="inline-flex items-center gap-1 hover:text-white" @click="toggleSort('profit_per_item')">
-                    Profit/Item <span class="text-xs text-text-tertiary">{{ sortIndicator('profit_per_item') }}</span>
+                    {{ t('npc.profitPerItem') }} <span class="text-xs text-text-tertiary">{{ sortIndicator('profit_per_item') }}</span>
                   </button>
                 </th>
                 <th class="px-4 py-3 text-right font-semibold text-text-primary">
                   <button type="button" class="inline-flex items-center gap-1 hover:text-white" @click="toggleSort('one_hour_instasells')">
-                    1h Volume <span class="text-xs text-text-tertiary">{{ sortIndicator('one_hour_instasells') }}</span>
+                    {{ t('common.volume1h') }} <span class="text-xs text-text-tertiary">{{ sortIndicator('one_hour_instasells') }}</span>
                   </button>
                 </th>
                 <th class="px-4 py-3 text-right font-semibold text-text-primary">
                   <button type="button" class="inline-flex items-center gap-1 hover:text-white" @click="toggleSort('coins_per_hour')">
-                    Coins/Hour <span class="text-xs text-text-tertiary">{{ sortIndicator('coins_per_hour') }}</span>
+                    {{ t('common.coinsPerHour') }} <span class="text-xs text-text-tertiary">{{ sortIndicator('coins_per_hour') }}</span>
                   </button>
                 </th>
                 <th class="px-4 py-3 text-right font-semibold text-text-primary">
                   <button type="button" class="inline-flex items-center gap-1 hover:text-white" @click="toggleSort('profit_per_inventory')">
-                    Profit/Inventory <span class="text-xs text-text-tertiary">{{ sortIndicator('profit_per_inventory') }}</span>
+                    {{ t('npc.profitPerInventory') }} <span class="text-xs text-text-tertiary">{{ sortIndicator('profit_per_inventory') }}</span>
                   </button>
                 </th>
                 <th class="px-4 py-3 text-right font-semibold text-text-primary">
                   <button type="button" class="inline-flex items-center gap-1 hover:text-white" @click="toggleSort('time_to_fill_minutes')">
-                    Time To Fill <span class="text-xs text-text-tertiary">{{ sortIndicator('time_to_fill_minutes') }}</span>
+                    {{ t('npc.timeToFill') }} <span class="text-xs text-text-tertiary">{{ sortIndicator('time_to_fill_minutes') }}</span>
                   </button>
                 </th>
               </tr>
@@ -217,11 +237,11 @@
                       @error="handleTextureError"
                     />
                     <span>{{ flip.name }}</span>
-                    <span v-if="flip.can_compact" class="rounded bg-info/20 px-1.5 py-0.5 text-[10px] font-semibold text-info">PC</span>
-                    <span v-if="flip.is_ultimate_flip" class="rounded bg-warning/20 px-1.5 py-0.5 text-[10px] font-semibold text-warning">ULTIMATE FLIP</span>
+                    <span v-if="flip.can_compact" class="rounded bg-info/20 px-1.5 py-0.5 text-[10px] font-semibold text-info">{{ t('npc.pcBadge') }}</span>
+                    <span v-if="flip.is_ultimate_flip" class="rounded bg-warning/20 px-1.5 py-0.5 text-[10px] font-semibold text-warning">{{ t('npc.ultimateFlip') }}</span>
                   </div>
                   <div v-if="flip.can_compact && flip.compactor_target_id" class="text-[11px] text-text-secondary">
-                    Compacts to {{ flip.compactor_target_id }} (x{{ flip.compactor_ratio.toFixed(0) }})
+                    {{ t('npc.compactsTo', { target: flip.compactor_target_id, ratio: flip.compactor_ratio.toFixed(0) }) }}
                   </div>
                 </td>
 
@@ -230,7 +250,7 @@
                     class="inline-block rounded px-2 py-1 text-xs font-semibold"
                     :class="flip.is_stackable ? 'bg-info/20 text-info' : 'bg-surface-600 text-text-secondary'"
                   >
-                    {{ flip.is_stackable ? 'Yes' : 'No' }}
+                    {{ flip.is_stackable ? t('common.yes') : t('common.no') }}
                   </span>
                 </td>
 
@@ -245,7 +265,7 @@
                   <div class="text-xs" :class="profitClass(flip.profit_percent)">
                     {{ flip.profit_percent.toFixed(1) }}%
                   </div>
-                  <div v-if="flip.profit_percent < 2" class="text-xs text-red-400">Too close to NPC</div>
+                  <div v-if="flip.profit_percent < 2" class="text-xs text-red-400">{{ t('npc.tooCloseToNpc') }}</div>
                 </td>
 
                 <td class="px-4 py-3 text-right text-text-secondary">{{ formatCompact(flip.one_hour_instasells) }}</td>
@@ -258,13 +278,13 @@
         </div>
 
         <div v-if="flips.length === 0" class="px-4 py-8 text-center text-text-secondary">
-          No NPC flips found. Try adjusting filters.
+          {{ t('npc.noFlips') }}
         </div>
       </div>
 
       <div v-if="pagination.last_page > 1" class="flex items-center justify-between">
         <div class="text-sm text-text-secondary">
-          Page {{ pagination.current_page }} of {{ pagination.last_page }} ({{ pagination.total }} total)
+          {{ t('common.page') }} {{ pagination.current_page }} {{ t('common.of') }} {{ pagination.last_page }} ({{ pagination.total }} {{ t('common.total') }})
         </div>
         <div class="flex gap-2">
           <Link
@@ -272,28 +292,28 @@
             :href="buildPaginationUrl(1)"
             class="rounded border border-border bg-surface-700 px-3 py-2 text-sm text-text-primary hover:bg-surface-600"
           >
-            First
+            {{ t('common.first') }}
           </Link>
           <Link
             v-if="pagination.current_page > 1"
             :href="buildPaginationUrl(pagination.current_page - 1)"
             class="rounded border border-border bg-surface-700 px-3 py-2 text-sm text-text-primary hover:bg-surface-600"
           >
-            Previous
+            {{ t('common.previous') }}
           </Link>
           <Link
             v-if="pagination.current_page < pagination.last_page"
             :href="buildPaginationUrl(pagination.current_page + 1)"
             class="rounded border border-border bg-surface-700 px-3 py-2 text-sm text-text-primary hover:bg-surface-600"
           >
-            Next
+            {{ t('common.next') }}
           </Link>
           <Link
             v-if="pagination.current_page < pagination.last_page"
             :href="buildPaginationUrl(pagination.last_page)"
             class="rounded border border-border bg-surface-700 px-3 py-2 text-sm text-text-primary hover:bg-surface-600"
           >
-            Last
+            {{ t('common.last') }}
           </Link>
         </div>
       </div>
@@ -304,8 +324,11 @@
 <script setup>
 import { Head, Link, router } from '@inertiajs/vue3'
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
-import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { getItemTextureUrl, preloadAllTextures } from '@/utils/textures'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 const props = defineProps({
   flips: Array,
@@ -314,14 +337,19 @@ const props = defineProps({
   best_picks: Object,
   tax_meta: Object,
   has_compactor: Boolean,
+  subscriptionFeatures: { type: Object, default: () => ({}) },
 })
+
+const tier = computed(() => String(props.subscriptionFeatures?.tier || 'free'))
+const isVipOrHigher = computed(() => tier.value === 'vip' || tier.value === 'mvp')
+const isMvp = computed(() => tier.value === 'mvp')
 
 const search = ref(props.filters.search || '')
 const sortBy = ref(props.filters.sort || 'best_pick_score')
 const sortDir = ref(props.filters.dir || 'desc')
 const isRefreshing = ref(false)
 
-const AUTO_REFRESH_INTERVAL_SECONDS = 180
+const AUTO_REFRESH_INTERVAL_SECONDS = Number(props.subscriptionFeatures?.refresh_seconds || 180)
 const autoRefreshRemainingSeconds = ref(AUTO_REFRESH_INTERVAL_SECONDS)
 
 let debounceTimer = null

@@ -2,11 +2,14 @@
 import { ref, computed, onMounted, provide } from 'vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head } from '@inertiajs/vue3';
+import { useI18n } from 'vue-i18n';
 import { preloadAllTextures, setEnabledPacks, getSkinUrl, getHeadUrl, getRarityColor, getItemTextureUrl, RARITY_COLORS, SKILL_ICONS, SLAYER_ICONS, CLASS_ICONS } from '@/utils/textures';
 import ItemSlot from '@/Components/SkyBlock/ItemSlot.vue';
 import InventoryGrid from '@/Components/SkyBlock/InventoryGrid.vue';
 import PackSelector from '@/Components/SkyBlock/PackSelector.vue';
 import PlayerModel from '@/Components/SkyBlock/PlayerModel.vue';
+
+const { t } = useI18n();
 
 const props = defineProps({
     minecraftUsername: { type: String, default: null },
@@ -22,16 +25,16 @@ let activeFetchController = null;
 let fetchSequence = 0;
 
 /* ── Tab definitions (matching SkyCrypt) ─────────────────── */
-const tabs = [
-    { id: 'gear',        name: 'Gear' },
-    { id: 'inventory',   name: 'Inventory' },
-    { id: 'pets',        name: 'Pets' },
-    { id: 'skills',      name: 'Skills' },
-    { id: 'dungeons',    name: 'Dungeons' },
-    { id: 'slayer',      name: 'Slayer' },
-    { id: 'collections', name: 'Collections' },
-    { id: 'misc',        name: 'Misc' },
-];
+const tabs = computed(() => [
+    { id: 'gear',        name: t('profileStats.tabGear') },
+    { id: 'inventory',   name: t('profileStats.tabInventory') },
+    { id: 'pets',        name: t('profileStats.tabPets') },
+    { id: 'skills',      name: t('profileStats.tabSkills') },
+    { id: 'dungeons',    name: t('profileStats.tabDungeons') },
+    { id: 'slayer',      name: t('profileStats.tabSlayer') },
+    { id: 'collections', name: t('profileStats.tabCollections') },
+    { id: 'misc',        name: t('profileStats.tabMisc') },
+]);
 
 /* ── Inventory sub-tabs with SkyCrypt-style icons ────────── */
 const inventorySubTabs = computed(() => {
@@ -39,17 +42,17 @@ const inventorySubTabs = computed(() => {
         ? `https://mc-heads.net/avatar/${profileData.value.uuid}/24`
         : null;
     return [
-        { id: 'inv',              name: 'Inventory',        icon: headIcon },
-        { id: 'backpack',         name: 'Backpack',         icon: '/img/textures/chest.png' },
-        { id: 'enderchest',       name: 'Enderchest',       icon: '/img/textures/ender_chest.png' },
-        { id: 'personal_vault',   name: 'Personal Vault',   icon: '/img/textures/chest.png' },
-        { id: 'talisman_bag',     name: 'Talisman Bag',     icon: '/img/textures/ender_eye.png' },
-        { id: 'potion_bag',       name: 'Potion Bag',       icon: '/img/textures/potion_bottle_drinkable.png' },
-        { id: 'fishing_bag',      name: 'Fishing Bag',      icon: '/img/textures/fishing_rod_uncast.png' },
-        { id: 'quiver',           name: 'Quiver',           icon: '/img/textures/arrow.png' },
-        { id: 'museum',           name: 'Museum',           icon: '/img/textures/gold_ingot.png' },
-        { id: 'rift_inventory',   name: 'Rift Inventory',   icon: '/img/textures/ender_pearl.png' },
-        { id: 'rift_enderchest',  name: 'Rift Enderchest',  icon: '/img/textures/ender_chest.png' },
+        { id: 'inv',              name: t('profileStats.subInventory'),      icon: headIcon },
+        { id: 'backpack',         name: t('profileStats.subBackpack'),       icon: '/img/textures/chest.png' },
+        { id: 'enderchest',       name: t('profileStats.subEnderchest'),     icon: '/img/textures/ender_chest.png' },
+        { id: 'personal_vault',   name: t('profileStats.subPersonalVault'),   icon: '/img/textures/chest.png' },
+        { id: 'talisman_bag',     name: t('profileStats.subTalismanBag'),     icon: '/img/textures/ender_eye.png' },
+        { id: 'potion_bag',       name: t('profileStats.subPotionBag'),       icon: '/img/textures/potion_bottle_drinkable.png' },
+        { id: 'fishing_bag',      name: t('profileStats.subFishingBag'),      icon: '/img/textures/fishing_rod_uncast.png' },
+        { id: 'quiver',           name: t('profileStats.subQuiver'),          icon: '/img/textures/arrow.png' },
+        { id: 'museum',           name: t('profileStats.subMuseum'),          icon: '/img/textures/gold_ingot.png' },
+        { id: 'rift_inventory',   name: t('profileStats.subRiftInventory'),   icon: '/img/textures/ender_pearl.png' },
+        { id: 'rift_enderchest',  name: t('profileStats.subRiftEnderchest'),  icon: '/img/textures/ender_chest.png' },
     ];
 });
 
@@ -117,7 +120,7 @@ async function fetchProfile() {
         }
 
         if (!res.ok) {
-            error.value = json.error || 'Failed to fetch profile.';
+            error.value = json.error || t('profileStats.fetchFailed');
             return;
         }
 
@@ -133,9 +136,9 @@ async function fetchProfile() {
         }
 
         if (e?.name === 'AbortError') {
-            error.value = 'Request timeout. Try again in a moment.';
+            error.value = t('profileStats.requestTimeout');
         } else {
-            error.value = 'Network error. Try again.';
+            error.value = t('profileStats.networkError');
         }
     } finally {
         clearTimeout(timeoutId);
@@ -316,9 +319,9 @@ function slayerMaxTier(key) {
 
 function formatSlayerXP(slayer) {
     const lvl = slayer.level;
-    if (!lvl) return '0 XP';
-    if (lvl.currentLevel >= lvl.maxLevel) return Number(lvl.xp).toLocaleString() + ' XP';
-    return Number(lvl.xpCurrent).toLocaleString() + ' / ' + Number(lvl.xpForNext).toLocaleString() + ' XP';
+    if (!lvl) return `0 ${t('profileStats.xp')}`;
+    if (lvl.currentLevel >= lvl.maxLevel) return `${Number(lvl.xp).toLocaleString()} ${t('profileStats.xp')}`;
+    return `${Number(lvl.xpCurrent).toLocaleString()} / ${Number(lvl.xpForNext).toLocaleString()} ${t('profileStats.xp')}`;
 }
 
 /* ── Formatting helpers ──────────────────────────────────── */
@@ -333,8 +336,8 @@ function fNum(num, decimals = 2) {
 }
 
 function formatXP(skill) {
-    if (skill.level >= skill.maxLevel) return fNum(skill.xp) + ' XP';
-    return fNum(skill.xpCurrent) + ' / ' + fNum(skill.xpForNext) + ' XP';
+    if (skill.level >= skill.maxLevel) return `${fNum(skill.xp)} ${t('profileStats.xp')}`;
+    return `${fNum(skill.xpCurrent)} / ${fNum(skill.xpForNext)} ${t('profileStats.xp')}`;
 }
 
 function skillBarClass(skill) {
@@ -353,13 +356,13 @@ function timeAgo(ts) {
     if (!ts) return '—';
     const ms = Date.now() - ts;
     const years = Math.floor(ms / (365.25 * 24 * 60 * 60 * 1000));
-    if (years >= 1) return `${years} year${years > 1 ? 's' : ''} ago`;
+    if (years >= 1) return years > 1 ? t('profileStats.yearsAgo', { count: years }) : t('profileStats.yearAgo', { count: years });
     const months = Math.floor(ms / (30.44 * 24 * 60 * 60 * 1000));
-    if (months >= 1) return `${months} month${months > 1 ? 's' : ''} ago`;
+    if (months >= 1) return months > 1 ? t('profileStats.monthsAgo', { count: months }) : t('profileStats.monthAgo', { count: months });
     const days = Math.floor(ms / (24 * 60 * 60 * 1000));
-    if (days >= 1) return `${days} day${days > 1 ? 's' : ''} ago`;
+    if (days >= 1) return days > 1 ? t('profileStats.daysAgo', { count: days }) : t('profileStats.dayAgo', { count: days });
     const hours = Math.floor(ms / (60 * 60 * 1000));
-    return `${hours} hour${hours > 1 ? 's' : ''} ago`;
+    return hours > 1 ? t('profileStats.hoursAgo', { count: hours }) : t('profileStats.hourAgo', { count: hours });
 }
 
 function capitalize(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
@@ -367,15 +370,15 @@ function petName(t) { return t.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g,
 
 // ── Dungeon helpers ──
 function formatDungeonXP(level) {
-    if (!level) return '0 XP';
-    if (level.level >= (level.maxLevel || 50)) return fNum(level.xp) + ' XP';
-    return fNum(level.xpCurrent) + ' / ' + fNum(level.xpForNext) + ' XP';
+    if (!level) return `0 ${t('profileStats.xp')}`;
+    if (level.level >= (level.maxLevel || 50)) return `${fNum(level.xp)} ${t('profileStats.xp')}`;
+    return `${fNum(level.xpCurrent)} / ${fNum(level.xpForNext)} ${t('profileStats.xp')}`;
 }
 
 function formatDungeonClassXP(cls) {
-    if (!cls) return '0 XP';
-    if (cls.level >= (cls.maxLevel || 50)) return fNum(cls.xp) + ' XP';
-    return fNum(cls.xpCurrent) + ' / ' + fNum(cls.xpForNext) + ' XP';
+    if (!cls) return `0 ${t('profileStats.xp')}`;
+    if (cls.level >= (cls.maxLevel || 50)) return `${fNum(cls.xp)} ${t('profileStats.xp')}`;
+    return `${fNum(cls.xpCurrent)} / ${fNum(cls.xpForNext)} ${t('profileStats.xp')}`;
 }
 
 function dungeonLevelClass(level) {
@@ -457,7 +460,7 @@ onMounted(async () => {
 </script>
 
 <template>
-    <Head title="Profile Stats" />
+    <Head :title="t('profileStats.title')" />
 
     <AuthenticatedLayout>
         <div class="py-4">
@@ -474,7 +477,7 @@ onMounted(async () => {
                                 <input
                                     v-model="username"
                                     type="text"
-                                    placeholder="Search player..."
+                                    :placeholder="t('profileStats.searchPlaceholder')"
                                     class="w-full rounded-xl border border-border/80 bg-surface-800/80 py-3 pl-11 pr-4 text-sm text-white placeholder:text-neutral/80 transition focus:border-profit/70 focus:outline-none focus:ring-2 focus:ring-profit/25"
                                     @keyup.enter="fetchProfile"
                                 />
@@ -484,7 +487,7 @@ onMounted(async () => {
                                 :disabled="loading"
                                 class="inline-flex h-[46px] items-center justify-center rounded-xl border border-profit/35 bg-profit/20 px-6 text-sm font-semibold text-profit transition hover:bg-profit/30 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
                             >
-                                {{ loading ? 'Loading...' : 'Search' }}
+                                {{ loading ? t('profileStats.loading') : t('profileStats.search') }}
                             </button>
                         </div>
                     </div>
@@ -498,7 +501,7 @@ onMounted(async () => {
                 <!-- Loading spinner -->
                 <div v-if="loading" class="flex items-center gap-3 text-neutral">
                     <div class="animate-spin h-5 w-5 border-2 border-neutral border-t-profit rounded-full"></div>
-                    <span class="text-sm">Fetching profile data…</span>
+                    <span class="text-sm">{{ t('profileStats.fetchingProfile') }}</span>
                 </div>
 
                 <!-- ════════════════════════════════════════════════════════ -->
@@ -509,17 +512,17 @@ onMounted(async () => {
                     <!-- ═══ STATS SUMMARY BAR ═══ -->
                     <div v-if="currentData" class="border border-profit/30 bg-profit/5 rounded px-4 py-2 mb-4">
                         <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
-                            <span class="text-neutral">Joined: <b class="text-white">{{ timeAgo(currentData.first_join) }}</b></span>
+                            <span class="text-neutral">{{ t('profileStats.joined') }} <b class="text-white">{{ timeAgo(currentData.first_join) }}</b></span>
                             <span class="text-border-light">·</span>
-                            <span class="text-neutral">Purse: <b class="text-rarity-legendary">{{ fNum(currentData.networth?.purse) }} Coins</b></span>
+                            <span class="text-neutral">{{ t('profileStats.purse') }} <b class="text-rarity-legendary">{{ fNum(currentData.networth?.purse) }} {{ t('profileStats.coins') }}</b></span>
                             <span class="text-border-light">·</span>
-                            <span class="text-neutral">Bank: <b class="text-rarity-legendary">{{ fNum(currentData.networth?.bank) }} Coins</b></span>
+                            <span class="text-neutral">{{ t('profileStats.bank') }} <b class="text-rarity-legendary">{{ fNum(currentData.networth?.bank) }} {{ t('profileStats.coins') }}</b></span>
                             <span class="text-border-light">·</span>
-                            <span class="text-neutral">Skill Avg: <b class="text-white">{{ currentData.average_skill_level }}</b></span>
+                            <span class="text-neutral">{{ t('profileStats.skillAvg') }} <b class="text-white">{{ currentData.average_skill_level }}</b></span>
                             <span class="text-border-light">·</span>
-                            <span class="text-neutral">Fairy Souls: <b class="text-white">{{ currentData.fairy_souls ?? '—' }} / 267</b></span>
+                            <span class="text-neutral">{{ t('profileStats.fairySouls') }} <b class="text-white">{{ currentData.fairy_souls ?? '—' }} {{ t('profileStats.fairySoulsMax') }}</b></span>
                             <span class="text-border-light">·</span>
-                            <span class="text-neutral">Networth: <b class="text-rarity-legendary">{{ fNum(currentData.networth?.networth) }}</b></span>
+                            <span class="text-neutral">{{ t('profileStats.networth') }} <b class="text-rarity-legendary">{{ fNum(currentData.networth?.networth) }}</b></span>
                         </div>
                     </div>
 
@@ -541,7 +544,7 @@ onMounted(async () => {
                             <a :href="`https://sky.shiiyu.moe/stats/${profileData.username}/${currentProfile.cute_name}`"
                                target="_blank"
                                class="px-2.5 py-1 text-[11px] rounded border border-border text-neutral hover:text-white transition">
-                                SkyCrypt ↗
+                                {{ t('profileStats.skyCrypt') }}
                             </a>
                         </div>
                     </div>
@@ -587,12 +590,12 @@ onMounted(async () => {
 
                                 <!-- ARMOR -->
                                 <section v-if="currentData?.armor?.length">
-                                    <h3 class="stat-header">Armor</h3>
+                                    <h3 class="stat-header">{{ t('profileStats.armor') }}</h3>
                                     <div v-if="currentData.armor.some(a => a)" class="pieces">
                                         <ItemSlot v-for="(item, i) in [...currentData.armor].reverse()" :key="'a'+i" :item="item" />
                                     </div>
                                     <div v-if="Object.keys(armorStats).length" class="mt-3 text-xs font-semibold">
-                                        <span class="text-neutral">Bonus: </span>
+                                        <span class="text-neutral">{{ t('profileStats.bonus') }}</span>
                                         <template v-for="(stat, key, idx) in armorStats" :key="key">
                                             <span v-if="idx > 0" class="text-neutral opacity-50"> // </span>
                                             <span :style="{ color: getStatColor(key) }">{{ formatStat(key, stat) }}</span>
@@ -602,12 +605,12 @@ onMounted(async () => {
 
                                 <!-- EQUIPMENT -->
                                 <section v-if="currentData?.equipment?.length">
-                                    <h3 class="stat-header">Equipment</h3>
+                                    <h3 class="stat-header">{{ t('profileStats.equipment') }}</h3>
                                     <div class="pieces">
                                         <ItemSlot v-for="(item, i) in [...currentData.equipment].reverse()" :key="'e'+i" :item="item" />
                                     </div>
                                     <div v-if="Object.keys(equipmentStats).length" class="mt-3 text-xs font-semibold">
-                                        <span class="text-neutral">Bonus: </span>
+                                        <span class="text-neutral">{{ t('profileStats.bonus') }}</span>
                                         <template v-for="(stat, key, idx) in equipmentStats" :key="key">
                                             <span v-if="idx > 0" class="text-neutral opacity-50"> // </span>
                                             <span :style="{ color: getStatColor(key) }">{{ formatStat(key, stat) }}</span>
@@ -617,7 +620,7 @@ onMounted(async () => {
 
                                 <!-- WARDROBE -->
                                 <section v-if="currentData?.wardrobe?.length">
-                                    <h3 class="stat-header">Wardrobe</h3>
+                                    <h3 class="stat-header">{{ t('profileStats.wardrobe') }}</h3>
                                     <div class="wardrobe">
                                         <div v-for="(set, si) in currentData.wardrobe" :key="si"
                                              class="wardrobe-set"
@@ -634,9 +637,9 @@ onMounted(async () => {
 
                                 <!-- WEAPONS -->
                                 <section v-if="currentData?.weapons?.length">
-                                    <h3 class="stat-header">Weapons</h3>
+                                    <h3 class="stat-header">{{ t('profileStats.weapons') }}</h3>
                                     <div v-if="activeWeapon" class="mb-3 text-sm font-semibold">
-                                        <span class="text-neutral">Active Weapon: </span>
+                                        <span class="text-neutral">{{ t('profileStats.activeWeapon') }}</span>
                                         <span :style="{ color: getRarityColor(activeWeapon.rarity) }">
                                             {{ activeWeapon.name }}
                                         </span>
@@ -649,7 +652,7 @@ onMounted(async () => {
                                 <!-- No gear fallback -->
                                 <div v-if="!currentData?.armor?.length && !currentData?.equipment?.length && !currentData?.weapons?.length"
                                      class="text-neutral text-sm py-8 text-center">
-                                    No gear data available. The player's API settings may not expose inventory data.
+                                    {{ t('profileStats.noGearData') }}
                                 </div>
                             </div>
                         </div>
@@ -684,8 +687,8 @@ onMounted(async () => {
                                                  :src="getItemTextureUrl(bp.icon)"
                                                  class="storage-card-img" loading="lazy" draggable="false" />
                                             <div class="storage-card-info">
-                                                <span class="storage-card-name">{{ bp.icon?.name || 'Backpack ' + (bp.slot + 1) }}</span>
-                                                <span class="storage-card-count">{{ bp.count }} items</span>
+                                                <span class="storage-card-name">{{ bp.icon?.name || `${t('profileStats.backpack')} ${bp.slot + 1}` }}</span>
+                                                <span class="storage-card-count">{{ bp.count }} {{ t('profileStats.items') }}</span>
                                             </div>
                                             <span class="storage-card-toggle">{{ expandedBackpack === idx ? '▲' : '▼' }}</span>
                                         </button>
@@ -697,7 +700,7 @@ onMounted(async () => {
                                     </div>
                                 </div>
                                 <div v-else class="text-neutral text-sm py-8 text-center">
-                                    No backpack data available.
+                                    {{ t('profileStats.noBackpackData') }}
                                 </div>
                             </div>
 
@@ -713,8 +716,8 @@ onMounted(async () => {
                                             <img src="/img/textures/ender_chest.png"
                                                  class="storage-card-img" loading="lazy" draggable="false" />
                                             <div class="storage-card-info">
-                                                <span class="storage-card-name">Page {{ idx + 1 }}</span>
-                                                <span class="storage-card-count">{{ page.count }} items</span>
+                                                <span class="storage-card-name">{{ t('profileStats.page') }} {{ idx + 1 }}</span>
+                                                <span class="storage-card-count">{{ page.count }} {{ t('profileStats.items') }}</span>
                                             </div>
                                             <span class="storage-card-toggle">{{ expandedEnderPage === idx ? '▲' : '▼' }}</span>
                                         </button>
@@ -726,7 +729,7 @@ onMounted(async () => {
                                     </div>
                                 </div>
                                 <div v-else class="text-neutral text-sm py-8 text-center">
-                                    No ender chest data available.
+                                    {{ t('profileStats.noEnderChestData') }}
                                 </div>
                             </div>
 
@@ -742,8 +745,8 @@ onMounted(async () => {
                                             <img src="/img/textures/ender_chest.png"
                                                  class="storage-card-img" loading="lazy" draggable="false" />
                                             <div class="storage-card-info">
-                                                <span class="storage-card-name">Page {{ idx + 1 }}</span>
-                                                <span class="storage-card-count">{{ page.count }} items</span>
+                                                <span class="storage-card-name">{{ t('profileStats.page') }} {{ idx + 1 }}</span>
+                                                <span class="storage-card-count">{{ page.count }} {{ t('profileStats.items') }}</span>
                                             </div>
                                             <span class="storage-card-toggle">{{ expandedRiftEnderPage === idx ? '▲' : '▼' }}</span>
                                         </button>
@@ -755,7 +758,7 @@ onMounted(async () => {
                                     </div>
                                 </div>
                                 <div v-else class="text-neutral text-sm py-8 text-center">
-                                    No rift ender chest data available.
+                                    {{ t('profileStats.noRiftEnderChestData') }}
                                 </div>
                             </div>
 
@@ -765,28 +768,28 @@ onMounted(async () => {
                                     <!-- Museum summary -->
                                     <div class="mb-4 space-y-1 text-sm">
                                         <div>
-                                            <span class="text-neutral">Museum Value: </span>
-                                            <span class="text-legendary font-bold">{{ fNum(museumData.value) }} Coins</span>
+                                            <span class="text-neutral">{{ t('profileStats.museumValue') }}</span>
+                                            <span class="text-legendary font-bold">{{ fNum(museumData.value) }} {{ t('profileStats.coins') }}</span>
                                         </div>
                                         <div>
-                                            <span class="text-neutral">Appraisal: </span>
+                                            <span class="text-neutral">{{ t('profileStats.appraisal') }}</span>
                                             <span :class="museumData.appraisal ? 'text-profit' : 'text-loss'">
-                                                {{ museumData.appraisal ? 'Unlocked' : 'Locked' }}
+                                                {{ museumData.appraisal ? t('profileStats.unlocked') : t('profileStats.locked') }}
                                             </span>
                                         </div>
                                         <div>
-                                            <span class="text-neutral">Items Donated: </span>
+                                            <span class="text-neutral">{{ t('profileStats.itemsDonated') }}</span>
                                             <span class="text-white font-bold">{{ museumData.items?.length ?? 0 }}</span>
                                         </div>
                                         <div v-if="museumData.special?.length > 0">
-                                            <span class="text-neutral">Special Items: </span>
+                                            <span class="text-neutral">{{ t('profileStats.specialItems') }}</span>
                                             <span class="text-white font-bold">{{ museumData.special.length }}</span>
                                         </div>
                                     </div>
 
                                     <!-- Museum items grid -->
                                     <div v-if="museumData.items?.length > 0">
-                                        <h4 class="text-white text-sm font-bold mb-2">Donated Items</h4>
+                                        <h4 class="text-white text-sm font-bold mb-2">{{ t('profileStats.donatedItems') }}</h4>
                                         <div class="inventory-grid">
                                             <template v-for="(mItem, idx) in museumData.items" :key="'museum-'+idx">
                                                 <template v-for="(item, jdx) in (mItem.data ?? [])" :key="'mi-'+idx+'-'+jdx">
@@ -798,7 +801,7 @@ onMounted(async () => {
 
                                     <!-- Special items grid -->
                                     <div v-if="museumData.special?.length > 0" class="mt-4">
-                                        <h4 class="text-white text-sm font-bold mb-2">Special Items</h4>
+                                        <h4 class="text-white text-sm font-bold mb-2">{{ t('profileStats.specialItemsTitle') }}</h4>
                                         <div class="inventory-grid">
                                             <template v-for="(mItem, idx) in museumData.special" :key="'special-'+idx">
                                                 <template v-for="(item, jdx) in (mItem.data ?? [])" :key="'si-'+idx+'-'+jdx">
@@ -809,7 +812,7 @@ onMounted(async () => {
                                     </div>
                                 </div>
                                 <div v-else class="text-neutral text-sm py-8 text-center">
-                                    No museum data available.
+                                    {{ t('profileStats.noMuseumData') }}
                                 </div>
                             </div>
 
@@ -822,10 +825,10 @@ onMounted(async () => {
                                 </div>
                                 <div v-else class="text-neutral text-sm py-8 text-center">
                                     <template v-if="currentData?.inv_disabled">
-                                        Inventory API is disabled for this player.
+                                        {{ t('profileStats.inventoryApiDisabled') }}
                                     </template>
                                     <template v-else>
-                                        No data available for this inventory type.
+                                        {{ t('profileStats.noInventoryData') }}
                                     </template>
                                 </div>
                             </div>
@@ -840,31 +843,31 @@ onMounted(async () => {
                             <!-- Summary stats -->
                             <div class="mb-6 space-y-1 text-sm font-semibold">
                                 <div>
-                                    <span class="text-neutral">Unique Accessories: </span>
+                                    <span class="text-neutral">{{ t('profileStats.uniqueAccessories') }}</span>
                                     <span class="text-white">{{ accessoryStats.unique }} / {{ accessoryStats.total }}</span>
                                 </div>
                                 <div>
-                                    <span class="text-neutral">Recombobulated: </span>
+                                    <span class="text-neutral">{{ t('profileStats.recombobulated') }}</span>
                                     <span class="text-white">{{ accessoryStats.recombobulated }} / {{ accessoryStats.total }}</span>
                                 </div>
                                 <div v-if="accessoryBag.selected_power">
-                                    <span class="text-neutral">Selected Power: </span>
+                                    <span class="text-neutral">{{ t('profileStats.selectedPower') }}</span>
                                     <span class="text-profit">{{ capitalize(accessoryBag.selected_power) }}</span>
                                 </div>
                                 <div v-if="accessoryBag.highest_magical_power">
-                                    <span class="text-neutral">Magical Power: </span>
+                                    <span class="text-neutral">{{ t('profileStats.magicalPower') }}</span>
                                     <span class="text-rarity-mythic">{{ accessoryBag.highest_magical_power }}</span>
                                 </div>
                             </div>
 
                             <!-- Active Accessories (SkyCrypt "pieces" style) -->
-                            <h3 class="stat-header">Active Accessories</h3>
+                            <h3 class="stat-header">{{ t('profileStats.activeAccessories') }}</h3>
                             <div class="pieces">
                                 <ItemSlot v-for="(item, i) in currentData.accessories" :key="i" :item="item" />
                             </div>
                         </div>
                         <div v-else class="text-neutral text-sm py-8 text-center">
-                            No accessory data available.
+                            {{ t('profileStats.noAccessoryData') }}
                         </div>
                     </div>
 
@@ -876,30 +879,30 @@ onMounted(async () => {
                             <!-- ── Stats header ─────────────────────────── -->
                             <div class="pets-stats-header">
                                 <div class="pets-stat">
-                                    <span class="pets-stat-label">Unique Pets</span>
+                                    <span class="pets-stat-label">{{ t('profileStats.uniquePets') }}</span>
                                     <span class="pets-stat-value">{{ currentData.pets.amount }} / {{ currentData.pets.total }}</span>
                                 </div>
                                 <div class="pets-stat">
-                                    <span class="pets-stat-label">Unique Pet Skins</span>
+                                    <span class="pets-stat-label">{{ t('profileStats.uniquePetSkins') }}</span>
                                     <span class="pets-stat-value">{{ currentData.pets.amountSkins }}</span>
                                 </div>
                                 <div class="pets-stat">
-                                    <span class="pets-stat-label">Pet Score</span>
-                                    <span class="pets-stat-value">{{ currentData.pets.petScore?.total ?? 0 }} <span class="pets-stat-mf">(+{{ currentData.pets.petScore?.magicFind ?? 0 }} ✯ Magic Find)</span></span>
+                                    <span class="pets-stat-label">{{ t('profileStats.petScore') }}</span>
+                                    <span class="pets-stat-value">{{ currentData.pets.petScore?.total ?? 0 }} <span class="pets-stat-mf">(+{{ currentData.pets.petScore?.magicFind ?? 0 }} ✯ {{ t('profileStats.magicFind') }})</span></span>
                                 </div>
                                 <div class="pets-stat">
-                                    <span class="pets-stat-label">Total Candies Used</span>
+                                    <span class="pets-stat-label">{{ t('profileStats.totalCandiesUsed') }}</span>
                                     <span class="pets-stat-value">{{ (currentData.pets.totalCandy ?? 0).toLocaleString() }}</span>
                                 </div>
                                 <div class="pets-stat">
-                                    <span class="pets-stat-label">Total Pet XP</span>
+                                    <span class="pets-stat-label">{{ t('profileStats.totalPetXP') }}</span>
                                     <span class="pets-stat-value">{{ fNum(currentData.pets.totalPetXp ?? 0) }}</span>
                                 </div>
                             </div>
 
                             <!-- ── Active Pet ───────────────────────────── -->
                             <template v-if="activePet">
-                                <h3 class="pets-section-title">Active Pet</h3>
+                                <h3 class="pets-section-title">{{ t('profileStats.activePet') }}</h3>
                                 <div class="pets-active-section">
                                     <div class="pets-active-item">
                                         <ItemSlot :item="activePet" />
@@ -913,12 +916,12 @@ onMounted(async () => {
                             </template>
 
                             <!-- ── Other Pets (unique, not active) ──────── -->
-                            <h3 class="pets-section-title">Pets</h3>
+                            <h3 class="pets-section-title">{{ t('profileStats.pets') }}</h3>
                             <div class="pets-grid">
                                 <div v-for="(pet, i) in displayUniquePets" :key="'u-'+i" class="pets-grid-item">
                                     <ItemSlot :item="pet" />
                                     <span class="pets-level-label" :style="{ color: petTierColors[pet.tier] || '#AAAAAA' }">
-                                        Lvl {{ pet.level?.level ?? '?' }}
+                                        {{ t('profileStats.level') }} {{ pet.level?.level ?? '?' }}
                                     </span>
                                 </div>
                             </div>
@@ -927,13 +930,13 @@ onMounted(async () => {
                             <template v-if="currentData.pets.otherPets?.length > 0">
                                 <div class="pets-collapsible">
                                     <button class="pets-collapsible-btn" @click="showMorePets = !showMorePets">
-                                        {{ showMorePets ? '▼' : '▶' }} Show More Pets ({{ currentData.pets.otherPets.length }})
+                                        {{ showMorePets ? '▼' : '▶' }} {{ t('profileStats.showMorePets') }} ({{ currentData.pets.otherPets.length }})
                                     </button>
                                     <div v-if="showMorePets" class="pets-grid" style="margin-top: 8px;">
                                         <div v-for="(pet, i) in currentData.pets.otherPets" :key="'o-'+i" class="pets-grid-item">
                                             <ItemSlot :item="pet" />
                                             <span class="pets-level-label" :style="{ color: petTierColors[pet.tier] || '#AAAAAA' }">
-                                                Lvl {{ pet.level?.level ?? '?' }}
+                                                {{ t('profileStats.level') }} {{ pet.level?.level ?? '?' }}
                                             </span>
                                         </div>
                                     </div>
@@ -944,7 +947,7 @@ onMounted(async () => {
                             <template v-if="currentData.pets.missing?.length > 0">
                                 <div class="pets-collapsible">
                                     <button class="pets-collapsible-btn" @click="showMissingPets = !showMissingPets">
-                                        {{ showMissingPets ? '▼' : '▶' }} Missing Pets ({{ currentData.pets.missing.length }})
+                                        {{ showMissingPets ? '▼' : '▶' }} {{ t('profileStats.missingPets') }} ({{ currentData.pets.missing.length }})
                                     </button>
                                     <div v-if="showMissingPets" class="pets-grid pets-missing-grid" style="margin-top: 8px;">
                                         <div v-for="(pet, i) in currentData.pets.missing" :key="'m-'+i" class="pets-grid-item pets-missing-item">
@@ -957,7 +960,7 @@ onMounted(async () => {
                                 </div>
                             </template>
                         </template>
-                        <div v-else class="text-neutral text-sm py-8 text-center">No pet data available.</div>
+                        <div v-else class="text-neutral text-sm py-8 text-center">{{ t('profileStats.noPetData') }}</div>
                     </div>
 
                     <!-- ═══════════════════════════════════════════════════ -->
@@ -987,14 +990,14 @@ onMounted(async () => {
                                 <div v-if="currentData?.skyblock_level" class="skill-row mb-4">
                                     <div class="skill-label">
                                         <span class="skill-icon">✫</span>
-                                        <span class="skill-name" style="color: #FFAA00">Level</span>
+                                        <span class="skill-name" style="color: #FFAA00">{{ t('profileStats.level') }}</span>
                                         <span class="skill-level" style="color: #FFAA00">{{ currentData.skyblock_level.level }}</span>
                                     </div>
                                     <div class="skill-bar-track">
                                         <div class="skill-bar-fill skill-bar-fill-gold"
                                              :style="{ width: (currentData.skyblock_level.progress * 100) + '%' }"></div>
                                         <span class="skill-bar-text">
-                                            {{ currentData.skyblock_level.xpCurrent }} / {{ currentData.skyblock_level.xpForNext }} XP
+                                            {{ currentData.skyblock_level.xpCurrent }} / {{ currentData.skyblock_level.xpForNext }} {{ t('profileStats.xp') }}
                                         </span>
                                     </div>
                                 </div>
@@ -1052,7 +1055,7 @@ onMounted(async () => {
                         <div v-if="slayerData && Object.keys(slayerData.slayers).length > 0">
                             <!-- Total Slayer XP -->
                             <div class="mb-4 text-sm text-neutral">
-                                Total Slayer XP: <b class="text-white">{{ Number(slayerData.total_slayer_xp).toLocaleString() }}</b>
+                                {{ t('profileStats.totalSlayerXP') }} <b class="text-white">{{ Number(slayerData.total_slayer_xp).toLocaleString() }}</b>
                             </div>
 
                             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -1067,18 +1070,18 @@ onMounted(async () => {
                                     <!-- Tier kills table -->
                                     <div class="slayer-tiers">
                                         <div v-for="t in slayerMaxTier(key)" :key="t" class="slayer-tier-col">
-                                            <span class="slayer-tier-label">TIER {{ romanNumeral(t) }}</span>
+                                            <span class="slayer-tier-label">{{ t('profileStats.tier') }} {{ romanNumeral(t) }}</span>
                                             <span class="slayer-tier-value">{{ (slayer.kills?.[t] ?? 0).toLocaleString() }}</span>
                                         </div>
                                         <div class="slayer-tier-col">
-                                            <span class="slayer-tier-label">TOTAL</span>
+                                            <span class="slayer-tier-label">{{ t('profileStats.total') }}</span>
                                             <span class="slayer-tier-value">{{ (slayer.total_kills ?? 0).toLocaleString() }}</span>
                                         </div>
                                     </div>
 
                                     <!-- Level label -->
                                     <div class="slayer-level-label">
-                                        {{ capitalize(key) }} Level {{ slayer.level?.currentLevel ?? 0 }}
+                                        {{ capitalize(key) }} {{ t('profileStats.level') }} {{ slayer.level?.currentLevel ?? 0 }}
                                     </div>
 
                                     <!-- XP progress bar -->
@@ -1091,7 +1094,7 @@ onMounted(async () => {
                                 </div>
                             </div>
                         </div>
-                        <div v-else class="text-neutral text-sm py-8 text-center">No slayer data available.</div>
+                        <div v-else class="text-neutral text-sm py-8 text-center">{{ t('profileStats.noSlayerData') }}</div>
                     </div>
 
                     <!-- ═══════════════════════════════════════════════════ -->
@@ -1105,7 +1108,7 @@ onMounted(async () => {
                                 <div class="skill-row">
                                     <div class="skill-label">
                                         <span class="skill-icon">💀</span>
-                                        <span class="skill-name">Catacombs</span>
+                                        <span class="skill-name">{{ t('profileStats.catacombs') }}</span>
                                         <span class="skill-level" :class="dungeonLevelClass(currentData.dungeons.catacombs?.level)">
                                             {{ currentData.dungeons.catacombs?.level?.level ?? 0 }}
                                         </span>
@@ -1141,31 +1144,31 @@ onMounted(async () => {
                             <!-- ── Dungeon summary info ── -->
                             <div class="dungeon-summary">
                                 <div class="dungeon-summary-row">
-                                    <span class="dungeon-stat-label">Selected Class:</span>
-                                    <span class="dungeon-stat-value">{{ capitalize(currentData.dungeons.selected_class || 'none') }}</span>
+                                    <span class="dungeon-stat-label">{{ t('profileStats.selectedClass') }}</span>
+                                    <span class="dungeon-stat-value">{{ capitalize(currentData.dungeons.selected_class || t('profileStats.none')) }}</span>
                                 </div>
                                 <div class="dungeon-summary-row">
-                                    <span class="dungeon-stat-label" :class="{ 'text-gold': allClassesMaxed }">Class Average:</span>
+                                    <span class="dungeon-stat-label" :class="{ 'text-gold': allClassesMaxed }">{{ t('profileStats.classAverage') }}</span>
                                     <span class="dungeon-stat-value" :class="{ 'text-gold': allClassesMaxed }">{{ currentData.dungeons.class_average?.toFixed(2) ?? '0.00' }}</span>
                                 </div>
                                 <div class="dungeon-summary-row">
-                                    <span class="dungeon-stat-label" :class="{ 'text-gold': currentData.dungeons.highest_floor === 7 }">Highest Floor Beaten (Normal):</span>
+                                    <span class="dungeon-stat-label" :class="{ 'text-gold': currentData.dungeons.highest_floor === 7 }">{{ t('profileStats.highestFloorNormal') }}</span>
                                     <span class="dungeon-stat-value" :class="{ 'text-gold': currentData.dungeons.highest_floor === 7 }">{{ currentData.dungeons.highest_floor !== null ? currentData.dungeons.highest_floor : '—' }}</span>
                                 </div>
                                 <div v-if="currentData.dungeons.highest_master !== null" class="dungeon-summary-row">
-                                    <span class="dungeon-stat-label" :class="{ 'text-gold': currentData.dungeons.highest_master === 7 }">Highest Floor Beaten (Master):</span>
+                                    <span class="dungeon-stat-label" :class="{ 'text-gold': currentData.dungeons.highest_master === 7 }">{{ t('profileStats.highestFloorMaster') }}</span>
                                     <span class="dungeon-stat-value" :class="{ 'text-gold': currentData.dungeons.highest_master === 7 }">{{ currentData.dungeons.highest_master }}</span>
                                 </div>
                                 <div class="dungeon-summary-row">
-                                    <span class="dungeon-stat-label">Secrets Found:</span>
+                                    <span class="dungeon-stat-label">{{ t('profileStats.secretsFound') }}</span>
                                     <span class="dungeon-stat-value">{{ (currentData.dungeons.secrets_found ?? 0).toLocaleString() }}</span>
-                                    <span class="dungeon-stat-note">({{ currentData.dungeons.secrets_per_run ?? 0 }} S/R)</span>
+                                    <span class="dungeon-stat-note">({{ currentData.dungeons.secrets_per_run ?? 0 }} {{ t('profileStats.secretsPerRun') }})</span>
                                 </div>
                             </div>
 
                             <!-- ── Normal Catacombs floors ── -->
                             <div v-if="currentData.dungeons.floors?.length" class="dungeon-floors-section">
-                                <h3 class="dungeon-section-title">Catacombs</h3>
+                                <h3 class="dungeon-section-title">{{ t('profileStats.catacombs') }}</h3>
                                 <div class="dungeon-floor-grid">
                                     <div v-for="floor in currentData.dungeons.floors" :key="'f'+floor.index" class="dungeon-floor-card">
                                         <div class="dungeon-floor-header">
@@ -1174,72 +1177,72 @@ onMounted(async () => {
                                         <div class="dungeon-floor-body">
                                             <!-- Floor Stats -->
                                             <details v-if="Object.keys(floor.stats).length">
-                                                <summary class="dungeon-details-toggle">Floor Stats</summary>
+                                                <summary class="dungeon-details-toggle">{{ t('profileStats.floorStats') }}</summary>
                                                 <div class="dungeon-details-content">
                                                     <div v-for="(val, key) in floor.stats" :key="key" class="dungeon-detail-row">
                                                         <span class="dungeon-detail-label">{{ formatStatName(key) }}:</span>
                                                         <span class="dungeon-detail-value">{{ formatFloorStat(key, val) }}</span>
                                                     </div>
                                                     <div v-if="floor.most_damage" class="dungeon-detail-row">
-                                                        <span class="dungeon-detail-label">Most Damage:</span>
+                                                        <span class="dungeon-detail-label">{{ t('profileStats.mostDamage') }}</span>
                                                         <span class="dungeon-detail-value">{{ fNum(floor.most_damage.value) }} <span class="dungeon-stat-note">({{ capitalize(floor.most_damage.class) }})</span></span>
                                                     </div>
                                                 </div>
                                             </details>
                                             <!-- Best Run -->
                                             <details v-if="floor.best_run">
-                                                <summary class="dungeon-details-toggle">Best Run</summary>
+                                                <summary class="dungeon-details-toggle">{{ t('profileStats.bestRun') }}</summary>
                                                 <div class="dungeon-details-content">
                                                     <div class="dungeon-detail-row">
-                                                        <span class="dungeon-detail-label">Grade:</span>
+                                                        <span class="dungeon-detail-label">{{ t('profileStats.grade') }}</span>
                                                         <span class="dungeon-detail-value dungeon-grade" :class="'grade-' + floor.best_run.grade?.replace('+','plus')">{{ floor.best_run.grade }}</span>
                                                     </div>
                                                     <div v-if="floor.best_run.timestamp" class="dungeon-detail-row">
-                                                        <span class="dungeon-detail-label">Timestamp:</span>
+                                                        <span class="dungeon-detail-label">{{ t('profileStats.timestamp') }}</span>
                                                         <span class="dungeon-detail-value">{{ timeAgo(floor.best_run.timestamp) }}</span>
                                                     </div>
                                                     <div class="dungeon-detail-row">
-                                                        <span class="dungeon-detail-label">Score Exploration:</span>
+                                                        <span class="dungeon-detail-label">{{ t('profileStats.scoreExploration') }}</span>
                                                         <span class="dungeon-detail-value">{{ floor.best_run.score_exploration }}</span>
                                                     </div>
                                                     <div class="dungeon-detail-row">
-                                                        <span class="dungeon-detail-label">Score Speed:</span>
+                                                        <span class="dungeon-detail-label">{{ t('profileStats.scoreSpeed') }}</span>
                                                         <span class="dungeon-detail-value">{{ floor.best_run.score_speed }}</span>
                                                     </div>
                                                     <div class="dungeon-detail-row">
-                                                        <span class="dungeon-detail-label">Score Skill:</span>
+                                                        <span class="dungeon-detail-label">{{ t('profileStats.scoreSkill') }}</span>
                                                         <span class="dungeon-detail-value">{{ floor.best_run.score_skill }}</span>
                                                     </div>
                                                     <div class="dungeon-detail-row">
-                                                        <span class="dungeon-detail-label">Score Bonus:</span>
+                                                        <span class="dungeon-detail-label">{{ t('profileStats.scoreBonus') }}</span>
                                                         <span class="dungeon-detail-value">{{ floor.best_run.score_bonus }}</span>
                                                     </div>
                                                     <div v-if="floor.best_run.dungeon_class" class="dungeon-detail-row">
-                                                        <span class="dungeon-detail-label">Dungeon Class:</span>
+                                                        <span class="dungeon-detail-label">{{ t('profileStats.dungeonClass') }}</span>
                                                         <span class="dungeon-detail-value">{{ capitalize(floor.best_run.dungeon_class) }}</span>
                                                     </div>
                                                     <div v-if="floor.best_run.elapsed_time" class="dungeon-detail-row">
-                                                        <span class="dungeon-detail-label">Elapsed Time:</span>
+                                                        <span class="dungeon-detail-label">{{ t('profileStats.elapsedTime') }}</span>
                                                         <span class="dungeon-detail-value">{{ formatElapsed(floor.best_run.elapsed_time) }}</span>
                                                     </div>
                                                     <div class="dungeon-detail-row">
-                                                        <span class="dungeon-detail-label">Damage Dealt:</span>
+                                                        <span class="dungeon-detail-label">{{ t('profileStats.damageDealt') }}</span>
                                                         <span class="dungeon-detail-value">{{ fNum(floor.best_run.damage_dealt) }}</span>
                                                     </div>
                                                     <div class="dungeon-detail-row">
-                                                        <span class="dungeon-detail-label">Deaths:</span>
+                                                        <span class="dungeon-detail-label">{{ t('profileStats.deaths') }}</span>
                                                         <span class="dungeon-detail-value">{{ floor.best_run.deaths }}</span>
                                                     </div>
                                                     <div class="dungeon-detail-row">
-                                                        <span class="dungeon-detail-label">Mobs Killed:</span>
+                                                        <span class="dungeon-detail-label">{{ t('profileStats.mobsKilled') }}</span>
                                                         <span class="dungeon-detail-value">{{ floor.best_run.mobs_killed }}</span>
                                                     </div>
                                                     <div class="dungeon-detail-row">
-                                                        <span class="dungeon-detail-label">Secrets Found:</span>
+                                                        <span class="dungeon-detail-label">{{ t('profileStats.secretsFound') }}</span>
                                                         <span class="dungeon-detail-value">{{ floor.best_run.secrets_found }}</span>
                                                     </div>
                                                     <div class="dungeon-detail-row">
-                                                        <span class="dungeon-detail-label">Damage Mitigated:</span>
+                                                        <span class="dungeon-detail-label">{{ t('profileStats.damageMitigated') }}</span>
                                                         <span class="dungeon-detail-value">{{ fNum(floor.best_run.damage_mitigated) }}</span>
                                                     </div>
                                                 </div>
@@ -1251,7 +1254,7 @@ onMounted(async () => {
 
                             <!-- ── Master Catacombs floors ── -->
                             <div v-if="currentData.dungeons.master_floors?.length" class="dungeon-floors-section">
-                                <h3 class="dungeon-section-title">Master Catacombs</h3>
+                                <h3 class="dungeon-section-title">{{ t('profileStats.masterCatacombs') }}</h3>
                                 <div class="dungeon-floor-grid">
                                     <div v-for="floor in currentData.dungeons.master_floors" :key="'m'+floor.index" class="dungeon-floor-card dungeon-floor-master">
                                         <div class="dungeon-floor-header">
@@ -1259,40 +1262,40 @@ onMounted(async () => {
                                         </div>
                                         <div class="dungeon-floor-body">
                                             <details v-if="Object.keys(floor.stats).length">
-                                                <summary class="dungeon-details-toggle">Floor Stats</summary>
+                                                <summary class="dungeon-details-toggle">{{ t('profileStats.floorStats') }}</summary>
                                                 <div class="dungeon-details-content">
                                                     <div v-for="(val, key) in floor.stats" :key="key" class="dungeon-detail-row">
                                                         <span class="dungeon-detail-label">{{ formatStatName(key) }}:</span>
                                                         <span class="dungeon-detail-value">{{ formatFloorStat(key, val) }}</span>
                                                     </div>
                                                     <div v-if="floor.most_damage" class="dungeon-detail-row">
-                                                        <span class="dungeon-detail-label">Most Damage:</span>
+                                                        <span class="dungeon-detail-label">{{ t('profileStats.mostDamage') }}</span>
                                                         <span class="dungeon-detail-value">{{ fNum(floor.most_damage.value) }} <span class="dungeon-stat-note">({{ capitalize(floor.most_damage.class) }})</span></span>
                                                     </div>
                                                 </div>
                                             </details>
                                             <details v-if="floor.best_run">
-                                                <summary class="dungeon-details-toggle">Best Run</summary>
+                                                <summary class="dungeon-details-toggle">{{ t('profileStats.bestRun') }}</summary>
                                                 <div class="dungeon-details-content">
                                                     <div class="dungeon-detail-row">
-                                                        <span class="dungeon-detail-label">Grade:</span>
+                                                        <span class="dungeon-detail-label">{{ t('profileStats.grade') }}</span>
                                                         <span class="dungeon-detail-value dungeon-grade" :class="'grade-' + floor.best_run.grade?.replace('+','plus')">{{ floor.best_run.grade }}</span>
                                                     </div>
                                                     <div v-if="floor.best_run.timestamp" class="dungeon-detail-row">
-                                                        <span class="dungeon-detail-label">Timestamp:</span>
+                                                        <span class="dungeon-detail-label">{{ t('profileStats.timestamp') }}</span>
                                                         <span class="dungeon-detail-value">{{ timeAgo(floor.best_run.timestamp) }}</span>
                                                     </div>
-                                                    <div class="dungeon-detail-row"><span class="dungeon-detail-label">Score Exploration:</span><span class="dungeon-detail-value">{{ floor.best_run.score_exploration }}</span></div>
-                                                    <div class="dungeon-detail-row"><span class="dungeon-detail-label">Score Speed:</span><span class="dungeon-detail-value">{{ floor.best_run.score_speed }}</span></div>
-                                                    <div class="dungeon-detail-row"><span class="dungeon-detail-label">Score Skill:</span><span class="dungeon-detail-value">{{ floor.best_run.score_skill }}</span></div>
-                                                    <div class="dungeon-detail-row"><span class="dungeon-detail-label">Score Bonus:</span><span class="dungeon-detail-value">{{ floor.best_run.score_bonus }}</span></div>
-                                                    <div v-if="floor.best_run.dungeon_class" class="dungeon-detail-row"><span class="dungeon-detail-label">Dungeon Class:</span><span class="dungeon-detail-value">{{ capitalize(floor.best_run.dungeon_class) }}</span></div>
-                                                    <div v-if="floor.best_run.elapsed_time" class="dungeon-detail-row"><span class="dungeon-detail-label">Elapsed Time:</span><span class="dungeon-detail-value">{{ formatElapsed(floor.best_run.elapsed_time) }}</span></div>
-                                                    <div class="dungeon-detail-row"><span class="dungeon-detail-label">Damage Dealt:</span><span class="dungeon-detail-value">{{ fNum(floor.best_run.damage_dealt) }}</span></div>
-                                                    <div class="dungeon-detail-row"><span class="dungeon-detail-label">Deaths:</span><span class="dungeon-detail-value">{{ floor.best_run.deaths }}</span></div>
-                                                    <div class="dungeon-detail-row"><span class="dungeon-detail-label">Mobs Killed:</span><span class="dungeon-detail-value">{{ floor.best_run.mobs_killed }}</span></div>
-                                                    <div class="dungeon-detail-row"><span class="dungeon-detail-label">Secrets Found:</span><span class="dungeon-detail-value">{{ floor.best_run.secrets_found }}</span></div>
-                                                    <div class="dungeon-detail-row"><span class="dungeon-detail-label">Damage Mitigated:</span><span class="dungeon-detail-value">{{ fNum(floor.best_run.damage_mitigated) }}</span></div>
+                                                    <div class="dungeon-detail-row"><span class="dungeon-detail-label">{{ t('profileStats.scoreExploration') }}</span><span class="dungeon-detail-value">{{ floor.best_run.score_exploration }}</span></div>
+                                                    <div class="dungeon-detail-row"><span class="dungeon-detail-label">{{ t('profileStats.scoreSpeed') }}</span><span class="dungeon-detail-value">{{ floor.best_run.score_speed }}</span></div>
+                                                    <div class="dungeon-detail-row"><span class="dungeon-detail-label">{{ t('profileStats.scoreSkill') }}</span><span class="dungeon-detail-value">{{ floor.best_run.score_skill }}</span></div>
+                                                    <div class="dungeon-detail-row"><span class="dungeon-detail-label">{{ t('profileStats.scoreBonus') }}</span><span class="dungeon-detail-value">{{ floor.best_run.score_bonus }}</span></div>
+                                                    <div v-if="floor.best_run.dungeon_class" class="dungeon-detail-row"><span class="dungeon-detail-label">{{ t('profileStats.dungeonClass') }}</span><span class="dungeon-detail-value">{{ capitalize(floor.best_run.dungeon_class) }}</span></div>
+                                                    <div v-if="floor.best_run.elapsed_time" class="dungeon-detail-row"><span class="dungeon-detail-label">{{ t('profileStats.elapsedTime') }}</span><span class="dungeon-detail-value">{{ formatElapsed(floor.best_run.elapsed_time) }}</span></div>
+                                                    <div class="dungeon-detail-row"><span class="dungeon-detail-label">{{ t('profileStats.damageDealt') }}</span><span class="dungeon-detail-value">{{ fNum(floor.best_run.damage_dealt) }}</span></div>
+                                                    <div class="dungeon-detail-row"><span class="dungeon-detail-label">{{ t('profileStats.deaths') }}</span><span class="dungeon-detail-value">{{ floor.best_run.deaths }}</span></div>
+                                                    <div class="dungeon-detail-row"><span class="dungeon-detail-label">{{ t('profileStats.mobsKilled') }}</span><span class="dungeon-detail-value">{{ floor.best_run.mobs_killed }}</span></div>
+                                                    <div class="dungeon-detail-row"><span class="dungeon-detail-label">{{ t('profileStats.secretsFound') }}</span><span class="dungeon-detail-value">{{ floor.best_run.secrets_found }}</span></div>
+                                                    <div class="dungeon-detail-row"><span class="dungeon-detail-label">{{ t('profileStats.damageMitigated') }}</span><span class="dungeon-detail-value">{{ fNum(floor.best_run.damage_mitigated) }}</span></div>
                                                 </div>
                                             </details>
                                         </div>
@@ -1300,7 +1303,7 @@ onMounted(async () => {
                                 </div>
                             </div>
                         </div>
-                        <div v-else class="text-neutral text-sm py-8 text-center">No dungeon data available.</div>
+                        <div v-else class="text-neutral text-sm py-8 text-center">{{ t('profileStats.noDungeonData') }}</div>
                     </div>
 
                     <!-- ═══════════════════════════════════════════════════ -->
@@ -1310,7 +1313,7 @@ onMounted(async () => {
                         <div v-if="collectionsData && Object.keys(collectionsData.categories).length > 0">
                             <!-- Maxed summary -->
                             <div class="mb-4 text-sm text-neutral">
-                                Maxed Collections: <b class="text-white">{{ collectionsData.maxedCollections }}</b> / {{ collectionsData.totalCollections }}
+                                {{ t('profileStats.maxedCollections') }} <b class="text-white">{{ collectionsData.maxedCollections }}</b> / {{ collectionsData.totalCollections }}
                             </div>
 
                             <!-- Category sections -->
@@ -1320,8 +1323,8 @@ onMounted(async () => {
                                     <div class="collection-category-header">
                                         <span class="text-base">{{ COLLECTION_CATEGORY_ICONS[catId] || '📦' }}</span>
                                         <span class="collection-category-name">{{ cat.name }}</span>
-                                        <span v-if="cat.maxedTiers >= cat.totalTiers" class="collection-max-badge">MAX!</span>
-                                        <span v-else class="collection-category-count">({{ cat.maxedTiers }} / {{ cat.totalTiers }} max)</span>
+                                        <span v-if="cat.maxedTiers >= cat.totalTiers" class="collection-max-badge">{{ t('profileStats.maxLabel') }}</span>
+                                        <span v-else class="collection-category-count">({{ cat.maxedTiers }} / {{ cat.totalTiers }} {{ t('profileStats.maxShort') }})</span>
                                     </div>
 
                                     <!-- Collection items flow -->
@@ -1350,7 +1353,7 @@ onMounted(async () => {
                                 </div>
                             </div>
                         </div>
-                        <div v-else class="text-neutral text-sm py-8 text-center">No collection data available.</div>
+                        <div v-else class="text-neutral text-sm py-8 text-center">{{ t('profileStats.noCollectionData') }}</div>
                     </div>
 
                     <!-- ═══════════════════════════════════════════════════ -->
@@ -1358,8 +1361,8 @@ onMounted(async () => {
                     <!-- ═══════════════════════════════════════════════════ -->
                     <div v-if="['misc'].includes(activeTab)"
                          class="border border-border bg-surface-800 rounded p-8 text-center">
-                        <p class="text-neutral text-sm">{{ capitalize(activeTab) }} — Coming soon</p>
-                        <p class="text-neutral/50 text-xs mt-1">This section is under development.</p>
+                        <p class="text-neutral text-sm">{{ capitalize(activeTab) }} - {{ t('profileStats.comingSoon') }}</p>
+                        <p class="text-neutral/50 text-xs mt-1">{{ t('profileStats.comingSoonDesc') }}</p>
                     </div>
                 </div>
 

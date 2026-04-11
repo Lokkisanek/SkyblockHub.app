@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\SkyCryptProxyController;
+use App\Http\Controllers\Api\SocialProofMetricsController;
 use App\Http\Controllers\Api\BinSniperAnalysisController;
 use App\Http\Controllers\Api\BazaarController as ApiBazaarController;
 use App\Http\Controllers\CraftingArbitrageController;
@@ -62,3 +63,7 @@ Route::post('/bin-sniper/analyze', [BinSniperAnalysisController::class, 'analyze
 
 Route::post('/stripe/webhook', [StripeWebhookController::class, 'handle'])
     ->name('api.stripe.webhook');
+
+Route::get('/social-proof-metrics', SocialProofMetricsController::class)
+    ->middleware('throttle:60,1')
+    ->name('api.social-proof.metrics');

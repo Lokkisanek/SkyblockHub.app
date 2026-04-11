@@ -41,6 +41,7 @@ Scope: Produktovy a UX audit — aktualizovano po implementaci landing redesignu
 - [x] Logo v headeru vede na landing (`/`).
 - [x] Pricing & FAQ stranka (`/pricing`) — comparison table (Free vs VIP vs MVP), 8 FAQ vcetne refund policy, trial pravidel, cancel procesu.
 - [x] Linky na Pricing & FAQ ve footeru landingu, pod pricing cards na landingu, a na Billing strance.
+- [x] Admin features za feature-flag — navigace skryta pro non-admin, password gate (`/testing-unlock`) pro dev pristup, "Coming Soon" sekce ve footeru landingu.
 
 ---
 
@@ -54,7 +55,7 @@ Nejvetsi zbyvajici mezery:
 - Leaderboards jsou prilis zakladni (zadne filtry, trendy, seasons).
 - Chybi onboarding flow pro nove uzivatele.
 - Funnel analytika neexistuje.
-- Admin-only features (BinSniper, Portfolio, DungeonParty) jsou viditelne v kodu bez feature-flag guardingu.
+- Admin-only features (BinSniper, Portfolio, DungeonParty) jsou za feature-flag guardem s password gate pro dev pristup.
 
 ---
 
@@ -93,7 +94,7 @@ Nejvetsi zbyvajici mezery:
 ## Zbyvajici problemy (prioritizovane)
 
 ### P0 — Kriticke pro publikaci
-1. **Admin features bez feature-flag** — BinSniper, Portfolio, DungeonParty jsou v routes a navigaci, ale nejsou hotove pro public. Potreba skryt nebo oznacit jako beta/coming soon.
+1. ~~**Admin features bez feature-flag**~~ — HOTOVO. Navigace skryta, password gate, Coming Soon footer.
 2. **Profil settings jazykovy mix** — casti v cestine ("Minecraft účet", "Propojeno") v jinak anglicke aplikaci.
 
 ### P1 — Vyrazne brzdy rustu
@@ -111,12 +112,13 @@ Nejvetsi zbyvajici mezery:
 
 ## Co je potreba dodelat pro "production-ready" publikaci
 
-### 1) Feature-flag admin features (P0)
-- BinSniper, Portfolio, DungeonParty skryt z navigace pro non-admin uzivatele.
-- Nebo oznacit jako "Coming Soon" s disabled statem.
+### 1) ~~Feature-flag admin features (P0)~~ — HOTOVO
+- BinSniper, Portfolio, DungeonParty, Crafting skryty z navigace pro non-admin uzivatele.
+- Oznaceny jako "Coming Soon" ve footeru landingu.
+- Password gate (`/testing-unlock`) pro dev pristup pres session.
 
-### 2) Jazykova konzistence (P0)
-- Profile settings prelozit do anglictiny (nebo implementovat plny i18n).
+### 2) ~~Jazykova konzistence (P0)~~ — HOTOVO
+- Implementovano plne i18n (EN/CS) napric hlavnim UI, modulovymi strankami, legal pages a sdilenymi komponentami.
 
 ### 3) Leaderboards upgrade (P1)
 - Casove filtry (daily/weekly/monthly/all-time).

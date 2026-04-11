@@ -4,6 +4,9 @@ import PlayerModel from '@/Components/SkyBlock/PlayerModel.vue';
 import InventoryGrid from '@/Components/SkyBlock/InventoryGrid.vue';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { Head, Link, router } from '@inertiajs/vue3';
+import { useI18n } from 'vue-i18n';
+
+const { t } = useI18n();
 
 const props = defineProps({
     canEditDashboard: { type: Boolean, default: false },
@@ -59,11 +62,13 @@ const slotCards = computed(() => {
         isLocked: index + 1 > unlocked,
     }));
 });
+const hasLockedSlots = computed(() => slotCards.value.some((slot) => slot.isLocked));
+const showEditModeUpgradeCta = computed(() => !props.requiresLogin && (hasLockedSlots.value || !props.subscriptionFeatures?.priority_widget_updates));
 
 const profileWidgetTypes = new Set(['skin_view_widget', 'inventory_gui_widget']);
 const totalGridCells = computed(() => gridColumns.value * gridRows.value);
 const selectedWidget = computed(() => widgets.value.find((widget) => widget.clientId === selectedWidgetId.value) ?? null);
-const visibilityStatusLabel = computed(() => (isPublic.value ? 'Public dashboard' : 'Private dashboard'));
+const visibilityStatusLabel = computed(() => (isPublic.value ? t('dashboard.publicDashboard') : t('dashboard.privateDashboard')));
 
 function cloneWidgetSnapshot(widget) {
     return {
@@ -708,15 +713,15 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-    <Head title="Dashboard" />
+    <Head :title="t('dashboard.title')" />
 
     <AuthenticatedLayout>
         <div class="py-8">
             <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                 <div class="mb-5 flex items-center justify-between gap-4">
                     <div>
-                        <p class="text-[11px] font-semibold uppercase tracking-[0.24em] text-white/40">Personal workspace</p>
-                        <h1 class="mt-2 text-2xl font-semibold tracking-tight text-white sm:text-3xl">Custom Dashboard</h1>
+                        <p class="text-[11px] font-semibold uppercase tracking-[0.24em] text-white/40">{{ t('dashboard.kicker') }}</p>
+                        <h1 class="mt-2 text-2xl font-semibold tracking-tight text-white sm:text-3xl">{{ t('dashboard.heading') }}</h1>
                     </div>
 
                     <button
@@ -724,28 +729,22 @@ onBeforeUnmount(() => {
                         :disabled="!canOpenEdit"
                         @click="toggleEditMode"
                     >
-                        {{ editMode ? 'Done' : 'Edit' }}
+                        {{ editMode ? t('dashboard.done') : t('dashboard.edit') }}
                     </button>
                 </div>
 
                 <p v-if="requiresLogin" class="mb-4 rounded-2xl border border-amber-400/30 bg-amber-400/10 px-4 py-3 text-sm text-amber-100">
-                    Dashboard is visible to everyone, but editing requires login and Minecraft linking.
-                    <a :href="route('auth.discord')" class="ml-1 font-semibold underline">Login with Discord</a>
+                    {{ t('dashboard.loginRequired') }}
+                    <a :href="route('auth.discord')" class="ml-1 font-semibold underline">{{ t('dashboard.loginDiscord') }}</a>
                 </p>
 
                 <p v-else-if="requiresMinecraftLink" class="mb-4 rounded-2xl border border-indigo-400/30 bg-indigo-400/10 px-4 py-3 text-sm text-indigo-100">
-                    Your account is logged in, but dashboard editing unlocks only after Minecraft linking.
-                    <Link :href="route('profile.edit')" class="ml-1 font-semibold underline">Open profile settings</Link>
+                    {{ t('dashboard.mcRequired') }}
+                    <Link :href="route('profile.edit')" class="ml-1 font-semibold underline">{{ t('dashboard.openProfileSettings') }}</Link>
                 </p>
 
                 <div v-if="feedback" class="mb-4 inline-flex rounded-full border border-white/10 bg-white/5 px-3 py-1 text-sm text-white/80">
                     {{ feedback }}
-                </div>
-
-                <div class="mb-4 flex flex-wrap items-center gap-2">
-                    <span v-if="subscriptionFeatures?.priority_widget_updates" class="visibility-chip visibility-chip--public">Priority widget updates: ON</span>
-                    <span v-else class="visibility-chip visibility-chip--private">Priority widget updates: OFF</span>
-                    <Link v-if="!subscriptionFeatures?.priority_widget_updates && !requiresLogin" :href="route('billing')" class="apple-secondary-button">Upgrade to VIP/MVP</Link>
                 </div>
 
                 <div v-if="!requiresLogin" class="slot-strip">
@@ -762,16 +761,24 @@ onBeforeUnmount(() => {
                         :aria-disabled="slot.isLocked"
                         :tabindex="slot.isLocked ? -1 : 0"
                     >
-                        <span>Slot {{ slot.index }}</span>
-                        <small>{{ slot.isLocked ? 'Locked' : (slot.isActive ? 'Active' : 'Open') }}</small>
+                        <span>{{ t('dashboard.slot', { n: slot.index }) }}</span>
+                        <small>{{ slot.isLocked ? t('dashboard.locked') : (slot.isActive ? t('dashboard.active') : t('dashboard.open')) }}</small>
                     </Link>
                 </div>
 
                 <div class="dashboard-toolbar-row">
                     <div class="dashboard-toolbar-spacer"></div>
                     <div class="dashboard-toolbar-actions" v-if="editMode">
+                        <Link
+                            v-if="showEditModeUpgradeCta"
+                            :href="route('billing')"
+                            class="apple-secondary-button"
+                        >
+                            {{ t('dashboard.upgradeLink') }}
+                        </Link>
+
                         <div v-if="selectedWidget" class="dashboard-toolbar-settings">
-                            <label class="widget-field-label">Widget data</label>
+                            <label class="widget-field-label">{{ t('dashboard.widgetData') }}</label>
 
                             <template v-if="selectedWidget.type === 'skin_view_widget'">
                                 <input v-model="selectedWidget.settings.username" class="widget-input widget-input--compact" placeholder="Minecraft username" @input="markDirty" />
@@ -779,26 +786,26 @@ onBeforeUnmount(() => {
 
                             <template v-else>
                                 <input v-model="selectedWidget.settings.username" class="widget-input widget-input--compact" placeholder="Minecraft username" @input="markDirty" />
-                                <label class="dashboard-toolbar-checks"><input v-model="selectedWidget.settings.show_hotbar" type="checkbox" @change="markDirty" /> Show hotbar</label>
+                                <label class="dashboard-toolbar-checks"><input v-model="selectedWidget.settings.show_hotbar" type="checkbox" @change="markDirty" /> {{ t('dashboard.showHotbar') }}</label>
                             </template>
                         </div>
 
                         <label class="dashboard-toggle-row dashboard-toggle-row--compact">
-                            <span>Public</span>
+                            <span>{{ t('dashboard.public') }}</span>
                             <input v-model="isPublic" type="checkbox" @change="markDirty" />
                         </label>
                         <span class="visibility-chip" :class="{ 'visibility-chip--public': isPublic, 'visibility-chip--private': !isPublic }">
                             {{ visibilityStatusLabel }}
                         </span>
                         <button class="apple-secondary-button" :disabled="layoutUndoStack.length === 0" @click="undoLayoutChange">
-                            Undo
+                            {{ t('dashboard.undo') }}
                         </button>
                         <button class="apple-secondary-button" :disabled="!isDirty" @click="resetLayoutChanges">
-                            Reset
+                            {{ t('dashboard.reset') }}
                         </button>
-                        <button class="apple-primary-button" @click="openAddWidgetsModal">Add Widgets</button>
+                        <button class="apple-primary-button" @click="openAddWidgetsModal">{{ t('dashboard.addWidgets') }}</button>
                         <button class="apple-save-button" :disabled="!isDirty || isSaving" @click="saveDashboard">
-                            {{ isSaving ? 'Saving...' : 'Save Changes' }}
+                            {{ isSaving ? t('dashboard.saving') : t('dashboard.saveChanges') }}
                         </button>
                     </div>
                 </div>
@@ -818,8 +825,8 @@ onBeforeUnmount(() => {
                             </div>
 
                             <div v-if="widgets.length === 0" class="dashboard-empty-state">
-                                <p class="text-sm font-medium text-white/65">Your dashboard is empty.</p>
-                                <p class="mt-1 text-xs text-white/40">Open Edit to add widgets.</p>
+                                <p class="text-sm font-medium text-white/65">{{ t('dashboard.emptyTitle') }}</p>
+                                <p class="mt-1 text-xs text-white/40">{{ t('dashboard.emptyHint') }}</p>
                             </div>
 
                             <article
@@ -847,7 +854,7 @@ onBeforeUnmount(() => {
                                         <div v-else-if="widgetProfileData(widget)" class="widget-skin-preview">
                                             <PlayerModel :uuid="widgetProfileData(widget).uuid" :width="skinModelSize(widget).width" :height="skinModelSize(widget).height" :zoom="0.72" />
                                         </div>
-                                        <div v-else class="widget-state-copy">No profile data</div>
+                                        <div v-else class="widget-state-copy">{{ t('dashboard.noProfileData') }}</div>
                                     </template>
 
                                     <template v-else>
@@ -855,7 +862,7 @@ onBeforeUnmount(() => {
                                         <div v-else-if="widgetProfileData(widget)" class="widget-inventory-panel">
                                             <InventoryGrid :items="widgetProfileData(widget).currentData.inventory ?? []" :showHotbar="Boolean(widget.settings.show_hotbar)" :style="inventoryGridStyle(widget, Boolean(widget.settings.show_hotbar))" />
                                         </div>
-                                        <div v-else class="widget-state-copy">No profile data</div>
+                                        <div v-else class="widget-state-copy">{{ t('dashboard.noProfileData') }}</div>
                                     </template>
                                 </div>
 
@@ -879,10 +886,10 @@ onBeforeUnmount(() => {
                 <div class="dashboard-modal">
                     <div class="mb-4 flex items-center justify-between gap-3">
                         <div>
-                            <p class="text-[10px] font-semibold uppercase tracking-[0.24em] text-white/40">Widget library</p>
-                            <h3 class="mt-2 text-xl font-semibold text-white">Add Widgets</h3>
+                            <p class="text-[10px] font-semibold uppercase tracking-[0.24em] text-white/40">{{ t('dashboard.widgetLibrary') }}</p>
+                            <h3 class="mt-2 text-xl font-semibold text-white">{{ t('dashboard.addWidgets') }}</h3>
                         </div>
-                        <button class="text-sm text-white/55 hover:text-white" @click="showTemplateModal = false">Close</button>
+                        <button class="text-sm text-white/55 hover:text-white" @click="showTemplateModal = false">{{ t('dashboard.close') }}</button>
                     </div>
 
                     <div class="dashboard-template-grid">
@@ -905,7 +912,7 @@ onBeforeUnmount(() => {
                                 </template>
 
                                 <template v-else>
-                                    <div class="widget-state-copy">Preview unavailable</div>
+                                    <div class="widget-state-copy">{{ t('dashboard.previewUnavailable') }}</div>
                                 </template>
                             </div>
 
@@ -916,8 +923,8 @@ onBeforeUnmount(() => {
                                 </div>
 
                                 <div class="mt-3 flex items-center justify-between text-[11px] text-white/45">
-                                    <span>Size {{ template.default_size?.w ?? 1 }}x{{ template.default_size?.h ?? 1 }}</span>
-                                    <span class="font-semibold text-profit">Insert</span>
+                                    <span>{{ t('dashboard.size') }} {{ template.default_size?.w ?? 1 }}x{{ template.default_size?.h ?? 1 }}</span>
+                                    <span class="font-semibold text-profit">{{ t('dashboard.insert') }}</span>
                                 </div>
                             </div>
                         </button>

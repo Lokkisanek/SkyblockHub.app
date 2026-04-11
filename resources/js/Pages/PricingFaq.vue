@@ -1,7 +1,10 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, Link } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
+
+const { t, tm, rt } = useI18n();
 
 const openFaq = ref(null);
 
@@ -9,52 +12,26 @@ function toggleFaq(index) {
     openFaq.value = openFaq.value === index ? null : index;
 }
 
-const faqs = [
-    {
-        q: 'How does the 7-day free trial work?',
-        a: 'The MVP plan comes with a one-time 7-day free trial. No credit card is required to start. Once the trial expires, your account reverts to the free tier unless you subscribe. Each Discord account is limited to one trial — this cannot be reset.',
-    },
-    {
-        q: 'Can I switch between VIP and MVP?',
-        a: 'Yes. You can upgrade from VIP to MVP at any time — the remaining balance of your current billing cycle is prorated toward the new plan. Downgrading works the same way; the change takes effect at the start of your next billing cycle.',
-    },
-    {
-        q: 'How do I cancel my subscription?',
-        a: 'Go to Settings → Subscription and click Cancel. Your paid features stay active until the end of the current billing period. After that, your account reverts to the free tier. No penalty, no questions asked.',
-    },
-    {
-        q: 'What is the refund policy?',
-        a: 'All payments are final and non-refundable under normal circumstances. We do not offer refunds for unused time, accidental purchases, or change of mind. Refunds are only considered if SkyblockHub experiences a significant, verified outage lasting more than 7 consecutive days that prevents you from using core paid features. In that case, contact us and we will evaluate a partial credit or refund on a case-by-case basis.',
-    },
-    {
-        q: 'What payment methods are accepted?',
-        a: 'We use Stripe for payment processing. You can pay with any major credit or debit card (Visa, Mastercard, Amex, Discover). Some regions may also support Apple Pay, Google Pay, and local payment methods through Stripe.',
-    },
-    {
-        q: 'Is my payment information safe?',
-        a: 'We never store your card details. All payment processing is handled by Stripe, a PCI Level 1 certified payment processor — the highest level of security certification in the payments industry.',
-    },
-    {
-        q: 'What happens to my data if I cancel?',
-        a: 'Your dashboard layouts, settings, and linked accounts are preserved. If you re-subscribe later, everything will be exactly as you left it. Your data is only deleted if you explicitly delete your account.',
-    },
-    {
-        q: 'Do free users get ads or tracking?',
-        a: 'No. SkyblockHub has zero ads, zero tracking cookies, and zero analytics fingerprinting — for all users, free or paid. See our Privacy Policy for details.',
-    },
-];
+const faqs = computed(() => {
+    const values = tm('pricingFaq.faqs');
+    if (!Array.isArray(values)) return [];
+    return values.map((faq) => ({
+        q: rt(faq.q),
+        a: rt(faq.a),
+    }));
+});
 </script>
 
 <template>
-    <Head title="Pricing & FAQ" />
+    <Head :title="t('pricingFaq.title')" />
 
     <AuthenticatedLayout>
         <div class="py-10">
             <div class="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
                 <div class="mb-8 text-center">
-                    <h1 class="text-3xl font-bold text-white sm:text-4xl">Plans &amp; Pricing</h1>
+                    <h1 class="text-3xl font-bold text-white sm:text-4xl">{{ t('pricingFaq.heading') }}</h1>
                     <p class="mx-auto mt-3 max-w-xl text-sm leading-relaxed text-white/50">
-                        All core modules are free. Paid plans unlock advanced features, faster data, and priority updates.
+                        {{ t('pricingFaq.subtitle') }}
                     </p>
                 </div>
 
@@ -63,93 +40,93 @@ const faqs = [
                     <table class="w-full text-left text-sm">
                         <thead>
                             <tr class="border-b border-white/10">
-                                <th class="px-5 py-4 text-xs font-bold uppercase tracking-widest text-white/40">Feature</th>
-                                <th class="px-5 py-4 text-center text-xs font-bold uppercase tracking-widest text-white/40">Free</th>
+                                <th class="px-5 py-4 text-xs font-bold uppercase tracking-widest text-white/40">{{ t('pricingFaq.feature') }}</th>
+                                <th class="px-5 py-4 text-center text-xs font-bold uppercase tracking-widest text-white/40">{{ t('pricingFaq.free') }}</th>
                                 <th class="px-5 py-4 text-center text-xs font-bold uppercase tracking-widest text-emerald-400/80">VIP</th>
                                 <th class="px-5 py-4 text-center text-xs font-bold uppercase tracking-widest text-amber-400/80">MVP</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-white/[0.06]">
                             <tr>
-                                <td class="px-5 py-3 text-white/75">Price</td>
-                                <td class="px-5 py-3 text-center font-semibold text-white">Free</td>
+                                <td class="px-5 py-3 text-white/75">{{ t('pricingFaq.price') }}</td>
+                                <td class="px-5 py-3 text-center font-semibold text-white">{{ t('pricingFaq.free') }}</td>
                                 <td class="px-5 py-3 text-center font-semibold text-emerald-400">$4.99/mo</td>
                                 <td class="px-5 py-3 text-center font-semibold text-amber-400">$8.99/mo</td>
                             </tr>
                             <tr>
-                                <td class="px-5 py-3 text-white/75">Bazaar flip table</td>
+                                <td class="px-5 py-3 text-white/75">{{ t('pricingFaq.bazaarFlipTable') }}</td>
                                 <td class="check-cell"><span class="check-yes">✓</span></td>
                                 <td class="check-cell"><span class="check-yes">✓</span></td>
                                 <td class="check-cell"><span class="check-yes">✓</span></td>
                             </tr>
                             <tr>
-                                <td class="px-5 py-3 text-white/75">NPC arbitrage</td>
+                                <td class="px-5 py-3 text-white/75">{{ t('pricingFaq.npcArbitrage') }}</td>
                                 <td class="check-cell"><span class="check-yes">✓</span></td>
                                 <td class="check-cell"><span class="check-yes">✓</span></td>
                                 <td class="check-cell"><span class="check-yes">✓</span></td>
                             </tr>
                             <tr>
-                                <td class="px-5 py-3 text-white/75">Profile Stats browser</td>
+                                <td class="px-5 py-3 text-white/75">{{ t('pricingFaq.profileStatsBrowser') }}</td>
                                 <td class="check-cell"><span class="check-yes">✓</span></td>
                                 <td class="check-cell"><span class="check-yes">✓</span></td>
                                 <td class="check-cell"><span class="check-yes">✓</span></td>
                             </tr>
                             <tr>
-                                <td class="px-5 py-3 text-white/75">Event Timer + notifications</td>
+                                <td class="px-5 py-3 text-white/75">{{ t('pricingFaq.eventTimerNotifications') }}</td>
                                 <td class="check-cell"><span class="check-yes">✓</span></td>
                                 <td class="check-cell"><span class="check-yes">✓</span></td>
                                 <td class="check-cell"><span class="check-yes">✓</span></td>
                             </tr>
                             <tr>
-                                <td class="px-5 py-3 text-white/75">Mayor intel &amp; perks</td>
+                                <td class="px-5 py-3 text-white/75">{{ t('pricingFaq.mayorIntelPerks') }}</td>
                                 <td class="check-cell"><span class="check-yes">✓</span></td>
                                 <td class="check-cell"><span class="check-yes">✓</span></td>
                                 <td class="check-cell"><span class="check-yes">✓</span></td>
                             </tr>
                             <tr>
-                                <td class="px-5 py-3 text-white/75">Dashboard slots</td>
+                                <td class="px-5 py-3 text-white/75">{{ t('pricingFaq.dashboardSlots') }}</td>
                                 <td class="check-cell"><span class="text-white/60">1</span></td>
                                 <td class="check-cell"><span class="text-emerald-400">3</span></td>
                                 <td class="check-cell"><span class="text-amber-400">3</span></td>
                             </tr>
                             <tr>
-                                <td class="px-5 py-3 text-white/75">Top 3 flips highlighted</td>
+                                <td class="px-5 py-3 text-white/75">{{ t('pricingFaq.top3Flips') }}</td>
                                 <td class="check-cell"><span class="check-no">—</span></td>
                                 <td class="check-cell"><span class="check-yes">✓</span></td>
                                 <td class="check-cell"><span class="check-yes">✓</span></td>
                             </tr>
                             <tr>
-                                <td class="px-5 py-3 text-white/75">Faster data refresh</td>
+                                <td class="px-5 py-3 text-white/75">{{ t('pricingFaq.fasterDataRefresh') }}</td>
                                 <td class="check-cell"><span class="check-no">—</span></td>
                                 <td class="check-cell"><span class="check-yes">✓</span></td>
                                 <td class="check-cell"><span class="check-yes">✓</span></td>
                             </tr>
                             <tr>
-                                <td class="px-5 py-3 text-white/75">Priority widget updates</td>
+                                <td class="px-5 py-3 text-white/75">{{ t('pricingFaq.priorityWidgetUpdates') }}</td>
                                 <td class="check-cell"><span class="check-no">—</span></td>
                                 <td class="check-cell"><span class="check-yes">✓</span></td>
                                 <td class="check-cell"><span class="check-yes">✓</span></td>
                             </tr>
                             <tr>
-                                <td class="px-5 py-3 text-white/75">Leaderboard tier tag</td>
-                                <td class="check-cell"><span class="text-white/40">FREE</span></td>
+                                <td class="px-5 py-3 text-white/75">{{ t('pricingFaq.leaderboardTierTag') }}</td>
+                                <td class="check-cell"><span class="text-white/40">{{ t('pricingFaq.free') }}</span></td>
                                 <td class="check-cell"><span class="text-emerald-400">VIP</span></td>
                                 <td class="check-cell"><span class="text-amber-400">MVP</span></td>
                             </tr>
                             <tr>
-                                <td class="px-5 py-3 text-white/75">AI-controlled flips</td>
+                                <td class="px-5 py-3 text-white/75">{{ t('pricingFaq.aiControlledFlips') }}</td>
                                 <td class="check-cell"><span class="check-no">—</span></td>
                                 <td class="check-cell"><span class="check-no">—</span></td>
                                 <td class="check-cell"><span class="check-yes">✓</span></td>
                             </tr>
                             <tr>
-                                <td class="px-5 py-3 text-white/75">AI trust score &amp; risk signals</td>
+                                <td class="px-5 py-3 text-white/75">{{ t('pricingFaq.aiTrustSignals') }}</td>
                                 <td class="check-cell"><span class="check-no">—</span></td>
                                 <td class="check-cell"><span class="check-no">—</span></td>
                                 <td class="check-cell"><span class="check-yes">✓</span></td>
                             </tr>
                             <tr>
-                                <td class="px-5 py-3 text-white/75">7-day free trial</td>
+                                <td class="px-5 py-3 text-white/75">{{ t('pricingFaq.trial7days') }}</td>
                                 <td class="check-cell"><span class="check-no">—</span></td>
                                 <td class="check-cell"><span class="check-no">—</span></td>
                                 <td class="check-cell"><span class="check-yes">✓</span></td>
@@ -160,7 +137,7 @@ const faqs = [
 
                 <!-- FAQ -->
                 <div class="mt-12">
-                    <h2 class="mb-6 text-center text-2xl font-bold text-white">Frequently Asked Questions</h2>
+                    <h2 class="mb-6 text-center text-2xl font-bold text-white">{{ t('pricingFaq.faqTitle') }}</h2>
 
                     <div class="mx-auto max-w-3xl space-y-2">
                         <div
@@ -193,12 +170,12 @@ const faqs = [
 
                 <!-- Bottom CTA -->
                 <div class="mt-10 text-center">
-                    <p class="text-sm text-white/40">Ready to upgrade?</p>
+                    <p class="text-sm text-white/40">{{ t('pricingFaq.readyUpgrade') }}</p>
                     <Link
                         :href="route('billing')"
                         class="mt-3 inline-flex items-center gap-2 rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-6 py-3 text-sm font-semibold text-emerald-400 transition hover:bg-emerald-500/20 hover:text-emerald-300"
                     >
-                        Go to Billing
+                        {{ t('pricingFaq.goToBilling') }}
                         <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd" /></svg>
                     </Link>
                 </div>

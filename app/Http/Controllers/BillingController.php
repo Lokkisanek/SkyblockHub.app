@@ -232,6 +232,48 @@ class BillingController extends Controller
         return back()->with('status', 'Subscription was cancelled.');
     }
 
+    public function devToggleSubscription(Request $request): RedirectResponse
+    {
+        $user = $request->user();
+
+        if (! $user) {
+            return back()->withErrors([
+                'billing' => 'User not found.',
+            ]);
+        }
+
+        $features = $this->subscriptionFeatureService->forUser($user);
+        $hasSubscription = (bool) ($features['has_active_entitlement'] ?? false);
+
+        $entitlement = UserEntitlement::query()->firstOrNew(['user_id' => $user->id]);
+
+        if ($hasSubscription) {
+            $entitlement->fill([
+                'tier' => 'free',
+                'status' => 'inactive',
+                'dashboard_slots_unlocked' => 1,
+                'provider' => $entitlement->provider ?: 'dev',
+                'current_period_ends_at' => null,
+                'trial_started_at' => null,
+                'trial_ends_at' => null,
+            ]);
+        } else {
+            $entitlement->fill([
+                'tier' => 'vip',
+                'status' => 'active',
+                'dashboard_slots_unlocked' => 3,
+                'provider' => 'dev',
+                'current_period_ends_at' => now()->addYears(10),
+                'trial_started_at' => null,
+                'trial_ends_at' => null,
+            ]);
+        }
+
+        $entitlement->save();
+
+        return back()->with('status', $hasSubscription ? 'Dev subscription disabled.' : 'Dev subscription enabled (VIP).');
+    }
+
     private function resolvePriceId(StripeClient $stripe, string $identifier): ?string
     {
         if ($identifier === '') {

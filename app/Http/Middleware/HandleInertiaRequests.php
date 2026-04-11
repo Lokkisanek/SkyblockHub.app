@@ -39,6 +39,14 @@ class HandleInertiaRequests extends Middleware
                 'user' => $request->user(),
                 'testing_admin' => TestingAdminGate::allows($request->user()),
             ],
+            'navigation' => [
+                'experimental_modules' => [
+                    'crafting' => (bool) config('navigation.experimental_modules.crafting', false),
+                    'dungeon_party' => (bool) config('navigation.experimental_modules.dungeon_party', false),
+                    'portfolio' => (bool) config('navigation.experimental_modules.portfolio', false),
+                    'bin_sniper' => (bool) config('navigation.experimental_modules.bin_sniper', false),
+                ],
+            ],
             'currentMayor' => fn () => $this->buildCurrentMayorWidget(),
             'ziggy' => fn () => [
                 ...(new Ziggy)->toArray(),

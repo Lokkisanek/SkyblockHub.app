@@ -2,6 +2,9 @@
 import { computed, ref } from 'vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head } from '@inertiajs/vue3';
+import { useI18n } from 'vue-i18n';
+
+const { t } = useI18n();
 
 const props = defineProps({
     mayors: Array,
@@ -16,7 +19,7 @@ function toggleMayor(name) {
 
 function perkCountLabel(mayor) {
     const count = Array.isArray(mayor?.perks) ? mayor.perks.length : 0;
-    return count === 1 ? '1 perk' : `${count} perks`;
+    return count === 1 ? t('mayors.perkSingular') : t('mayors.perkPlural', { count });
 }
 
 /** Full-body skin image served from public/img/mayors/<Name>.png */
@@ -34,11 +37,11 @@ function mayorHeadUrl(mayor) {
 }
 
 const CATEGORY_ORDER = ['regular', 'special', 'one-off'];
-const CATEGORY_LABELS = {
-    regular:  'Regular Candidates',
-    special:  'Special Candidates',
-    'one-off':'One-Off Candidates',
-};
+const CATEGORY_LABELS = computed(() => ({
+    regular:  t('mayors.regularCandidates'),
+    special:  t('mayors.specialCandidates'),
+    'one-off': t('mayors.oneOffCandidates'),
+}));
 
 /** Group mayors by category preserving API order within each group */
 const mayorsByCategory = computed(() => {
@@ -50,18 +53,18 @@ const mayorsByCategory = computed(() => {
     }
     return CATEGORY_ORDER.map(cat => ({
         key: cat,
-        label: CATEGORY_LABELS[cat],
+        label: CATEGORY_LABELS.value[cat],
         mayors: groups[cat] ?? [],
     })).filter(g => g.mayors.length > 0);
 });
 </script>
 
 <template>
-    <Head title="Mayors" />
+    <Head :title="t('mayors.title')" />
     <AuthenticatedLayout>
         <div class="py-6">
             <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                <h1 class="mb-6 text-lg font-bold text-white">Mayors</h1>
+                <h1 class="mb-6 text-lg font-bold text-white">{{ t('mayors.title') }}</h1>
 
                 <!-- Category sections -->
                 <div v-for="group in mayorsByCategory" :key="group.key" class="mb-10">
@@ -105,7 +108,7 @@ const mayorsByCategory = computed(() => {
                                             <span
                                                 v-if="mayor.is_active"
                                                 class="ml-3 shrink-0 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold text-emerald-400"
-                                            >ACTIVE</span>
+                                            >{{ t('mayors.active') }}</span>
                                             <svg
                                                 class="ml-3 h-4 w-4 shrink-0 text-white/60 transition-transform rotate-180"
                                                 viewBox="0 0 20 20" fill="currentColor"
@@ -123,11 +126,11 @@ const mayorsByCategory = computed(() => {
                                                     <div v-if="perk.description" class="perk-description">{{ perk.description }}</div>
                                                 </div>
                                             </div>
-                                            <div v-else class="text-xs text-neutral">No perk data available yet.</div>
+                                            <div v-else class="text-xs text-neutral">{{ t('mayors.noPerkData') }}</div>
 
                                             <div class="mt-3 border-t border-white/10 pt-2 text-[10px] text-neutral">
-                                                <template v-if="mayor.last_elected">Last elected {{ mayor.last_elected }}</template>
-                                                <template v-else>No election data recorded yet</template>
+                                                <template v-if="mayor.last_elected">{{ t('mayors.lastElected', { date: mayor.last_elected }) }}</template>
+                                                <template v-else>{{ t('mayors.noElectionData') }}</template>
                                             </div>
                                         </div>
                                     </div>
@@ -151,7 +154,7 @@ const mayorsByCategory = computed(() => {
                                             <span
                                                 v-if="mayor.is_active"
                                                 class="ml-3 shrink-0 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold text-emerald-400"
-                                            >ACTIVE</span>
+                                            >{{ t('mayors.active') }}</span>
                                             <svg
                                                 class="ml-3 h-4 w-4 shrink-0 text-white/60 transition-transform"
                                                 viewBox="0 0 20 20" fill="currentColor"
@@ -167,7 +170,7 @@ const mayorsByCategory = computed(() => {
                 </div>
 
                 <div v-if="!mayors?.length" class="rounded-lg border border-white/10 bg-white/5 p-8 text-center text-sm text-neutral">
-                    No mayor data has been recorded yet. Data will appear after the next API fetch.
+                    {{ t('mayors.noMayorData') }}
                 </div>
             </div>
         </div>

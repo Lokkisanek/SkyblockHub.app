@@ -1,13 +1,13 @@
 <template>
   <AuthenticatedLayout>
-    <Head title="Bazaar Flipping" />
+    <Head :title="t('bazaar.title')" />
 
     <div class="mx-auto max-w-7xl space-y-6 px-4 py-6 sm:px-6 lg:px-8">
       <!-- Header -->
       <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 class="text-3xl font-bold text-white">Bazaar Flipping</h1>
-          <p class="text-sm text-text-secondary">Instabuy → Instasell margin flips with 1.25% tax deducted.</p>
+          <h1 class="text-3xl font-bold text-white">{{ t('bazaar.title') }}</h1>
+          <p class="text-sm text-text-secondary">{{ t('bazaar.subtitle') }}</p>
         </div>
 
         <div class="flex flex-col items-end gap-1">
@@ -16,10 +16,10 @@
             class="rounded border border-border bg-surface-700 px-4 py-2 text-sm font-medium text-text-primary hover:bg-surface-600"
             :disabled="isRefreshing"
           >
-            {{ isRefreshing ? 'Refreshing...' : 'Refresh Bazaar' }}
+            {{ isRefreshing ? t('common.refreshing') : t('bazaar.refreshBazaar') }}
           </button>
           <span class="text-[11px] text-text-tertiary">
-            Auto refresh in {{ formatCountdown(autoRefreshRemainingSeconds) }}
+            {{ t('common.autoRefreshIn') }} {{ formatCountdown(autoRefreshRemainingSeconds) }}
           </span>
         </div>
       </div>
@@ -27,42 +27,42 @@
       <!-- Filters -->
       <div class="grid grid-cols-1 gap-4 sm:grid-cols-4">
         <div>
-          <label class="block text-sm font-medium text-text-primary">Search</label>
+          <label class="block text-sm font-medium text-text-primary">{{ t('common.search') }}</label>
           <input
             v-model="search"
             type="text"
-            placeholder="Item name or ID..."
+            :placeholder="t('bazaar.itemPlaceholder')"
             class="mt-1 w-full rounded border border-border bg-surface-700 px-3 py-2 text-text-primary placeholder-text-tertiary focus:border-primary focus:outline-none"
             @input="debouncedApplyFilters"
           />
         </div>
 
         <div>
-          <label class="block text-sm font-medium text-text-primary">Sort By</label>
+          <label class="block text-sm font-medium text-text-primary">{{ t('common.sortBy') }}</label>
           <select
             v-model="sortBy"
             class="mt-1 w-full rounded border border-border bg-surface-700 px-3 py-2 text-text-primary focus:border-primary focus:outline-none"
             @change="applyFilters"
           >
-            <option value="coins_per_hour">Coins/Hour</option>
-            <option value="margin">Margin</option>
-            <option value="margin_percent">Margin %</option>
-            <option value="buy_price">Buy Price</option>
-            <option value="sell_price">Sell Price</option>
-            <option value="hourly_instabuys">1h Volume</option>
-            <option value="name">Name</option>
+            <option value="coins_per_hour">{{ t('common.coinsPerHour') }}</option>
+            <option value="margin">{{ t('common.margin') }}</option>
+            <option value="margin_percent">{{ t('bazaar.marginPercent') }}</option>
+            <option value="buy_price">{{ t('bazaar.buyPrice') }}</option>
+            <option value="sell_price">{{ t('bazaar.sellPrice') }}</option>
+            <option value="hourly_instabuys">{{ t('common.volume1h') }}</option>
+            <option value="name">{{ t('common.name') }}</option>
           </select>
         </div>
 
         <div>
-          <label class="block text-sm font-medium text-text-primary">Direction</label>
+          <label class="block text-sm font-medium text-text-primary">{{ t('common.direction') }}</label>
           <select
             v-model="sortDir"
             class="mt-1 w-full rounded border border-border bg-surface-700 px-3 py-2 text-text-primary focus:border-primary focus:outline-none"
             @change="applyFilters"
           >
-            <option value="desc">Descending</option>
-            <option value="asc">Ascending</option>
+            <option value="desc">{{ t('common.descending') }}</option>
+            <option value="asc">{{ t('common.ascending') }}</option>
           </select>
         </div>
 
@@ -71,7 +71,7 @@
             @click="resetFilters"
             class="w-full rounded border border-border bg-surface-700 px-3 py-2 text-text-primary hover:bg-surface-600"
           >
-            Reset
+            {{ t('common.reset') }}
           </button>
         </div>
       </div>
@@ -84,7 +84,7 @@
           class="rounded-xl border bg-surface-800 p-4 text-center"
           :class="index === 1 ? 'border-yellow-400/70 bg-[radial-gradient(circle_at_top,rgba(250,204,21,0.14),rgba(15,23,42,0.8))]' : 'border-border'"
         >
-          <h3 class="text-xs font-semibold uppercase tracking-wide" :class="index === 1 ? 'text-yellow-200' : 'text-cyan-200'">Top Flip #{{ index }}</h3>
+          <h3 class="text-xs font-semibold uppercase tracking-wide" :class="index === 1 ? 'text-yellow-200' : 'text-cyan-200'">{{ t('bazaar.topFlip', { n: index }) }}</h3>
           <template v-if="top_flips?.[index - 1]">
             <div class="mt-3 flex flex-col items-center">
               <img
@@ -96,31 +96,49 @@
                 @error="handleTextureError"
               />
               <div class="mt-2 font-semibold text-white">{{ top_flips[index - 1].name }}</div>
-              <div class="text-sm text-positive">{{ formatCompact(top_flips[index - 1].coins_per_hour) }}/hr</div>
+              <div class="text-sm text-positive">{{ formatCompact(top_flips[index - 1].coins_per_hour) }}{{ t('bazaar.perHour') }}</div>
             </div>
           </template>
           <template v-else>
             <div class="mt-3 text-sm text-text-secondary">
-              <span v-if="index > 1">Locked in Free. Upgrade to VIP/MVP for Top 3 flips.</span>
-              <span v-else>No data</span>
+              <span v-if="index > 1">{{ t('bazaar.lockedFree') }}</span>
+              <span v-else>{{ t('common.noData') }}</span>
             </div>
           </template>
         </div>
       </div>
 
+      <div v-if="!isMvp" class="rounded-xl border border-fuchsia-300/25 bg-[radial-gradient(circle_at_top,rgba(217,70,239,0.16),rgba(15,23,42,0.88))] p-5">
+        <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h3 class="text-base font-semibold text-fuchsia-100">{{ isVipOrHigher ? t('bazaar.maybeAiUpgradeTitle') : t('bazaar.upgradeVipTitle') }}</h3>
+            <p class="mt-1 text-sm text-fuchsia-100/80">{{ isVipOrHigher ? t('bazaar.aiMvpOnly') : t('bazaar.upgradeVipDesc') }}</p>
+            <p class="mt-1 text-xs text-fuchsia-100/65">{{ t('bazaar.maybeAiUpgradeDesc') }}</p>
+          </div>
+          <div class="flex gap-2">
+            <Link :href="route('billing')" class="rounded-lg bg-fuchsia-400 px-4 py-2 text-xs font-semibold text-black transition hover:bg-fuchsia-300">
+              {{ isVipOrHigher ? t('bazaar.unlockMvpCta') : t('bazaar.upgradeVipCta') }}
+            </Link>
+            <Link :href="route('pricing')" class="rounded-lg border border-fuchsia-200/35 bg-black/20 px-4 py-2 text-xs font-semibold text-fuchsia-100 transition hover:bg-black/30">
+              {{ t('bazaar.comparePlansCta') }}
+            </Link>
+          </div>
+        </div>
+      </div>
+
       <div v-if="subscriptionFeatures?.can_ai_flips" class="rounded-xl border border-cyan-400/30 bg-cyan-400/10 p-4">
-        <h3 class="text-sm font-semibold text-cyan-100">AI Flip Control Panel</h3>
-        <p class="mt-1 text-xs text-cyan-100/70">AI tracks market behavior and assigns trust score to top opportunities.</p>
+        <h3 class="text-sm font-semibold text-cyan-100">{{ t('bazaar.aiTitle') }}</h3>
+        <p class="mt-1 text-xs text-cyan-100/70">{{ t('bazaar.aiDesc') }}</p>
         <div class="mt-3 grid gap-2 sm:grid-cols-2">
           <div v-for="insight in ai_insights" :key="`ai-${insight.product_id}`" class="rounded-lg border border-cyan-300/30 bg-surface-800/70 p-3">
             <p class="text-sm font-semibold text-white">{{ insight.name }}</p>
-            <p class="text-xs text-cyan-100/80">Trust score: {{ insight.trust_score }}/100</p>
+            <p class="text-xs text-cyan-100/80">{{ t('bazaar.trustScore', { score: insight.trust_score }) }}</p>
             <p class="text-xs text-cyan-100/70">{{ insight.risk }}</p>
           </div>
         </div>
       </div>
-      <div v-else class="rounded-xl border border-border bg-surface-800 p-4 text-sm text-text-secondary">
-        AI-controlled flips and trust score are available in MVP.
+      <div v-else class="rounded-xl border border-cyan-400/30 bg-cyan-400/10 p-4 text-sm text-cyan-100/80">
+        {{ t('bazaar.aiDesc') }}
       </div>
 
       <!-- Table -->
@@ -131,36 +149,36 @@
               <tr>
                 <th class="px-4 py-3 text-left font-semibold text-text-primary">
                   <button type="button" class="inline-flex items-center gap-1 hover:text-white" @click="toggleSort('name')">
-                    Item <span class="text-xs text-text-tertiary">{{ sortIndicator('name') }}</span>
+                    {{ t('common.item') }} <span class="text-xs text-text-tertiary">{{ sortIndicator('name') }}</span>
                   </button>
                 </th>
                 <th class="px-4 py-3 text-right font-semibold text-text-primary">
                   <button type="button" class="inline-flex items-center gap-1 hover:text-white" @click="toggleSort('buy_price')">
-                    Buy Price <span class="text-xs text-text-tertiary">{{ sortIndicator('buy_price') }}</span>
+                    {{ t('bazaar.buyPrice') }} <span class="text-xs text-text-tertiary">{{ sortIndicator('buy_price') }}</span>
                   </button>
                 </th>
                 <th class="px-4 py-3 text-right font-semibold text-text-primary">
                   <button type="button" class="inline-flex items-center gap-1 hover:text-white" @click="toggleSort('sell_price')">
-                    Sell Price <span class="text-xs text-text-tertiary">{{ sortIndicator('sell_price') }}</span>
+                    {{ t('bazaar.sellPrice') }} <span class="text-xs text-text-tertiary">{{ sortIndicator('sell_price') }}</span>
                   </button>
                 </th>
                 <th class="px-4 py-3 text-right font-semibold text-text-primary">
                   <button type="button" class="inline-flex items-center gap-1 hover:text-white" @click="toggleSort('margin')">
-                    Margin <span class="text-xs text-text-tertiary">{{ sortIndicator('margin') }}</span>
+                    {{ t('common.margin') }} <span class="text-xs text-text-tertiary">{{ sortIndicator('margin') }}</span>
                   </button>
                 </th>
                 <th class="px-4 py-3 text-right font-semibold text-text-primary">
                   <button type="button" class="inline-flex items-center gap-1 hover:text-white" @click="toggleSort('hourly_instabuys')">
-                    1h Volume <span class="text-xs text-text-tertiary">{{ sortIndicator('hourly_instabuys') }}</span>
+                    {{ t('common.volume1h') }} <span class="text-xs text-text-tertiary">{{ sortIndicator('hourly_instabuys') }}</span>
                   </button>
                 </th>
                 <th class="px-4 py-3 text-right font-semibold text-text-primary">
                   <button type="button" class="inline-flex items-center gap-1 hover:text-white" @click="toggleSort('coins_per_hour')">
-                    Coins/Hour <span class="text-xs text-text-tertiary">{{ sortIndicator('coins_per_hour') }}</span>
+                    {{ t('common.coinsPerHour') }} <span class="text-xs text-text-tertiary">{{ sortIndicator('coins_per_hour') }}</span>
                   </button>
                 </th>
                 <th class="px-4 py-3 text-center font-semibold text-text-primary">
-                  Action
+                  {{ t('common.action') }}
                 </th>
               </tr>
             </thead>
@@ -209,7 +227,7 @@
 
                 <td class="px-4 py-3 text-right text-text-secondary">
                   <div>{{ formatCompact(hourlyInstabuys(item)) }} / {{ formatCompact(hourlyInstasells(item)) }}</div>
-                  <div class="text-[10px] text-text-tertiary">buys / sells</div>
+                  <div class="text-[10px] text-text-tertiary">{{ t('bazaar.buysSells') }}</div>
                 </td>
 
                 <td class="px-4 py-3 text-right font-semibold text-white">{{ formatCompact(coinsPerHour(item)) }}</td>
@@ -220,7 +238,7 @@
                     class="rounded border border-border bg-surface-700 px-2 py-1 text-xs font-semibold text-text-primary hover:bg-surface-600"
                     @click="copyItemCommand(item.product_id)"
                   >
-                    Copy /bz
+                    {{ t('bazaar.copyBz') }}
                   </button>
                 </td>
               </tr>
@@ -229,14 +247,14 @@
         </div>
 
         <div v-if="liveItems.length === 0" class="px-4 py-8 text-center text-text-secondary">
-          No bazaar flips found. Try adjusting filters.
+          {{ t('bazaar.noFlips') }}
         </div>
       </div>
 
       <!-- Pagination -->
       <div v-if="pagination.last_page > 1" class="flex items-center justify-between">
         <div class="text-sm text-text-secondary">
-          Page {{ pagination.current_page }} of {{ pagination.last_page }} ({{ pagination.total }} total)
+          {{ t('common.page') }} {{ pagination.current_page }} {{ t('common.of') }} {{ pagination.last_page }} ({{ pagination.total }} {{ t('common.total') }})
         </div>
         <div class="flex gap-2">
           <button
@@ -244,28 +262,28 @@
             @click="goToPage(1)"
             class="rounded border border-border bg-surface-700 px-3 py-2 text-sm text-text-primary hover:bg-surface-600"
           >
-            First
+            {{ t('common.first') }}
           </button>
           <button
             v-if="pagination.current_page > 1"
             @click="goToPage(pagination.current_page - 1)"
             class="rounded border border-border bg-surface-700 px-3 py-2 text-sm text-text-primary hover:bg-surface-600"
           >
-            Previous
+            {{ t('common.previous') }}
           </button>
           <button
             v-if="pagination.current_page < pagination.last_page"
             @click="goToPage(pagination.current_page + 1)"
             class="rounded border border-border bg-surface-700 px-3 py-2 text-sm text-text-primary hover:bg-surface-600"
           >
-            Next
+            {{ t('common.next') }}
           </button>
           <button
             v-if="pagination.current_page < pagination.last_page"
             @click="goToPage(pagination.last_page)"
             class="rounded border border-border bg-surface-700 px-3 py-2 text-sm text-text-primary hover:bg-surface-600"
           >
-            Last
+            {{ t('common.last') }}
           </button>
         </div>
       </div>
@@ -274,9 +292,12 @@
 </template>
 
 <script setup>
-import { Head, router } from '@inertiajs/vue3'
+import { Head, Link, router } from '@inertiajs/vue3'
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
-import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 const props = defineProps({
   items: Object,
@@ -286,6 +307,10 @@ const props = defineProps({
   subscriptionFeatures: Object,
   filters: Object,
 })
+
+const tier = computed(() => String(props.subscriptionFeatures?.tier || 'free'))
+const isVipOrHigher = computed(() => tier.value === 'vip' || tier.value === 'mvp')
+const isMvp = computed(() => tier.value === 'mvp')
 
 const pagination = ref({
   current_page: props.items.current_page,

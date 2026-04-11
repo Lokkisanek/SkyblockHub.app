@@ -32,32 +32,30 @@ const closeModal = () => {
     <section class="space-y-6">
         <header>
             <h2 class="text-base font-semibold text-white">
-                Smazat účet
+                {{ $t('profile.delete.heading') }}
             </h2>
 
             <p class="mt-1 text-sm text-neutral">
-                Po smazání účtu budou všechna data trvale odstraněna.
-                Před smazáním si stáhni všechna data, která chceš zachovat.
+                {{ $t('profile.delete.description') }}
             </p>
         </header>
 
-        <DangerButton @click="confirmUserDeletion">Smazat účet</DangerButton>
+        <DangerButton @click="confirmUserDeletion">{{ $t('profile.delete.button') }}</DangerButton>
 
         <Modal :show="confirmingUserDeletion" @close="closeModal">
             <div class="p-6">
                 <h2 class="text-lg font-medium text-white">
-                    Opravdu chceš smazat svůj účet?
+                    {{ $t('profile.delete.confirmTitle') }}
                 </h2>
 
                 <p class="mt-1 text-sm text-neutral">
-                    Po smazání účtu budou všechna data trvale odstraněna.
-                    Tato akce je nevratná.
-                    Pokud mas aktivni subscription plan, bude automaticky zrusen.
+                    {{ $t('profile.delete.confirmDescription') }}
+                    {{ $t('profile.delete.confirmIrreversible') }}
                 </p>
 
                 <div class="mt-6 flex justify-end">
                     <SecondaryButton @click="closeModal">
-                        Zrušit
+                        {{ $t('profile.delete.cancel') }}
                     </SecondaryButton>
 
                     <DangerButton
@@ -66,7 +64,7 @@ const closeModal = () => {
                         :disabled="form.processing"
                         @click="deleteUser"
                     >
-                        Smazat účet
+                        {{ $t('profile.delete.button') }}
                     </DangerButton>
                 </div>
             </div>

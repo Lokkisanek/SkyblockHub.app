@@ -6,6 +6,7 @@ use App\Jobs\FetchHypixelBazaarJob;
 use App\Models\BazaarPrice;
 use App\Services\NpcFlipService;
 use App\Services\PlayerBazaarTaxService;
+use App\Services\SubscriptionFeatureService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
@@ -17,6 +18,7 @@ class NpcFlipsController extends Controller
     public function __construct(
         private readonly NpcFlipService $npcFlipService,
         private readonly PlayerBazaarTaxService $playerBazaarTaxService,
+        private readonly SubscriptionFeatureService $subscriptionFeatureService,
     ) {
     }
 
@@ -29,6 +31,7 @@ class NpcFlipsController extends Controller
 
         $taxMeta = $this->playerBazaarTaxService->getTaxMetaForUser(Auth::user());
         $currentTaxRate = (float) ($taxMeta['rate'] ?? 0.01);
+        $subscriptionFeatures = $this->subscriptionFeatureService->forUser($request->user());
 
         $query = BazaarPrice::query()
             ->join('bazaar_products', 'bazaar_prices.product_id', '=', 'bazaar_products.product_id')
@@ -189,6 +192,7 @@ class NpcFlipsController extends Controller
             'overall_best_pick' => $overallBestPick,
             'tax_meta' => $taxMeta,
             'has_compactor' => $hasCompactor,
+            'subscriptionFeatures' => $subscriptionFeatures,
         ]);
     }
 

@@ -1,5 +1,8 @@
 <script setup>
 import { ref } from 'vue';
+import { useI18n } from 'vue-i18n';
+
+const { t } = useI18n();
 
 const props = defineProps({
     productId: {
@@ -48,7 +51,7 @@ async function copyCommand() {
                 ? 'bg-[#2a3a2a] text-profit border-profit'
                 : 'bg-surface-700 text-neutral hover:text-white'"
         >
-            {{ copied ? 'Copied!' : 'Copy' }}
+            {{ copied ? t('copyButton.copied') : t('copyButton.copy') }}
         </button>
     </div>
 </template>

@@ -14,13 +14,17 @@ use App\Http\Controllers\NpcFlipsController;
 use App\Http\Controllers\PortfolioController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProfileStatsController;
+use App\Services\SocialProofMetricsService;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 Route::get('/', function () {
+    $socialProofMetrics = app(SocialProofMetricsService::class)->getMetrics();
+
     return Inertia::render('Welcome', [
         'canLogin' => !auth()->check(),
+        'socialProofMetrics' => $socialProofMetrics,
         'laravelVersion' => Application::VERSION,
         'phpVersion' => PHP_VERSION,
     ]);
@@ -59,6 +63,9 @@ Route::middleware('auth')->group(function () {
     Route::post('/billing/checkout', [BillingController::class, 'checkout'])->name('billing.checkout');
     Route::post('/billing/trial', [BillingController::class, 'startTrial'])->name('billing.trial');
     Route::post('/billing/cancel', [BillingController::class, 'cancel'])->name('billing.cancel');
+    Route::post('/billing/dev-toggle-subscription', [BillingController::class, 'devToggleSubscription'])
+        ->middleware('testing.admin')
+        ->name('billing.dev-toggle-subscription');
     Route::get('/billing/success', [BillingController::class, 'success'])->name('billing.success');
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');

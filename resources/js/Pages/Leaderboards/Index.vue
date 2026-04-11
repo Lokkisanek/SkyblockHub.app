@@ -1,34 +1,58 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head } from '@inertiajs/vue3';
+import { computed } from 'vue';
+import { Head, Link } from '@inertiajs/vue3';
+import { useI18n } from 'vue-i18n';
 
-defineProps({
+const { t } = useI18n();
+
+const props = defineProps({
     rows: {
         type: Array,
         default: () => [],
     },
+    subscriptionFeatures: {
+        type: Object,
+        default: () => ({}),
+    },
 });
+
+const viewerTier = computed(() => String(props.subscriptionFeatures?.tier || 'free'));
+const showUpsell = computed(() => viewerTier.value !== 'mvp');
 </script>
 
 <template>
-    <Head title="Leaderboards" />
+    <Head :title="t('leaderboards.title')" />
 
     <AuthenticatedLayout>
         <div class="py-10">
             <div class="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
                 <div class="leaderboards-card">
-                    <p class="leaderboards-kicker">Community</p>
-                    <h1 class="leaderboards-title">Leaderboards</h1>
-                    <p class="leaderboards-copy">VIP and MVP users are highlighted with tier tags in ranking.</p>
+                    <p class="leaderboards-kicker">{{ t('leaderboards.kicker') }}</p>
+                    <h1 class="leaderboards-title">{{ t('leaderboards.title') }}</h1>
+                    <p class="leaderboards-copy">{{ t('leaderboards.copy') }}</p>
+
+                    <div v-if="showUpsell" class="leaderboards-upsell">
+                        <div>
+                            <p class="leaderboards-upsell-kicker">{{ t('leaderboards.upsellKicker') }}</p>
+                            <p class="leaderboards-upsell-copy">{{ viewerTier === 'free' ? t('leaderboards.upsellFreeCopy') : t('leaderboards.upsellVipCopy') }}</p>
+                        </div>
+                        <div class="leaderboards-upsell-actions">
+                            <Link :href="route('billing')" class="leaderboards-upsell-primary">
+                                {{ viewerTier === 'free' ? t('leaderboards.upsellFreeCta') : t('leaderboards.upsellVipCta') }}
+                            </Link>
+                            <Link :href="route('pricing')" class="leaderboards-upsell-secondary">{{ t('leaderboards.upsellCompare') }}</Link>
+                        </div>
+                    </div>
 
                     <div class="mt-6 overflow-x-auto">
                         <table class="leaderboard-table">
                             <thead>
                                 <tr>
-                                    <th>Rank</th>
-                                    <th>Player</th>
-                                    <th>Karma</th>
-                                    <th>Tier</th>
+                                    <th>{{ t('leaderboards.rank') }}</th>
+                                    <th>{{ t('leaderboards.player') }}</th>
+                                    <th>{{ t('leaderboards.karma') }}</th>
+                                    <th>{{ t('leaderboards.tier') }}</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -40,7 +64,7 @@ defineProps({
                                         <span v-if="row.tier_tag" class="tier-tag" :class="row.tier_tag === 'MVP' ? 'tier-tag--mvp' : 'tier-tag--vip'">
                                             {{ row.tier_tag }}
                                         </span>
-                                        <span v-else class="tier-tag tier-tag--free">FREE</span>
+                                        <span v-else class="tier-tag tier-tag--free">{{ t('leaderboards.free') }}</span>
                                     </td>
                                 </tr>
                             </tbody>
@@ -82,6 +106,58 @@ defineProps({
     font-size: 14px;
     line-height: 1.6;
     color: rgba(255, 255, 255, 0.65);
+}
+
+.leaderboards-upsell {
+    margin-top: 16px;
+    border-radius: 14px;
+    border: 1px solid rgba(125, 211, 252, 0.35);
+    background: radial-gradient(circle at top, rgba(56, 189, 248, 0.2), rgba(15, 20, 28, 0.85));
+    padding: 14px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.leaderboards-upsell-kicker {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: rgba(186, 230, 253, 0.9);
+}
+
+.leaderboards-upsell-copy {
+    margin-top: 4px;
+    font-size: 13px;
+    color: rgba(224, 242, 254, 0.88);
+}
+
+.leaderboards-upsell-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.leaderboards-upsell-primary,
+.leaderboards-upsell-secondary {
+    border-radius: 10px;
+    padding: 7px 12px;
+    font-size: 11px;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.leaderboards-upsell-primary {
+    background: rgba(56, 189, 248, 1);
+    color: #0b1120;
+}
+
+.leaderboards-upsell-secondary {
+    border: 1px solid rgba(186, 230, 253, 0.35);
+    color: rgba(224, 242, 254, 0.92);
+    background: rgba(0, 0, 0, 0.2);
 }
 
 .leaderboards-note {

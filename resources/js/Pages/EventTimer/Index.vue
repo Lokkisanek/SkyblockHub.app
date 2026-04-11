@@ -4,6 +4,9 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head } from '@inertiajs/vue3';
 import { preloadAllTextures } from '@/utils/textures';
 import ItemSlot from '@/Components/SkyBlock/ItemSlot.vue';
+import { useI18n } from 'vue-i18n';
+
+const { t } = useI18n();
 
 const props = defineProps({
     mayor: {
@@ -981,7 +984,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-    <Head title="Visual Event Timer" />
+    <Head :title="t('eventTimer.title')" />
 
     <AuthenticatedLayout>
         <div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -1036,19 +1039,19 @@ onBeforeUnmount(() => {
                                             class="rounded-full px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide"
                                             :class="event.isActive ? 'bg-green-500/15 text-green-300' : 'bg-yellow-500/15 text-yellow-300'"
                                         >
-                                            {{ event.isActive ? 'Live' : 'Upcoming' }}
+                                            {{ event.isActive ? t('eventTimer.live') : t('eventTimer.upcoming') }}
                                         </span>
                                         <span
                                             v-if="event.boosted"
                                             class="rounded-full bg-cyan-500/20 px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-wide text-cyan-200 animate-pulse"
                                         >
-                                            Special Perk
+                                            {{ t('eventTimer.specialPerk') }}
                                         </span>
                                         <span
                                             v-if="event.dungeonRelated && activePerks.dungeon_benefit"
                                             class="rounded-full bg-cyan-500/20 px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-wide text-cyan-200 animate-pulse"
                                         >
-                                            Benefit Active
+                                            {{ t('eventTimer.benefitActive') }}
                                         </span>
                                     </div>
                                 </div>
@@ -1058,11 +1061,11 @@ onBeforeUnmount(() => {
                                 </p>
 
                                 <div class="mt-2 text-[11px] text-neutral">
-                                    Next: <span class="font-semibold text-white/90">{{ formatClock(event.nextStart) }}</span>
+                                    {{ t('eventTimer.next') }} <span class="font-semibold text-white/90">{{ formatClock(event.nextStart) }}</span>
                                 </div>
 
                                 <div class="mt-1 text-[10px] text-neutral/90">
-                                    {{ isTimerExpanded(event.key) ? 'Hide details' : 'Show details' }}
+                                    {{ isTimerExpanded(event.key) ? t('eventTimer.hideDetails') : t('eventTimer.showDetails') }}
                                 </div>
                             </div>
                         </div>
@@ -1078,20 +1081,20 @@ onBeforeUnmount(() => {
                             <div class="grid grid-cols-1 gap-3">
                                 <div>
                                     <p class="text-xs text-neutral">
-                                        Next start: <span class="text-white">{{ formatClock(event.nextStart) }}</span>
+                                        {{ t('eventTimer.nextStart') }} <span class="text-white">{{ formatClock(event.nextStart) }}</span>
                                         <span class="mx-2 text-neutral/60">•</span>
-                                        Next end: <span class="text-white">{{ formatClock(event.nextEnd) }}</span>
+                                        {{ t('eventTimer.nextEnd') }} <span class="text-white">{{ formatClock(event.nextEnd) }}</span>
                                     </p>
 
                                     <div class="mt-2 rounded-lg border border-border bg-surface-900/65 px-3 py-2">
-                                        <div class="mb-1 text-[10px] font-semibold uppercase tracking-wide text-neutral">Next Occurrences</div>
+                                        <div class="mb-1 text-[10px] font-semibold uppercase tracking-wide text-neutral">{{ t('eventTimer.nextOccurrences') }}</div>
                                         <div class="space-y-1 text-xs text-neutral">
                                             <div
                                                 v-for="occ in event.nextOccurrences"
                                                 :key="occ.startUnix"
                                                 class="flex items-center justify-between"
                                             >
-                                                <span>in <span class="text-white">{{ formatCompactDuration(occ.inSeconds) }}</span></span>
+                                                <span>{{ t('eventTimer.in') }} <span class="text-white">{{ formatCompactDuration(occ.inSeconds) }}</span></span>
                                                 <span class="text-white/80">{{ formatClock(occ.startUnix) }}</span>
                                             </div>
                                         </div>
@@ -1105,14 +1108,14 @@ onBeforeUnmount(() => {
                                         : 'border-border bg-surface-700 text-neutral hover:text-white'"
                                     @click.stop="toggleNotify(event)"
                                 >
-                                    {{ event.notifyEnabled ? 'Notify me: ON' : 'Notify me' }}
+                                    {{ event.notifyEnabled ? t('eventTimer.notifyOn') : t('eventTimer.notifyMe') }}
                                 </button>
 
                                 <p v-if="notifyConfirmKey === event.key" class="mt-1.5 text-[10px] font-medium text-green-400 transition-opacity">
-                                    ✓ You'll be notified 5 min before this event.
+                                    {{ t('eventTimer.notifyConfirm') }}
                                 </p>
                                 <p v-else-if="notifyDeniedFlash" class="mt-1 text-[10px] text-red-400">
-                                    Notifications are blocked. Enable them in your browser's site settings.
+                                    {{ t('eventTimer.notifyBlocked') }}
                                 </p>
                             </div>
                         </div>

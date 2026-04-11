@@ -2,6 +2,9 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { Head, router } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import { useI18n } from 'vue-i18n';
+
+const { t } = useI18n();
 
 const props = defineProps({
     recipes: Array,
@@ -161,7 +164,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-    <Head title="Craft-to-Bazaar Arbitrage" />
+    <Head :title="t('crafting.title')" />
 
     <AuthenticatedLayout>
         <div class="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
@@ -169,15 +172,15 @@ onUnmounted(() => {
             <!-- Summary Cards -->
             <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
                 <div class="bg-surface-800 border border-border p-3">
-                    <div class="text-[10px] uppercase text-neutral tracking-wider">Total Recipes</div>
+                    <div class="text-[10px] uppercase text-neutral tracking-wider">{{ t('crafting.totalRecipes') }}</div>
                     <div class="text-base font-semibold text-white mt-1">{{ totalRecipes }}</div>
                 </div>
                 <div class="bg-surface-800 border border-border p-3">
-                    <div class="text-[10px] uppercase text-neutral tracking-wider">Profitable</div>
+                    <div class="text-[10px] uppercase text-neutral tracking-wider">{{ t('crafting.profitable') }}</div>
                     <div class="text-base font-semibold mt-1" style="color:#55FF55">{{ profitableCount }}</div>
                 </div>
                 <div class="bg-surface-800 border border-border p-3 hidden sm:block">
-                    <div class="text-[10px] uppercase text-neutral tracking-wider">Best Margin</div>
+                    <div class="text-[10px] uppercase text-neutral tracking-wider">{{ t('crafting.bestMargin') }}</div>
                     <div class="text-base font-semibold mt-1"
                          :style="bestMargin !== null ? { color: '#55FF55' } : { color: '#AAAAAA' }">
                         {{ bestMargin !== null ? fmt(bestMargin) + '%' : '—' }}
@@ -190,14 +193,14 @@ onUnmounted(() => {
                 <input
                     v-model="search"
                     type="text"
-                    placeholder="Search recipes…"
+                    :placeholder="t('crafting.searchPlaceholder')"
                     class="bg-surface-800 border border-border text-xs text-white px-3 py-1.5 placeholder-neutral focus:outline-none focus:border-border-light w-48"
                 />
                 <select
                     v-model="categoryFilter"
                     class="bg-surface-800 border border-border text-xs text-white px-3 py-1.5 focus:outline-none focus:border-border-light"
                 >
-                    <option value="">All Categories</option>
+                    <option value="">{{ t('crafting.allCategories') }}</option>
                     <option v-for="cat in categories" :key="cat" :value="cat">{{ cat }}</option>
                 </select>
                 <label class="flex items-center gap-2 text-xs text-neutral cursor-pointer select-none">
@@ -206,7 +209,7 @@ onUnmounted(() => {
                         type="checkbox"
                         class="accent-profit w-3.5 h-3.5"
                     />
-                    Hide Unprofitable
+                    {{ t('crafting.hideUnprofitable') }}
                 </label>
             </div>
 
@@ -216,20 +219,20 @@ onUnmounted(() => {
                     <thead>
                         <tr class="border-b border-border text-[10px] uppercase text-neutral tracking-wider">
                             <th class="text-left px-3 py-2 cursor-pointer hover:text-white" @click="toggleSort('name')">
-                                Result {{ sortIcon('name') }}
+                                {{ t('crafting.result') }} {{ sortIcon('name') }}
                             </th>
-                            <th class="text-left px-3 py-2">Category</th>
+                            <th class="text-left px-3 py-2">{{ t('crafting.category') }}</th>
                             <th class="text-right px-3 py-2 cursor-pointer hover:text-white" @click="toggleSort('craft_cost')">
-                                Craft Cost {{ sortIcon('craft_cost') }}
+                                {{ t('crafting.craftCost') }} {{ sortIcon('craft_cost') }}
                             </th>
                             <th class="text-right px-3 py-2 cursor-pointer hover:text-white" @click="toggleSort('sell_price')">
-                                Sell Price {{ sortIcon('sell_price') }}
+                                {{ t('crafting.sellPrice') }} {{ sortIcon('sell_price') }}
                             </th>
                             <th class="text-right px-3 py-2 cursor-pointer hover:text-white" @click="toggleSort('net_profit')">
-                                Profit (Taxed) {{ sortIcon('net_profit') }}
+                                {{ t('crafting.profitTaxed') }} {{ sortIcon('net_profit') }}
                             </th>
                             <th class="text-right px-3 py-2 cursor-pointer hover:text-white" @click="toggleSort('margin_percent')">
-                                Margin {{ sortIcon('margin_percent') }}
+                                {{ t('common.margin') }} {{ sortIcon('margin_percent') }}
                             </th>
                             <th class="text-center px-3 py-2 w-10"></th>
                         </tr>
@@ -272,7 +275,7 @@ onUnmounted(() => {
                             <tr v-if="expandedRecipe === recipe.product_id">
                                 <td colspan="7" class="p-0">
                                     <div class="bg-surface-900 border-t border-border px-4 py-3">
-                                        <div class="text-[10px] uppercase text-neutral tracking-wider mb-2">Ingredients</div>
+                                        <div class="text-[10px] uppercase text-neutral tracking-wider mb-2">{{ t('crafting.ingredients') }}</div>
                                         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                                             <div
                                                 v-for="(ing, idx) in recipe.ingredients"
@@ -292,14 +295,14 @@ onUnmounted(() => {
                                                         <span class="text-neutral text-[10px] ml-1">×{{ ing.quantity }}</span>
                                                     </div>
                                                     <div class="text-right ml-2">
-                                                        <div class="text-[10px] text-neutral">{{ fmt(ing.unit_price) }}/ea</div>
+                                                        <div class="text-[10px] text-neutral">{{ fmt(ing.unit_price) }}{{ t('crafting.perEach') }}</div>
                                                         <div class="text-white font-medium">{{ fmt(ing.total_cost) }}</div>
                                                     </div>
                                                 </div>
                                             </div>
                                         </div>
                                         <div v-if="!recipe.all_available" class="mt-2 text-[10px]" style="color:#FF5555">
-                                            ⚠ Some ingredients have no Bazaar listing — prices may be inaccurate.
+                                            {{ t('crafting.ingredientWarning') }}
                                         </div>
                                     </div>
                                 </td>
@@ -309,8 +312,8 @@ onUnmounted(() => {
                         <tr v-if="!filteredRecipes.length">
                             <td colspan="7" class="px-3 py-6 text-center text-neutral">
                                 {{ totalRecipes === 0
-                                    ? 'No recipes loaded yet. Seed the recipes table to populate data.'
-                                    : 'No recipes match the current filters.' }}
+                                    ? t('crafting.noRecipesLoaded')
+                                    : t('crafting.noRecipesMatch') }}
                             </td>
                         </tr>
                     </tbody>

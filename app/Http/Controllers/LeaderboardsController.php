@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Services\SubscriptionFeatureService;
+use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -14,7 +15,7 @@ class LeaderboardsController extends Controller
     ) {
     }
 
-    public function index(): Response
+    public function index(Request $request): Response
     {
         $rows = User::query()
             ->with('entitlement')
@@ -35,6 +36,7 @@ class LeaderboardsController extends Controller
 
         return Inertia::render('Leaderboards/Index', [
             'rows' => $rows,
+            'subscriptionFeatures' => $this->subscriptionFeatureService->forUser($request->user()),
         ]);
     }
 }
