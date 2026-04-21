@@ -55,11 +55,40 @@ Route::get('/terms', function () {
 })->name('terms');
 
 Route::get('/pricing', function () {
-    return Inertia::render('PricingFaq');
+    return redirect()->to(url('/billing#faq'));
 })->name('pricing');
 
+Route::get('/billing', [BillingController::class, 'index'])->name('billing');
+
+Route::get('/subscribe/{plan}', function (string $plan) {
+    $plan = strtolower($plan);
+    abort_unless(in_array($plan, ['vip', 'mvp', 'trial'], true), 404);
+
+    if (auth()->check()) {
+        return redirect()->route('billing', [
+            'plan' => $plan !== 'trial' ? $plan : null,
+            'trial' => $plan === 'trial' ? 1 : null,
+        ]);
+    }
+
+    $billingParams = [];
+    if ($plan === 'trial') {
+        $billingParams['trial'] = 1;
+    } else {
+        $billingParams['plan'] = $plan;
+    }
+
+    $query = http_build_query($billingParams);
+    $url = url('/billing').($query ? '?'.$query : '');
+
+    if (request()->header('X-Inertia')) {
+        return Inertia::location($url);
+    }
+
+    return redirect()->to($url);
+})->name('subscribe');
+
 Route::middleware('auth')->group(function () {
-    Route::get('/billing', [BillingController::class, 'index'])->name('billing');
     Route::post('/billing/checkout', [BillingController::class, 'checkout'])->name('billing.checkout');
     Route::post('/billing/trial', [BillingController::class, 'startTrial'])->name('billing.trial');
     Route::post('/billing/cancel', [BillingController::class, 'cancel'])->name('billing.cancel');

@@ -40,12 +40,11 @@ const props = defineProps({
 
 const showLinkModal = ref(false);
 
-const mcForm = useForm({
-    minecraft_username: props.discordUsername ?? '',
-});
-
 const unlinkForm = useForm({});
 const cancelSubscriptionForm = useForm({});
+const mcForm = useForm({
+    minecraft_username: props.minecraftUsername ?? '',
+});
 
 function linkDirect() {
     mcForm.post(route('mc.link.direct'), {
@@ -55,8 +54,6 @@ function linkDirect() {
 </script>
 
 <template>
-    <Head title="Profile" />
-
     <AuthenticatedLayout>
         <div class="py-6">
             <div class="mx-auto max-w-3xl space-y-5 px-4 sm:px-6 lg:px-8">

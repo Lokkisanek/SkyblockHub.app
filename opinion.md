@@ -12,7 +12,7 @@ Scope: Produktovy a UX audit — aktualizovano po implementaci landing redesignu
 - [x] 5 feature karet s emoji ikonami (Bazaar, NPC Arb, Profile Stats, Event Timer, Mayor Intel).
 - [x] Discord CTA pro hosta / "Open Dashboard" pro prihlaseneho.
 - [x] Pricing cards primo na landing (VIP $4.99, MVP $8.99 s 7-day free trial badge).
-- [x] Footer s linky na moduly, GitHub, Patreon, legal, dev contact.
+- [x] Footer s linky na moduly, GitHub, Buy Me a Coffee, legal, dev contact.
 - [x] SEO meta tagy, OG tagy, canonical URL.
 - [x] `canLogin` prop fix — guest CTA se ukazuje spravne.
 

@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import ApplicationLogo from '@/Components/ApplicationLogo.vue';
 import AuthSlidePanel from '@/Components/AuthSlidePanel.vue';
@@ -9,10 +9,11 @@ import Dropdown from '@/Components/Dropdown.vue';
 import DropdownLink from '@/Components/DropdownLink.vue';
 import { Link, usePage, router } from '@inertiajs/vue3';
 
-const { locale } = useI18n();
+const { locale, t } = useI18n();
 
 const showingNavigationDropdown = ref(false);
 const showAuthPanel = ref(false);
+const authNotice = ref('');
 const page = usePage();
 
 const user = computed(() => page.props.auth?.user ?? null);
@@ -41,6 +42,12 @@ const displayName = computed(() => {
     return user.value.minecraft_username || user.value.discord_username || user.value.name || 'Profile';
 });
 
+const mcAvatarUrl = computed(() => {
+    const username = user.value?.minecraft_username;
+    if (!username) return null;
+    return `https://mc-heads.net/avatar/${encodeURIComponent(username)}/32`;
+});
+
 function isActive(routeName) {
     return route().current(routeName);
 }
@@ -52,6 +59,59 @@ function isBazaarActive() {
 function logout() {
     router.post(route('logout'));
 }
+
+function stripAuthQueryFromUrl() {
+    if (typeof window === 'undefined') return;
+
+    const params = new URLSearchParams(window.location.search);
+    const hadAuthParams = params.has('auth') || params.has('reason') || params.has('plan');
+    if (!hadAuthParams) return;
+
+    params.delete('auth');
+    params.delete('reason');
+    params.delete('plan');
+
+    const query = params.toString();
+    const nextUrl = `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`;
+    window.history.replaceState({}, '', nextUrl);
+}
+
+function closeAuthPanel() {
+    showAuthPanel.value = false;
+    authNotice.value = '';
+
+    // If auth panel was opened via URL params, ensure they're removed so refresh doesn't re-open it.
+    stripAuthQueryFromUrl();
+}
+
+function maybeOpenAuthPanelFromUrl() {
+    if (typeof window === 'undefined') return;
+    if (user.value) return;
+
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('auth') !== '1') return;
+
+    const reason = params.get('reason');
+    if (reason === 'subscribe') {
+        authNotice.value = t('auth.subscribeRequiresLogin');
+    }
+
+    showAuthPanel.value = true;
+
+    // Clean up URL so refresh/back doesn't keep re-opening the panel.
+    stripAuthQueryFromUrl();
+}
+
+onMounted(() => {
+    maybeOpenAuthPanelFromUrl();
+});
+
+watch(
+    () => page.url,
+    () => {
+        maybeOpenAuthPanelFromUrl();
+    },
+);
 </script>
 
 <template>
@@ -204,7 +264,18 @@ function logout() {
                                 <Dropdown align="right" width="48">
                                     <template #trigger>
                                         <button class="flex items-center gap-2 text-xs font-medium text-white/70 transition hover:text-white">
-                                            <div class="flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-br from-purple-400 to-indigo-500 text-[10px] font-bold uppercase text-white">
+                                            <div
+                                                v-if="mcAvatarUrl"
+                                                class="h-6 w-6 overflow-hidden rounded border border-white/10 bg-surface-800"
+                                                aria-hidden="true"
+                                            >
+                                                <img :src="mcAvatarUrl" :alt="displayName" class="h-6 w-6" loading="lazy" decoding="async" />
+                                            </div>
+                                            <div
+                                                v-else
+                                                class="flex h-6 w-6 items-center justify-center rounded bg-gradient-to-br from-purple-400 to-indigo-500 text-[10px] font-bold uppercase text-white"
+                                                aria-hidden="true"
+                                            >
                                                 {{ displayName.charAt(0) }}
                                             </div>
                                             {{ displayName }}
@@ -289,6 +360,9 @@ function logout() {
                                 {{ locale === 'en' ? 'CZ' : 'EN' }}
                             </button>
                             <template v-if="user">
+                                <div v-if="mcAvatarUrl" class="h-6 w-6 overflow-hidden rounded border border-white/10 bg-surface-800" aria-hidden="true">
+                                    <img :src="mcAvatarUrl" :alt="displayName" class="h-6 w-6" loading="lazy" decoding="async" />
+                                </div>
                                 <span class="text-xs text-white">{{ displayName }}</span>
                                 <button @click="logout" class="text-xs text-neutral hover:text-white">{{ $t('nav.logOut') }}</button>
                             </template>
@@ -306,7 +380,11 @@ function logout() {
             </main>
 
             <!-- Auth Slide Panel -->
-            <AuthSlidePanel :show="showAuthPanel" @close="showAuthPanel = false" />
+            <AuthSlidePanel
+                :show="showAuthPanel"
+                :notice="authNotice"
+                @close="closeAuthPanel"
+            />
 
             <!-- Cookie Consent -->
             <CookieConsent />

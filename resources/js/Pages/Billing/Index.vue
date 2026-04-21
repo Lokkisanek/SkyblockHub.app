@@ -1,5 +1,6 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import ApplicationLogo from '@/Components/ApplicationLogo.vue';
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
@@ -16,6 +17,7 @@ const props = defineProps({
 const isBusy = ref(false);
 const activeTier = computed(() => props.subscriptionFeatures?.tier || 'free');
 const page = usePage();
+const user = computed(() => page.props.auth?.user ?? null);
 const isTestingAdmin = computed(() => Boolean(page.props.auth?.testing_admin));
 const hasActiveEntitlement = computed(() => Boolean(props.subscriptionFeatures?.has_active_entitlement));
 const showTrialConfirmModal = ref(false);
@@ -24,12 +26,46 @@ const selectedTrialTier = ref('vip');
 const trialActivatedTier = ref('vip');
 const billingError = computed(() => page.props.errors?.billing || '');
 
+const openFaq = ref(null);
+
+function toggleFaq(index) {
+    openFaq.value = openFaq.value === index ? null : index;
+}
+
+const faqs = computed(() => {
+    const values = tm('pricingFaq.faqs');
+    if (!Array.isArray(values)) return [];
+    return values.map((faq) => ({
+        q: rt(faq.q),
+        a: rt(faq.a),
+    }));
+});
+
+function requireLogin() {
+    if (user.value) {
+        return true;
+    }
+
+    router.visit(route('billing', { auth: 1, reason: 'subscribe' }), {
+        preserveScroll: true,
+    });
+    return false;
+}
+
 function openTrialConfirm(tier) {
+    if (!requireLogin()) {
+        return;
+    }
+
     selectedTrialTier.value = tier;
     showTrialConfirmModal.value = true;
 }
 
 function confirmTrialStart() {
+    if (!requireLogin()) {
+        return;
+    }
+
     if (isBusy.value) {
         return;
     }
@@ -49,6 +85,10 @@ function confirmTrialStart() {
 }
 
 function checkout(tier) {
+    if (!requireLogin()) {
+        return;
+    }
+
     if (isBusy.value) {
         return;
     }
@@ -212,15 +252,13 @@ function toggleDevSubscription() {
                             </tr>
                         </tbody>
                         <tfoot>
-                            <tr class="border-t border-white/10" v-if="subscriptionFeatures?.trial_eligible">
+                            <tr class="border-t border-white/10" v-if="trialDays > 0 && (!user || subscriptionFeatures?.trial_eligible)">
                                 <td class="px-5 py-4 text-xs text-white/45">Activate free trial</td>
                                 <td class="px-5 py-4 text-center">
                                     <span class="text-[11px] font-semibold uppercase tracking-wider text-white/30">No trial</span>
                                 </td>
                                 <td class="px-5 py-4 text-center">
-                                    <button class="trial-btn" :disabled="isBusy" @click="openTrialConfirm('vip')">
-                                        {{ t('billing.startTrial', { days: trialDays }) }}
-                                    </button>
+                                    <span class="text-[11px] font-semibold uppercase tracking-wider text-white/30">No trial</span>
                                 </td>
                                 <td class="px-5 py-4 text-center">
                                     <button class="trial-btn" :disabled="isBusy" @click="openTrialConfirm('mvp')">
@@ -251,8 +289,41 @@ function toggleDevSubscription() {
                 </div>
 
                 <p class="mt-4 text-center text-xs text-white/35">
-                    <Link :href="route('pricing')" class="underline decoration-white/20 underline-offset-2 transition hover:text-white/60">{{ t('billing.comparePlans') }}</Link>
+                    <a href="#faq" class="underline decoration-white/20 underline-offset-2 transition hover:text-white/60">{{ t('billing.comparePlans') }}</a>
                 </p>
+
+                <!-- FAQ -->
+                <div id="faq" class="mt-12">
+                    <h2 class="mb-6 text-center text-2xl font-bold text-white">{{ t('pricingFaq.faqTitle') }}</h2>
+
+                    <div class="mx-auto max-w-3xl space-y-2">
+                        <div
+                            v-for="(faq, i) in faqs"
+                            :key="i"
+                            class="rounded-xl border transition"
+                            :class="openFaq === i ? 'border-white/15 bg-surface-800/80' : 'border-white/[0.06] bg-surface-900/50'"
+                        >
+                            <button
+                                type="button"
+                                class="flex w-full items-center justify-between px-5 py-4 text-left"
+                                @click="toggleFaq(i)"
+                            >
+                                <span class="pr-4 text-sm font-semibold text-white">{{ faq.q }}</span>
+                                <svg
+                                    class="h-4 w-4 shrink-0 text-white/40 transition-transform duration-200"
+                                    :class="{ 'rotate-180': openFaq === i }"
+                                    viewBox="0 0 20 20"
+                                    fill="currentColor"
+                                >
+                                    <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
+                                </svg>
+                            </button>
+                            <div v-if="openFaq === i" class="px-5 pb-4">
+                                <p class="text-sm leading-relaxed text-white/60">{{ faq.a }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
                 <div v-if="showTrialConfirmModal" class="modal-backdrop" @click.self="showTrialConfirmModal = false">
                     <div class="modal-card">
@@ -278,6 +349,80 @@ function toggleDevSubscription() {
                 </div>
             </div>
         </div>
+
+        <footer class="footer-wrapper relative">
+            <div class="slime-glow-footer-container">
+                <div class="slime-glow-footer"></div>
+            </div>
+
+            <div class="relative z-10 mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+                <div class="grid grid-cols-2 gap-8 sm:grid-cols-5">
+                    <div class="col-span-2 sm:col-span-1">
+                        <Link :href="route('dashboard')" class="flex items-center gap-2 text-sm font-bold tracking-wide text-white">
+                            <ApplicationLogo tone="light" class="h-7 w-7 shrink-0" />
+                            <span>SkyblockHub</span>
+                        </Link>
+                        <p class="mt-2 text-xs leading-relaxed text-white/30">{{ t('welcome.footer.tagline') }}</p>
+                    </div>
+
+                    <div>
+                        <h3 class="text-[10px] font-bold uppercase tracking-widest text-white/40">{{ t('welcome.footer.modules') }}</h3>
+                        <ul class="mt-3 space-y-2">
+                            <li><Link :href="route('bazaar')" class="text-xs text-white/35 transition hover:text-white">{{ t('welcome.footer.bazaarFlips') }}</Link></li>
+                            <li><Link :href="route('npc-flips')" class="text-xs text-white/35 transition hover:text-white">{{ t('welcome.footer.npcArbitrage') }}</Link></li>
+                            <li><Link :href="route('event-timer')" class="text-xs text-white/35 transition hover:text-white">{{ t('welcome.footer.eventTimer') }}</Link></li>
+                            <li><Link :href="route('mayors')" class="text-xs text-white/35 transition hover:text-white">{{ t('welcome.footer.mayorIntel') }}</Link></li>
+                            <li><Link :href="route('profile-stats')" class="text-xs text-white/35 transition hover:text-white">{{ t('welcome.footer.profileStats') }}</Link></li>
+                        </ul>
+                    </div>
+
+                    <div>
+                        <h3 class="text-[10px] font-bold uppercase tracking-widest text-white/40">{{ t('welcome.footer.comingSoon') }}</h3>
+                        <ul class="mt-3 space-y-2">
+                            <li>
+                                <Link v-if="isTestingAdmin" :href="route('crafting')" class="text-xs text-white/35 transition hover:text-white">{{ t('welcome.footer.craftingArbitrage') }}</Link>
+                                <span v-else class="text-xs text-white/20">{{ t('welcome.footer.craftingArbitrage') }}</span>
+                            </li>
+                            <li>
+                                <Link v-if="isTestingAdmin" :href="route('bin-sniper')" class="text-xs text-white/35 transition hover:text-white">{{ t('welcome.footer.binSniper') }}</Link>
+                                <span v-else class="text-xs text-white/20">{{ t('welcome.footer.binSniper') }}</span>
+                            </li>
+                            <li>
+                                <Link v-if="isTestingAdmin" :href="route('portfolio')" class="text-xs text-white/35 transition hover:text-white">{{ t('welcome.footer.portfolioTracker') }}</Link>
+                                <span v-else class="text-xs text-white/20">{{ t('welcome.footer.portfolioTracker') }}</span>
+                            </li>
+                            <li>
+                                <Link v-if="isTestingAdmin" :href="route('dungeon-party')" class="text-xs text-white/35 transition hover:text-white">{{ t('welcome.footer.dungeonPartyFinder') }}</Link>
+                                <span v-else class="text-xs text-white/20">{{ t('welcome.footer.dungeonPartyFinder') }}</span>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <div>
+                        <h3 class="text-[10px] font-bold uppercase tracking-widest text-white/40">{{ t('welcome.footer.project') }}</h3>
+                        <ul class="mt-3 space-y-2">
+                            <li><Link :href="route('about')" class="text-xs text-white/35 transition hover:text-white">{{ t('welcome.footer.about') }}</Link></li>
+                            <li><a href="https://github.com/Lokkisanek/SkyblockHub.play" target="_blank" rel="noopener noreferrer" class="text-xs text-white/35 transition hover:text-white">{{ t('welcome.footer.github') }}</a></li>
+                            <li><a href="https://buymeacoffee.com/lokkisan" target="_blank" rel="noopener noreferrer" class="text-xs text-white/35 transition hover:text-white">{{ t('welcome.footer.patreon') }}</a></li>
+                        </ul>
+                    </div>
+
+                    <div>
+                        <h3 class="text-[10px] font-bold uppercase tracking-widest text-white/40">{{ t('welcome.footer.legal') }}</h3>
+                        <ul class="mt-3 space-y-2">
+                            <li><Link :href="`${route('billing')}#faq`" class="text-xs text-white/35 transition hover:text-white">{{ t('welcome.footer.pricingFaq') }}</Link></li>
+                            <li><Link :href="route('privacy')" class="text-xs text-white/35 transition hover:text-white">{{ t('welcome.footer.privacyPolicy') }}</Link></li>
+                            <li><Link :href="route('terms')" class="text-xs text-white/35 transition hover:text-white">{{ t('welcome.footer.terms') }}</Link></li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="mt-8 flex flex-col items-center justify-between gap-3 border-t border-white/[0.06] pt-6 sm:flex-row">
+                    <p class="text-[11px] text-white/25">{{ t('welcome.footer.copyright', { year: new Date().getFullYear() }) }}</p>
+                    <p class="text-[11px] text-white/20">{{ t('welcome.footer.notAffiliated') }}</p>
+                </div>
+            </div>
+        </footer>
     </AuthenticatedLayout>
 </template>
 
@@ -455,6 +600,67 @@ function toggleDevSubscription() {
     color: #55ff55;
     cursor: pointer;
     transition: all 0.15s ease;
+}
+
+.footer-wrapper {
+    background: linear-gradient(180deg, rgba(16, 16, 16, 0.95) 0%, rgba(16, 16, 16, 0.88) 100%);
+    backdrop-filter: blur(16px);
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    z-index: 10;
+}
+
+.slime-glow-footer-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    overflow: hidden;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.slime-glow-footer {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 120px;
+    height: 50px;
+    border-radius: 4px;
+    background: rgba(93, 211, 93, 0.08);
+    filter: blur(35px);
+    pointer-events: none;
+    animation: footerSlimeDrift 40s ease-in-out infinite, footerSlimeBounce 5s ease-in-out infinite;
+}
+
+.slime-glow-footer::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 60px;
+    height: 40px;
+    border-radius: 3px;
+    background: rgba(61, 168, 61, 0.06);
+    filter: blur(20px);
+    animation: footerSlimePulse 6s ease-in-out infinite;
+}
+
+@keyframes footerSlimeDrift {
+    0%, 100% { left: 75%; }
+    33% { left: 40%; }
+    66% { left: 10%; }
+}
+
+@keyframes footerSlimeBounce {
+    0%, 100% { transform: translateY(4px); }
+    50% { transform: translateY(-6px); }
+}
+
+@keyframes footerSlimePulse {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 1; }
 }
 
 .modal-btn:hover:not(:disabled) {

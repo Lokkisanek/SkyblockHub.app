@@ -41,7 +41,7 @@ const showUpsell = computed(() => viewerTier.value !== 'mvp');
                             <Link :href="route('billing')" class="leaderboards-upsell-primary">
                                 {{ viewerTier === 'free' ? t('leaderboards.upsellFreeCta') : t('leaderboards.upsellVipCta') }}
                             </Link>
-                            <Link :href="route('pricing')" class="leaderboards-upsell-secondary">{{ t('leaderboards.upsellCompare') }}</Link>
+                            <Link :href="`${route('billing')}#faq`" class="leaderboards-upsell-secondary">{{ t('leaderboards.upsellCompare') }}</Link>
                         </div>
                     </div>
 

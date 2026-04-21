@@ -81,12 +81,12 @@ const { t } = useI18n();
                             {{ t('about.supportDesc') }}
                         </p>
                         <a
-                            href="https://www.patreon.com/SkyblockHub"
+                            href="https://buymeacoffee.com/lokkisan"
                             target="_blank"
                             rel="noopener noreferrer"
                             class="mt-5 inline-flex items-center gap-2 rounded-lg border border-amber-400/15 bg-amber-400/[0.07] px-4 py-2 text-[13px] font-medium text-amber-300/80 transition hover:bg-amber-400/15 hover:text-amber-200"
                         >
-                            {{ t('about.supportOnPatreon') }}
+                            {{ t('about.supportPatreon') }}
                         </a>
                     </div>
 

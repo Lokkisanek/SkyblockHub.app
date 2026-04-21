@@ -1,5 +1,24 @@
 # SkyblockHub Development Server Launcher
 
+if ($env:OS -ne 'Windows_NT') {
+    $bashScript = Join-Path $PSScriptRoot "start-dev.sh"
+
+    if (-not (Get-Command bash -ErrorAction SilentlyContinue)) {
+        Write-Host "ERROR: bash is not installed!" -ForegroundColor Red
+        exit 1
+    }
+
+    if (-not (Test-Path $bashScript)) {
+        Write-Host "ERROR: start-dev.sh not found!" -ForegroundColor Red
+        exit 1
+    }
+
+    & bash $bashScript
+    exit $LASTEXITCODE
+}
+
+Set-Location $PSScriptRoot
+
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host "     SkyblockHub - Development Start" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
@@ -39,6 +58,18 @@ if (-not (Test-Path ".env")) {
     if (Test-Path ".env.example") {
         Copy-Item ".env.example" ".env"
         Write-Host "OK: .env created (please configure it)" -ForegroundColor Green
+    } else {
+        Write-Host "ERROR: .env.example not found!" -ForegroundColor Red
+        exit 1
+    }
+}
+
+if (-not (Select-String -Path ".env" -Pattern '^APP_KEY=[^\s]+$' -Quiet)) {
+    Write-Host "Running: php artisan key:generate..." -ForegroundColor Yellow
+    php artisan key:generate --ansi
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "ERROR: Failed to generate APP_KEY" -ForegroundColor Red
+        exit 1
     }
 }
 
@@ -46,14 +77,22 @@ if (-not (Test-Path ".env")) {
 if (-not (Test-Path "database")) {
     New-Item -ItemType Directory "database" | Out-Null
 }
-if (-not (Test-Path "database\database.sqlite")) {
-    New-Item -ItemType File "database\database.sqlite" | Out-Null
+if (-not (Test-Path (Join-Path "database" "database.sqlite"))) {
+    New-Item -ItemType File (Join-Path "database" "database.sqlite") | Out-Null
 }
 
 # Laravel setup
-Write-Host "Running migrations and seeders..." -ForegroundColor Yellow
-php artisan key:generate --ansi
+Write-Host "Running migrations..." -ForegroundColor Yellow
 php artisan migrate --force
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "ERROR: Migrations failed" -ForegroundColor Red
+    exit 1
+}
+
+Write-Host "Running initial bazaar sync..." -ForegroundColor Yellow
+php scripts/run_fetch_hypixel_bazaar_job.php
+
+Write-Host "Seeding crafting recipes..." -ForegroundColor Yellow
 php artisan recipes:seed
 
 Write-Host ""

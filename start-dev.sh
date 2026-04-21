@@ -2,6 +2,8 @@
 
 # SkyblockHub - macOS/Linux Development Startup Script
 
+cd "$(dirname "$0")" || exit 1
+
 echo ""
 echo "========================================"
 echo "     SkyblockHub - Development Start"
@@ -59,6 +61,20 @@ fi
 echo "✓ .env configuration file exists"
 echo ""
 
+# Only generate an application key when one is missing.
+if ! grep -Eq '^APP_KEY=[^[:space:]]+' ".env"; then
+    echo "⚙️  APP_KEY missing, generating one..."
+    php artisan key:generate --ansi
+    if [ $? -ne 0 ]; then
+        echo "❌ APP_KEY generation failed!"
+        exit 1
+    fi
+else
+    echo "✓ APP_KEY already configured"
+fi
+
+echo ""
+
 echo "========================================"
 echo "     Starting services..."
 echo "========================================"
@@ -79,19 +95,21 @@ if [ ! -f "database/database.sqlite" ]; then
     chmod 664 database/database.sqlite || true
 fi
 
-# Run migrations and generate app key (safe to run repeatedly)
-echo "⚙️  Generating APP_KEY and running migrations..."
-php artisan key:generate --ansi || true
-php artisan migrate --force || true
+# Run migrations before any data seeding/fetching.
+echo "⚙️  Running migrations..."
+php artisan migrate --force
+if [ $? -ne 0 ]; then
+    echo "❌ Migrations failed!"
+    exit 1
+fi
 
-# Seed crafting recipes (safe to run repeatedly)
+# Run the bazaar job that populates bazaar_products before seeding recipes.
+echo "⚙️  Running initial bazaar sync..."
+php scripts/run_fetch_hypixel_bazaar_job.php || echo "bazaar sync failed"
+
+# Seed crafting recipes after bazaar products exist.
 echo "⚙️  Seeding recipes for Crafting page..."
 php artisan recipes:seed || echo "recipes:seed failed"
-
-# Optional: run initial fetches to populate data
-echo "⚙️  Running initial fetches (bin, bazaar)..."
-php artisan bin:fetch || echo "bin:fetch failed"
-php artisan bazaar:fetch || echo "bazaar:fetch failed"
 
 # Function to kill all background processes on exit
 cleanup() {
