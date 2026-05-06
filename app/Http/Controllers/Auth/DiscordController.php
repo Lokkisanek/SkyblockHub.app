@@ -5,14 +5,16 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Laravel\Socialite\Facades\Socialite;
 
 class DiscordController extends Controller
 {
-    public function redirect(): RedirectResponse
+    public function redirect(Request $request): RedirectResponse
     {
+        $this->storeIntendedRedirect($request);
+
         return Socialite::driver('discord')
             ->scopes(['identify', 'email'])
             ->redirect();
@@ -103,5 +105,23 @@ class DiscordController extends Controller
 
         return redirect()->route('profile.edit')
             ->with('status', 'Discord úspěšně propojen!');
+    }
+
+    private function storeIntendedRedirect(Request $request): void
+    {
+        $redirect = (string) $request->query('redirect', '');
+
+        if ($this->isSafeLocalRedirect($redirect)) {
+            $request->session()->put('url.intended', $redirect);
+        }
+    }
+
+    private function isSafeLocalRedirect(string $redirect): bool
+    {
+        return $redirect !== ''
+            && str_starts_with($redirect, '/')
+            && ! str_starts_with($redirect, '//')
+            && ! str_contains($redirect, "\n")
+            && ! str_contains($redirect, "\r");
     }
 }

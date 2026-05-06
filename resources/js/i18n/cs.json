@@ -100,6 +100,59 @@
         "take": "Vyplnit průzkum",
         "dismiss": "Zavřít"
     },
+    "onboarding": {
+        "kicker": "První Session",
+        "title": "Rychlý Start Checklist",
+        "copy": "Dokonči {completed}/{total} kroků pro první skutečný aha moment.",
+        "copy_variants": {
+            "a": "Dokonči {completed}/{total} kroků pro první skutečný aha moment.",
+            "b": "Dej {completed}/{total} kroků a odemkni první win ještě dnes."
+        },
+        "dismiss": "Skrýt",
+        "done": "Hotovo",
+        "goTo": "Otevřít",
+        "markDone": "Označit hotovo",
+        "steps": {
+            "link_minecraft": {
+                "title": "Propoj Minecraft účet",
+                "description": "Propoj svůj Minecraft profil a odemkni úpravy dashboardu i personalizovaná data.",
+                "title_variants": {
+                    "unlinked": "Propoj Minecraft účet"
+                },
+                "description_variants": {
+                    "unlinked": "Propoj Minecraft profil a odemkni úpravy dashboardu a hráčská data."
+                }
+            },
+            "open_dashboard": {
+                "title": "Otevři svůj dashboard",
+                "description": "Navštiv Dashboard a uvidíš svůj osobní workspace v praxi.",
+                "description_variants": {
+                    "paid": "Otevři Dashboard a dolaď svůj premium workspace layout.",
+                    "trial": "Otevři Dashboard a otestuj trial widgety."
+                }
+            },
+            "explore_module": {
+                "title": "Vyzkoušej hlavní nástroj",
+                "description": "Otevři Bazaar, NPC Flips, Profile Stats, Events, Mayors nebo Leaderboards.",
+                "description_variants": {
+                    "paid": "Otevři hlavní nástroj a využij VIP/MVP benefity hned.",
+                    "trial": "Otevři hlavní nástroj a otestuj premium hloubku dat."
+                }
+            },
+            "visit_billing": {
+                "title": "Podívej se na plány a trial",
+                "description": "Otevři Billing a získej přehled o VIP/MVP benefitech i trialu.",
+                "title_variants": {
+                    "trial": "Sprav svůj trial",
+                    "paid": "Sprav své předplatné"
+                },
+                "description_variants": {
+                    "trial": "Zkontroluj zbývající trial dny a porovnej VIP/MVP benefity.",
+                    "paid": "Mrkni na aktuální tier a billing status."
+                }
+            }
+        }
+    },
     "welcome": {
         "brand": "SkyblockHub",
         "hero": "Lepší rozhodnutí ve SkyBlocku, rychleji",
@@ -107,6 +160,9 @@
         "searchPlaceholder": "Hledat SkyBlock hráče...",
         "openProfile": "Otevřít profil",
         "searchHelper": "Zadej jméno a přeskoč rovnou na profil.",
+        "discordInviteTitle": "Přidej se na SkyblockHub Discord",
+        "discordInviteBody": "Sleduj novinky, sdílej nápady a řeš vše kolem SkyblockHubu přímo s komunitou.",
+        "discordInviteButton": "Připojit se na Discord server",
         "connectCta": "Připoj svůj Discord účet pro přístup k dashboardu, free trialu a všem nástrojům.",
         "connectDiscord": "Připojit přes Discord",
         "openDashboard": "Otevřít Dashboard",
@@ -296,6 +352,8 @@
         "title": "Dashboard",
         "kicker": "Osobní pracovní prostor",
         "heading": "Vlastní Dashboard",
+        "betaTag": "Beta",
+        "seeMoreInfo": "Více informací",
         "done": "Hotovo",
         "edit": "Upravit",
         "compactOn": "Kompaktní režim",
@@ -336,6 +394,66 @@
         "previewUnavailable": "Náhled nedostupný",
         "insert": "Vložit",
         "size": "Velikost"
+    },
+    "dashboardInfo": {
+        "title": "Custom Dashboard Beta",
+        "subtitle": "Jak to funguje teď, co přijde dál a kam vývoj směřuje.",
+        "backToDashboard": "Zpět na Dashboard",
+        "whatIsKicker": "Co to je",
+        "whatIsTitle": "Tvůj vlastní modulární SkyBlock workspace",
+        "whatIsBody": "Custom Dashboard ti umožní složit si osobní rozhraní z widgetů a mít nejdůležitější profilová data na jednom místě. Je navržený jako rychlý pracovní panel, ne jako statická profilová stránka.",
+        "howItWorksKicker": "Jak to funguje",
+        "howItWorksTitle": "Grid sloty, live profilová data a edit režim",
+        "howItWorksBody": "Widgety můžeš umisťovat do gridu, přesouvat je v edit režimu a ukládat různé layouty do slotů. Profilové widgety načítají SkyCrypt data, takže rychle vidíš důležité statistiky.",
+        "progressKicker": "Progress",
+        "progressTitle": "Aktuální rozsah beta verze",
+        "progressPoint1": "Základní drag-and-drop editor layoutu",
+        "progressPoint2": "Sloty pro oddělené dashboard presety",
+        "progressPoint3": "Live profilové widgety a inventory vizuály",
+        "progressPoint4": "Veřejné/soukromé nastavení viditelnosti",
+        "roadmapKicker": "Roadmap",
+        "roadmapTitle": "Co je v plánu dál",
+        "roadmapPoint1": "Další typy widgetů (ekonomika, eventy, profilové změny)",
+        "roadmapPoint2": "Lepší responsive chování pro menší displeje",
+        "roadmapPoint3": "Import/export šablon pro sdílení layoutů",
+        "roadmapPoint4": "Vylepšení výkonu a obnovování dat",
+        "feedbackKicker": "Feedback",
+        "feedbackTitle": "Pomoz vytvarovat další verzi",
+        "feedbackBody": "Tahle část se aktivně vyvíjí. Prioritu dalších beta iterací určují hlavně reálné zkušenosti uživatelů.",
+        "feedbackDiscord": "Máš nápad nebo bug? Napiš nám přímo do feedback kanálu na Discordu.",
+        "joinDiscord": "Připojit se na Discord"
+    },
+    "featurePrompts": {
+        "portfolio": {
+            "freeTitle": "Sleduj pohyby s rychlejším refreshem",
+            "freeBody": "VIP zkracuje refresh trhu, takže graf pozic zůstává blíž aktuálním cenám.",
+            "freeTitleB": "Drž pozice blíž live cenám",
+            "freeBodyB": "VIP zrychlí refresh, aby portfolio sedělo s pohybem trhu.",
+            "premiumTitle": "Přejdi na MVP pro ještě těsnější market loop",
+            "premiumBody": "MVP drží portfolio panel svižnější, když spravuješ víc pozic a chceš rychlejší aktualizace.",
+            "premiumTitleB": "Rozjeď portfolio na nejrychlejším loopu",
+            "premiumBodyB": "MVP drží aktualizace na nejrychlejším tieru pro heavy workflow."
+        },
+        "binSniper": {
+            "freeTitle": "Vidíš sniper příležitosti dřív",
+            "freeBody": "VIP zkracuje refresh feedu, takže můžeš reagovat rychleji, když se objeví ziskový snipe.",
+            "freeTitleB": "Reaguj na nové snipy rychleji",
+            "freeBodyB": "VIP zkrátí refresh, takže chytíš deal dřív, než zmizí.",
+            "premiumTitle": "MVP přináší nejrychlejší detekční loop",
+            "premiumBody": "MVP drží feed na nejrychlejším refresh tieru pro těžší flipping workflow.",
+            "premiumTitleB": "Zůstaň na nejrychlejším refreshu",
+            "premiumBodyB": "MVP drží detekce na nejkratším intervalu pro seriózní flipping."
+        },
+        "crafting": {
+            "freeTitle": "Měj recipe scan blíž aktuálním cenám",
+            "freeBody": "VIP zkracuje refresh a drží crafting arbitrage view blíž pohybům na Bazaaru.",
+            "freeTitleB": "Drž crafting marže fresh",
+            "freeBodyB": "VIP sníží prodlevu refreshu, aby seděly crafting spready.",
+            "premiumTitle": "Spusť nejrychlejší market update loop",
+            "premiumBody": "MVP je nejlepší, když chceš nejrychlejší refresh napříč market nástroji.",
+            "premiumTitleB": "Upgraduj na nejrychlejší crafting refresh",
+            "premiumBodyB": "MVP drží crafting scany na nejrychlejším update tieru."
+        }
     },
     "about": {
         "title": "O projektu",
@@ -488,6 +606,14 @@
         "title": "Žebříčky",
         "kicker": "Komunita",
         "copy": "VIP a MVP uživatelé jsou zvýrazněni tier tagy v žebříčku.",
+        "periodAll": "All time",
+        "periodDaily": "Denní",
+        "periodWeekly": "Týdenní",
+        "periodMonthly": "Měsíční",
+        "personalKicker": "Tvůj progres",
+        "personalTitle": "Personal rank card",
+        "personalCopy": "Sleduj pořadí a pohyb v rámci vybraného období.",
+        "personalRank": "Tvoje pořadí",
         "upsellKicker": "Tier Boost",
         "upsellFreeCopy": "Odemkni svůj VIP/MVP tier tag a buď v komunitním žebříčku okamžitě víc vidět.",
         "upsellVipCopy": "Přejdi z VIP na MVP pro nejvyšší tier viditelnost a kompletní premium stack.",

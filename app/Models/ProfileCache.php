@@ -15,6 +15,7 @@ class ProfileCache extends Model
         'minecraft_uuid',
         'profile_id',
         'cute_name',
+        'selected',
         'raw_data',
         'fetched_at',
     ];

@@ -2,6 +2,7 @@
 import { ref, computed } from 'vue';
 import { Head, useForm, router } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import ContextualUpgradePrompt from '@/Components/ContextualUpgradePrompt.vue';
 import { Line } from 'vue-chartjs';
 import { useI18n } from 'vue-i18n';
 import {
@@ -196,6 +197,25 @@ const chartConfig = computed(() => ({
                         {{ realisedPnl >= 0 ? '+' : '' }}{{ fmt(realisedPnl) }}
                     </div>
                 </div>
+            </div>
+
+            <div class="mb-4">
+                <ContextualUpgradePrompt
+                    module-key="portfolio"
+                    experiment-key="portfolio-upgrade-copy"
+                    target-tier="mvp"
+                    :kicker="t('billing.readyUpgrade')"
+                    :free-title="t('featurePrompts.portfolio.freeTitle')"
+                    :free-title-b="t('featurePrompts.portfolio.freeTitleB')"
+                    :free-body="t('featurePrompts.portfolio.freeBody')"
+                    :free-body-b="t('featurePrompts.portfolio.freeBodyB')"
+                    :premium-title="t('featurePrompts.portfolio.premiumTitle')"
+                    :premium-title-b="t('featurePrompts.portfolio.premiumTitleB')"
+                    :premium-body="t('featurePrompts.portfolio.premiumBody')"
+                    :premium-body-b="t('featurePrompts.portfolio.premiumBodyB')"
+                    :cta-label="t('billing.upgradeLink')"
+                    :compare-label="t('pricingFaq.comparePlans')"
+                />
             </div>
 
             <!-- Chart -->

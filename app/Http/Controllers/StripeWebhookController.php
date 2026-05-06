@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\UserEntitlement;
+use App\Services\FunnelAnalyticsService;
 use App\Services\SubscriptionFeatureService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -14,6 +15,7 @@ class StripeWebhookController extends Controller
 {
     public function __construct(
         private readonly SubscriptionFeatureService $subscriptionFeatureService,
+        private readonly FunnelAnalyticsService $funnelAnalyticsService,
     ) {
     }
 
@@ -81,6 +83,11 @@ class StripeWebhookController extends Controller
         $subscription = $stripe->subscriptions->retrieve($subscriptionId, []);
 
         $this->syncFromSubscriptionObject($subscription, $userId, $tier);
+
+        $this->funnelAnalyticsService->track('checkout_success', [
+            'source' => 'stripe_webhook',
+            'tier' => $tier,
+        ], $userId);
     }
 
     private function syncFromSubscriptionObject(object $subscription, ?int $userId, ?string $fallbackTier): void

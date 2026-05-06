@@ -3,14 +3,17 @@
 use App\Http\Controllers\BazaarController;
 use App\Http\Controllers\BillingController;
 use App\Http\Controllers\BinSniperController;
+use App\Http\Controllers\AnaliticsController;
 use App\Http\Controllers\CookieConsentController;
 use App\Http\Controllers\CraftingArbitrageController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DungeonPartyController;
 use App\Http\Controllers\EventsController;
+use App\Http\Controllers\FunnelAnalyticsController;
 use App\Http\Controllers\LeaderboardsController;
 use App\Http\Controllers\MayorController;
 use App\Http\Controllers\NpcFlipsController;
+use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\PortfolioController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProfileStatsController;
@@ -31,9 +34,16 @@ Route::get('/', function () {
 });
 
 Route::post('/cookie-consent', [CookieConsentController::class, 'store'])->name('cookie-consent.store');
+Route::post('/analytics/funnel-event', [FunnelAnalyticsController::class, 'store'])
+    ->middleware('throttle:120,1')
+    ->name('analytics.funnel-event');
 
 Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+Route::get('/dashboard/visit/{minecraftUuid}', [DashboardController::class, 'visit'])->name('dashboard.visit');
 Route::post('/dashboard/save', [DashboardController::class, 'save'])->middleware('auth')->name('dashboard.save');
+Route::get('/dashboard/info', function () {
+    return Inertia::render('DashboardInfo');
+})->name('dashboard.info');
 
 Route::get('/bazaar', [BazaarController::class, 'index'])->name('bazaar');
 Route::get('/npc-flips', [NpcFlipsController::class, 'index'])->name('npc-flips');
@@ -59,6 +69,9 @@ Route::get('/pricing', function () {
 })->name('pricing');
 
 Route::get('/billing', [BillingController::class, 'index'])->name('billing');
+Route::get('/analytics', function () {
+    return redirect()->route('admin.index');
+})->name('analytics.redirect');
 
 Route::get('/subscribe/{plan}', function (string $plan) {
     $plan = strtolower($plan);
@@ -89,6 +102,9 @@ Route::get('/subscribe/{plan}', function (string $plan) {
 })->name('subscribe');
 
 Route::middleware('auth')->group(function () {
+    Route::post('/onboarding/complete-step', [OnboardingController::class, 'completeStep'])->name('onboarding.complete-step');
+    Route::post('/onboarding/dismiss', [OnboardingController::class, 'dismiss'])->name('onboarding.dismiss');
+
     Route::post('/billing/checkout', [BillingController::class, 'checkout'])->name('billing.checkout');
     Route::post('/billing/trial', [BillingController::class, 'startTrial'])->name('billing.trial');
     Route::post('/billing/cancel', [BillingController::class, 'cancel'])->name('billing.cancel');
@@ -102,6 +118,9 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
     Route::middleware('testing.admin')->group(function () {
+        Route::get('/admin', [AnaliticsController::class, 'index'])->name('admin.index');
+        Route::get('/analitics', fn () => redirect()->route('admin.index'))->name('analitics.index');
+
         Route::get('/dungeon-party', [DungeonPartyController::class, 'index'])->name('dungeon-party');
         Route::post('/dungeon-party', [DungeonPartyController::class, 'store'])->name('dungeon-party.store');
         Route::delete('/dungeon-party', [DungeonPartyController::class, 'destroy'])->name('dungeon-party.destroy');

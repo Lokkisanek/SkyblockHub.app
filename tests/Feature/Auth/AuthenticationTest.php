@@ -37,6 +37,14 @@ class AuthenticationTest extends TestCase
         $response->assertStatus(302);
     }
 
+    public function test_discord_auth_entrypoint_preserves_redirect_target(): void
+    {
+        $response = $this->get(route('auth.discord', ['redirect' => '/bazaar?search=ice'], absolute: false));
+
+        $response->assertStatus(302);
+        $response->assertSessionHas('url.intended', '/bazaar?search=ice');
+    }
+
     public function test_users_can_logout(): void
     {
         $user = User::factory()->create();

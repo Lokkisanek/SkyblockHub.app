@@ -18,4 +18,13 @@ export default defineConfig({
             },
         }),
     ],
+    server: {
+        // Force IPv4 localhost to avoid Vite advertising [::1] in module URLs
+        host: 'localhost',
+        hmr: {
+            host: 'localhost',
+        },
+        port: 5173,
+        strictPort: true,
+    },
 });

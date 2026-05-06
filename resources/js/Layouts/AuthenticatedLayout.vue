@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n';
 import ApplicationLogo from '@/Components/ApplicationLogo.vue';
 import AuthSlidePanel from '@/Components/AuthSlidePanel.vue';
 import CookieConsent from '@/Components/CookieConsent.vue';
+import OnboardingChecklist from '@/Components/OnboardingChecklist.vue';
 import SurveyPopup from '@/Components/SurveyPopup.vue';
 import Dropdown from '@/Components/Dropdown.vue';
 import DropdownLink from '@/Components/DropdownLink.vue';
@@ -15,6 +16,7 @@ const showingNavigationDropdown = ref(false);
 const showAuthPanel = ref(false);
 const authNotice = ref('');
 const page = usePage();
+const onboarding = computed(() => page.props.onboarding ?? null);
 
 const user = computed(() => page.props.auth?.user ?? null);
 const currentMayor = computed(() => page.props.currentMayor ?? null);
@@ -187,6 +189,15 @@ watch(
                                     {{ $t('nav.leaderboards') }}
                                 </Link>
 
+                                <Link
+                                    v-if="isTestingAdmin"
+                                    :href="route('admin.index')"
+                                    class="nav-link"
+                                    :class="{ active: isActive('admin.index') }"
+                                >
+                                    Admin
+                                </Link>
+
                                 <template v-if="canAccessDungeonParty || canAccessPortfolio || canAccessBinSniper">
                                     <Link v-if="canAccessDungeonParty" :href="route('dungeon-party')" class="nav-link" :class="{ active: isActive('dungeon-party') }">
                                         {{ $t('nav.partyFinder') }}
@@ -345,6 +356,14 @@ watch(
                         <Link :href="route('leaderboards')" class="mobile-link" :class="{ 'mobile-link-active': isActive('leaderboards') }">
                             {{ $t('nav.leaderboards') }}
                         </Link>
+                        <Link
+                            v-if="isTestingAdmin"
+                            :href="route('admin.index')"
+                            class="mobile-link"
+                            :class="{ 'mobile-link-active': isActive('admin.index') }"
+                        >
+                            Admin
+                        </Link>
                         <template v-if="canAccessDungeonParty || canAccessPortfolio || canAccessBinSniper">
                             <Link v-if="canAccessDungeonParty" :href="route('dungeon-party')" class="mobile-link" :class="{ 'mobile-link-active': isActive('dungeon-party') }">{{ $t('nav.partyFinder') }}</Link>
                             <Link v-if="canAccessPortfolio" :href="route('portfolio')" class="mobile-link" :class="{ 'mobile-link-active': isActive('portfolio') }">{{ $t('nav.portfolio') }}</Link>
@@ -373,6 +392,8 @@ watch(
                     </div>
                 </div>
             </nav>
+
+            <OnboardingChecklist v-if="user && onboarding?.show" :onboarding="onboarding" />
 
             <!-- Page Content -->
             <main>

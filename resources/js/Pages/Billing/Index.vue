@@ -2,8 +2,9 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import ApplicationLogo from '@/Components/ApplicationLogo.vue';
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
-import { computed, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { trackFunnelEvent } from '@/lib/funnelAnalytics';
 
 const { t, tm, rt } = useI18n();
 
@@ -40,6 +41,65 @@ const faqs = computed(() => {
         a: rt(faq.a),
     }));
 });
+
+const comparisonRows = computed(() => [
+    { key: 'price', label: t('pricingFaq.price'), free: t('pricingFaq.free'), vip: '$4.99/mo', mvp: '$8.99/mo' },
+    { key: 'bazaar', label: t('pricingFaq.bazaarFlipTable'), free: '✓', vip: '✓', mvp: '✓' },
+    { key: 'npc', label: t('pricingFaq.npcArbitrage'), free: '✓', vip: '✓', mvp: '✓' },
+    { key: 'profile', label: t('pricingFaq.profileStatsBrowser'), free: '✓', vip: '✓', mvp: '✓' },
+    { key: 'event_timer', label: t('pricingFaq.eventTimerNotifications'), free: '✓', vip: '✓', mvp: '✓' },
+    { key: 'mayors', label: t('pricingFaq.mayorIntelPerks'), free: '✓', vip: '✓', mvp: '✓' },
+    { key: 'slots', label: t('pricingFaq.dashboardSlots'), free: '1', vip: '3', mvp: '3' },
+    { key: 'top3', label: t('pricingFaq.top3Flips'), free: '—', vip: '✓', mvp: '✓' },
+    { key: 'refresh', label: t('pricingFaq.fasterDataRefresh'), free: '—', vip: '✓', mvp: '✓' },
+    { key: 'priority', label: t('pricingFaq.priorityWidgetUpdates'), free: '—', vip: '✓', mvp: '✓' },
+    { key: 'leaderboard', label: t('pricingFaq.leaderboardTierTag'), free: t('pricingFaq.free'), vip: 'VIP', mvp: 'MVP' },
+    { key: 'ai_flips', label: t('pricingFaq.aiControlledFlips'), free: '—', vip: '—', mvp: '✓' },
+    { key: 'ai_signals', label: t('pricingFaq.aiTrustSignals'), free: '—', vip: '—', mvp: '✓' },
+    { key: 'trial', label: t('pricingFaq.trial7days'), free: '—', vip: '—', mvp: '✓' },
+]);
+
+const mobilePlanCards = computed(() => [
+    {
+        tier: 'free',
+        label: t('pricingFaq.free'),
+        price: t('pricingFaq.free'),
+        summary: t('billing.freeDesc'),
+        accent: 'text-white/75',
+        bullets: [
+            t('pricingFaq.bazaarFlipTable'),
+            t('pricingFaq.profileStatsBrowser'),
+            t('pricingFaq.eventTimerNotifications'),
+        ],
+        cta: null,
+    },
+    {
+        tier: 'vip',
+        label: 'VIP',
+        price: '$4.99/mo',
+        summary: t('pricingFaq.upgradeVip'),
+        accent: 'text-emerald-400',
+        bullets: [
+            t('pricingFaq.priorityWidgetUpdates'),
+            t('pricingFaq.top3Flips'),
+            t('pricingFaq.leaderboardTierTag'),
+        ],
+        cta: 'vip',
+    },
+    {
+        tier: 'mvp',
+        label: 'MVP',
+        price: '$8.99/mo',
+        summary: t('pricingFaq.upgradeMvp'),
+        accent: 'text-amber-400',
+        bullets: [
+            t('pricingFaq.aiControlledFlips'),
+            t('pricingFaq.aiTrustSignals'),
+            t('pricingFaq.trial7days'),
+        ],
+        cta: 'mvp',
+    },
+]);
 
 function requireLogin() {
     if (user.value) {
@@ -115,6 +175,15 @@ function toggleDevSubscription() {
         },
     });
 }
+
+onMounted(() => {
+    trackFunnelEvent('billing_view', {
+        is_logged_in: Boolean(user.value),
+        active_tier: String(activeTier.value || 'free'),
+    }, {
+        path: '/billing',
+    });
+});
 </script>
 
 <template>
@@ -150,7 +219,7 @@ function toggleDevSubscription() {
                 </div>
 
                 <div class="overflow-hidden rounded-2xl border border-white/10 bg-surface-900/75 shadow-[0_16px_40px_rgba(0,0,0,0.25)] backdrop-blur-sm">
-                    <table class="w-full table-fixed text-left text-sm">
+                    <table class="billing-comparison-table w-full table-fixed text-left text-sm">
                         <colgroup>
                             <col class="feature-col" />
                             <col class="plan-col" />
@@ -166,89 +235,11 @@ function toggleDevSubscription() {
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-white/[0.06]">
-                            <tr>
-                                <td class="px-5 py-3 text-white/75">{{ t('pricingFaq.price') }}</td>
-                                <td class="px-5 py-3 text-center font-semibold text-white">{{ t('pricingFaq.free') }}</td>
-                                <td class="px-5 py-3 text-center font-semibold text-emerald-400">$4.99/mo</td>
-                                <td class="px-5 py-3 text-center font-semibold text-amber-400">$8.99/mo</td>
-                            </tr>
-                            <tr>
-                                <td class="px-5 py-3 text-white/75">{{ t('pricingFaq.bazaarFlipTable') }}</td>
-                                <td class="check-cell"><span class="check-yes">✓</span></td>
-                                <td class="check-cell"><span class="check-yes">✓</span></td>
-                                <td class="check-cell"><span class="check-yes">✓</span></td>
-                            </tr>
-                            <tr>
-                                <td class="px-5 py-3 text-white/75">{{ t('pricingFaq.npcArbitrage') }}</td>
-                                <td class="check-cell"><span class="check-yes">✓</span></td>
-                                <td class="check-cell"><span class="check-yes">✓</span></td>
-                                <td class="check-cell"><span class="check-yes">✓</span></td>
-                            </tr>
-                            <tr>
-                                <td class="px-5 py-3 text-white/75">{{ t('pricingFaq.profileStatsBrowser') }}</td>
-                                <td class="check-cell"><span class="check-yes">✓</span></td>
-                                <td class="check-cell"><span class="check-yes">✓</span></td>
-                                <td class="check-cell"><span class="check-yes">✓</span></td>
-                            </tr>
-                            <tr>
-                                <td class="px-5 py-3 text-white/75">{{ t('pricingFaq.eventTimerNotifications') }}</td>
-                                <td class="check-cell"><span class="check-yes">✓</span></td>
-                                <td class="check-cell"><span class="check-yes">✓</span></td>
-                                <td class="check-cell"><span class="check-yes">✓</span></td>
-                            </tr>
-                            <tr>
-                                <td class="px-5 py-3 text-white/75">{{ t('pricingFaq.mayorIntelPerks') }}</td>
-                                <td class="check-cell"><span class="check-yes">✓</span></td>
-                                <td class="check-cell"><span class="check-yes">✓</span></td>
-                                <td class="check-cell"><span class="check-yes">✓</span></td>
-                            </tr>
-                            <tr>
-                                <td class="px-5 py-3 text-white/75">{{ t('pricingFaq.dashboardSlots') }}</td>
-                                <td class="check-cell"><span class="text-white/60">1</span></td>
-                                <td class="check-cell"><span class="text-emerald-400">3</span></td>
-                                <td class="check-cell"><span class="text-amber-400">3</span></td>
-                            </tr>
-                            <tr>
-                                <td class="px-5 py-3 text-white/75">{{ t('pricingFaq.top3Flips') }}</td>
-                                <td class="check-cell"><span class="check-no">—</span></td>
-                                <td class="check-cell"><span class="check-yes">✓</span></td>
-                                <td class="check-cell"><span class="check-yes">✓</span></td>
-                            </tr>
-                            <tr>
-                                <td class="px-5 py-3 text-white/75">{{ t('pricingFaq.fasterDataRefresh') }}</td>
-                                <td class="check-cell"><span class="check-no">—</span></td>
-                                <td class="check-cell"><span class="check-yes">✓</span></td>
-                                <td class="check-cell"><span class="check-yes">✓</span></td>
-                            </tr>
-                            <tr>
-                                <td class="px-5 py-3 text-white/75">{{ t('pricingFaq.priorityWidgetUpdates') }}</td>
-                                <td class="check-cell"><span class="check-no">—</span></td>
-                                <td class="check-cell"><span class="check-yes">✓</span></td>
-                                <td class="check-cell"><span class="check-yes">✓</span></td>
-                            </tr>
-                            <tr>
-                                <td class="px-5 py-3 text-white/75">{{ t('pricingFaq.leaderboardTierTag') }}</td>
-                                <td class="check-cell"><span class="text-white/40">{{ t('pricingFaq.free') }}</span></td>
-                                <td class="check-cell"><span class="text-emerald-400">VIP</span></td>
-                                <td class="check-cell"><span class="text-amber-400">MVP</span></td>
-                            </tr>
-                            <tr>
-                                <td class="px-5 py-3 text-white/75">{{ t('pricingFaq.aiControlledFlips') }}</td>
-                                <td class="check-cell"><span class="check-no">—</span></td>
-                                <td class="check-cell"><span class="check-no">—</span></td>
-                                <td class="check-cell"><span class="check-yes">✓</span></td>
-                            </tr>
-                            <tr>
-                                <td class="px-5 py-3 text-white/75">{{ t('pricingFaq.aiTrustSignals') }}</td>
-                                <td class="check-cell"><span class="check-no">—</span></td>
-                                <td class="check-cell"><span class="check-no">—</span></td>
-                                <td class="check-cell"><span class="check-yes">✓</span></td>
-                            </tr>
-                            <tr>
-                                <td class="px-5 py-3 text-white/75">{{ t('pricingFaq.trial7days') }}</td>
-                                <td class="check-cell"><span class="check-no">—</span></td>
-                                <td class="check-cell"><span class="check-no">—</span></td>
-                                <td class="check-cell"><span class="check-yes">✓</span></td>
+                            <tr v-for="row in comparisonRows" :key="row.key">
+                                <td class="px-5 py-3 text-white/75">{{ row.label }}</td>
+                                <td class="check-cell"><span :class="row.free === '✓' ? 'check-yes' : row.free === '—' ? 'check-no' : 'text-white/60'">{{ row.free }}</span></td>
+                                <td class="check-cell"><span :class="row.vip === '✓' ? 'check-yes' : row.vip === '—' ? 'check-no' : 'text-emerald-400'">{{ row.vip }}</span></td>
+                                <td class="check-cell"><span :class="row.mvp === '✓' ? 'check-yes' : row.mvp === '—' ? 'check-no' : 'text-amber-400'">{{ row.mvp }}</span></td>
                             </tr>
                         </tbody>
                         <tfoot>
@@ -286,6 +277,45 @@ function toggleDevSubscription() {
                             </tr>
                         </tfoot>
                     </table>
+                </div>
+
+                <div class="mt-6 grid gap-4 md:hidden">
+                    <article v-for="plan in mobilePlanCards" :key="plan.tier" class="mobile-plan-card">
+                        <div class="flex items-start justify-between gap-3">
+                            <div>
+                                <p class="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/35">{{ plan.label }}</p>
+                                <p class="mobile-plan-card__title">{{ plan.price }}</p>
+                                <p class="mobile-plan-card__summary">{{ plan.summary }}</p>
+                            </div>
+                            <span class="text-[11px] font-semibold uppercase tracking-[0.18em]" :class="plan.accent">{{ plan.tier }}</span>
+                        </div>
+
+                        <ul class="mobile-plan-card__list">
+                            <li v-for="bullet in plan.bullets" :key="`${plan.tier}-${bullet}`">
+                                <span class="text-white/35">•</span>
+                                <span>{{ bullet }}</span>
+                            </li>
+                        </ul>
+
+                        <div v-if="plan.cta" class="mt-4 flex">
+                            <button
+                                v-if="plan.tier === 'mvp' && trialDays > 0 && (!user || subscriptionFeatures?.trial_eligible)"
+                                class="trial-btn w-full"
+                                :disabled="isBusy"
+                                @click="openTrialConfirm('mvp')"
+                            >
+                                {{ t('billing.startTrial', { days: trialDays }) }}
+                            </button>
+                            <button
+                                v-else
+                                class="buy-btn buy-btn--vip w-full"
+                                :disabled="isBusy"
+                                @click="checkout(plan.cta)"
+                            >
+                                BUY {{ plan.tier.toUpperCase() }}
+                            </button>
+                        </div>
+                    </article>
                 </div>
 
                 <p class="mt-4 text-center text-xs text-white/35">
@@ -402,6 +432,7 @@ function toggleDevSubscription() {
                         <h3 class="text-[10px] font-bold uppercase tracking-widest text-white/40">{{ t('welcome.footer.project') }}</h3>
                         <ul class="mt-3 space-y-2">
                             <li><Link :href="route('about')" class="text-xs text-white/35 transition hover:text-white">{{ t('welcome.footer.about') }}</Link></li>
+                            <li v-if="isTestingAdmin"><Link :href="route('admin.index')" class="text-xs text-white/35 transition hover:text-white">Admin</Link></li>
                             <li><a href="https://github.com/Lokkisanek/SkyblockHub.play" target="_blank" rel="noopener noreferrer" class="text-xs text-white/35 transition hover:text-white">{{ t('welcome.footer.github') }}</a></li>
                             <li><a href="https://buymeacoffee.com/lokkisan" target="_blank" rel="noopener noreferrer" class="text-xs text-white/35 transition hover:text-white">{{ t('welcome.footer.patreon') }}</a></li>
                         </ul>
@@ -542,6 +573,14 @@ function toggleDevSubscription() {
     color: rgba(255, 255, 255, 0.2);
 }
 
+.billing-comparison-table {
+    min-width: 760px;
+}
+
+.mobile-plan-card {
+    display: none;
+}
+
 .feature-col {
     width: 46%;
 }
@@ -670,5 +709,19 @@ function toggleDevSubscription() {
 .modal-btn:disabled {
     opacity: 0.45;
     cursor: not-allowed;
+}
+
+@media (max-width: 767px) {
+    .billing-comparison-table {
+        display: none;
+    }
+
+    .mobile-plan-card {
+        display: block;
+        border-radius: 18px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: rgba(15, 23, 42, 0.82);
+        padding: 1rem;
+    }
 }
 </style>

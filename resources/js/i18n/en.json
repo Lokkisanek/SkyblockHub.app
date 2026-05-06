@@ -100,6 +100,59 @@
         "take": "Take the Survey",
         "dismiss": "Dismiss"
     },
+    "onboarding": {
+        "kicker": "First Session",
+        "title": "Quick Start Checklist",
+        "copy": "Complete {completed}/{total} steps to unlock your first aha moment.",
+        "copy_variants": {
+            "a": "Complete {completed}/{total} steps to unlock your first aha moment.",
+            "b": "Hit {completed}/{total} steps to unlock your first win today."
+        },
+        "dismiss": "Hide",
+        "done": "Done",
+        "goTo": "Open",
+        "markDone": "Mark done",
+        "steps": {
+            "link_minecraft": {
+                "title": "Link Minecraft account",
+                "description": "Connect your Minecraft profile to unlock editing and personalized data.",
+                "title_variants": {
+                    "unlinked": "Link Minecraft account"
+                },
+                "description_variants": {
+                    "unlinked": "Link your Minecraft profile to unlock dashboard editing and player data."
+                }
+            },
+            "open_dashboard": {
+                "title": "Open your dashboard",
+                "description": "Visit Dashboard and see your personal workspace in action.",
+                "description_variants": {
+                    "paid": "Visit Dashboard and tune your premium workspace layout.",
+                    "trial": "Visit Dashboard and explore your trial widgets."
+                }
+            },
+            "explore_module": {
+                "title": "Try a core tool",
+                "description": "Open Bazaar, NPC Flips, Profile Stats, Events, Mayors, or Leaderboards.",
+                "description_variants": {
+                    "paid": "Open a core tool and use your VIP/MVP perks right away.",
+                    "trial": "Open a core tool and test premium data depth."
+                }
+            },
+            "visit_billing": {
+                "title": "Check plans and trial",
+                "description": "Open Billing to understand VIP/MVP benefits and trial options.",
+                "title_variants": {
+                    "trial": "Manage your trial",
+                    "paid": "Manage your subscription"
+                },
+                "description_variants": {
+                    "trial": "Check remaining trial days and compare VIP/MVP perks.",
+                    "paid": "Review your current tier and billing status."
+                }
+            }
+        }
+    },
     "welcome": {
         "brand": "SkyblockHub",
         "hero": "Make better SkyBlock decisions faster",
@@ -107,6 +160,9 @@
         "searchPlaceholder": "Search SkyBlock player...",
         "openProfile": "Open profile",
         "searchHelper": "Enter a username and jump straight into profile stats.",
+        "discordInviteTitle": "Join the SkyblockHub Discord",
+        "discordInviteBody": "Get update announcements, share ideas, and chat with other players in one place.",
+        "discordInviteButton": "Join Discord Server",
         "connectCta": "Connect your Discord account to unlock the dashboard, start a free trial, and access every tool.",
         "connectDiscord": "Connect with Discord",
         "openDashboard": "Open Dashboard",
@@ -296,6 +352,8 @@
         "title": "Dashboard",
         "kicker": "Personal workspace",
         "heading": "Custom Dashboard",
+        "betaTag": "Beta",
+        "seeMoreInfo": "See more info",
         "done": "Done",
         "edit": "Edit",
         "compactOn": "Compact View",
@@ -336,6 +394,66 @@
         "previewUnavailable": "Preview unavailable",
         "insert": "Insert",
         "size": "Size"
+    },
+    "dashboardInfo": {
+        "title": "Custom Dashboard Beta",
+        "subtitle": "How it works now, what is coming next, and where we are heading.",
+        "backToDashboard": "Back to Dashboard",
+        "whatIsKicker": "What it is",
+        "whatIsTitle": "Your own modular SkyBlock workspace",
+        "whatIsBody": "Custom Dashboard lets you build a personal layout from widgets and keep your most-used profile data in one place. It is designed as a fast control panel, not a static profile page.",
+        "howItWorksKicker": "How it works",
+        "howItWorksTitle": "Grid slots, live profile data, and edit mode",
+        "howItWorksBody": "You can place widgets on a grid, move them around in edit mode, and store separate layouts in slots. Linked profile widgets fetch SkyCrypt data so you can quickly monitor important stats.",
+        "progressKicker": "Progress",
+        "progressTitle": "Current beta scope",
+        "progressPoint1": "Core drag-and-drop layout editor",
+        "progressPoint2": "Slot-based dashboard presets",
+        "progressPoint3": "Live profile widgets and inventory visuals",
+        "progressPoint4": "Public/private visibility controls",
+        "roadmapKicker": "Roadmap",
+        "roadmapTitle": "What is planned next",
+        "roadmapPoint1": "More widget types (economy, events, profile deltas)",
+        "roadmapPoint2": "Better responsive behavior for smaller displays",
+        "roadmapPoint3": "Template import/export for sharing layouts",
+        "roadmapPoint4": "Performance and data refresh improvements",
+        "feedbackKicker": "Feedback",
+        "feedbackTitle": "Help shape the next version",
+        "feedbackBody": "This section is actively evolving. Feedback from real usage drives priorities for the next beta iterations.",
+        "feedbackDiscord": "Have ideas or bugs to report? Write directly in our Discord feedback channel.",
+        "joinDiscord": "Join Discord"
+    },
+    "featurePrompts": {
+        "portfolio": {
+            "freeTitle": "Track swings with faster refresh",
+            "freeBody": "VIP shortens market refresh so your position chart stays closer to live prices.",
+            "freeTitleB": "Keep positions synced with live moves",
+            "freeBodyB": "VIP tightens refresh so your portfolio view stays aligned with the market.",
+            "premiumTitle": "Move to MVP for a tighter market loop",
+            "premiumBody": "MVP keeps the portfolio panel snappier when you manage more positions and need quicker updates.",
+            "premiumTitleB": "Run your portfolio on the fastest loop",
+            "premiumBodyB": "MVP keeps updates at the fastest tier for heavy position management."
+        },
+        "binSniper": {
+            "freeTitle": "See sniper opportunities sooner",
+            "freeBody": "VIP shortens the feed refresh so you can react faster when a profitable snipe appears.",
+            "freeTitleB": "React faster to new snipes",
+            "freeBodyB": "VIP trims refresh time so you catch deals before they disappear.",
+            "premiumTitle": "Use MVP for the fastest detection loop",
+            "premiumBody": "MVP keeps the feed on the quickest refresh tier for heavier flipping workflows.",
+            "premiumTitleB": "Stay on the fastest sniper refresh",
+            "premiumBodyB": "MVP keeps detections at the shortest interval for serious flipping."
+        },
+        "crafting": {
+            "freeTitle": "Keep recipe scans closer to live prices",
+            "freeBody": "VIP shortens refresh and keeps the crafting arbitrage view closer to Bazaar movement.",
+            "freeTitleB": "Keep crafting margins up to date",
+            "freeBodyB": "VIP reduces refresh delay so your crafting spreads match the market.",
+            "premiumTitle": "Run the fastest market update loop",
+            "premiumBody": "MVP is the best fit if you want the quickest refresh across your market tools.",
+            "premiumTitleB": "Upgrade for the fastest crafting refresh",
+            "premiumBodyB": "MVP keeps crafting scans on the quickest update tier."
+        }
     },
     "about": {
         "title": "About",
@@ -488,6 +606,14 @@
         "title": "Leaderboards",
         "kicker": "Community",
         "copy": "VIP and MVP users are highlighted with tier tags in ranking.",
+        "periodAll": "All time",
+        "periodDaily": "Daily",
+        "periodWeekly": "Weekly",
+        "periodMonthly": "Monthly",
+        "personalKicker": "Your Progress",
+        "personalTitle": "Personal rank card",
+        "personalCopy": "Track your current rank and movement within the selected period.",
+        "personalRank": "Your rank",
         "upsellKicker": "Tier Boost",
         "upsellFreeCopy": "Unlock your VIP/MVP tier tag and stand out instantly in community rankings.",
         "upsellVipCopy": "Move from VIP to MVP for the highest tier visibility and complete premium stack.",

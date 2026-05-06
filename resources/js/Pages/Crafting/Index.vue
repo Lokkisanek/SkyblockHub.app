@@ -2,6 +2,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { Head, router } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import ContextualUpgradePrompt from '@/Components/ContextualUpgradePrompt.vue';
 import { useI18n } from 'vue-i18n';
 
 const { t } = useI18n();
@@ -186,6 +187,25 @@ onUnmounted(() => {
                         {{ bestMargin !== null ? fmt(bestMargin) + '%' : '—' }}
                     </div>
                 </div>
+            </div>
+
+            <div class="mb-4">
+                <ContextualUpgradePrompt
+                    module-key="crafting"
+                    experiment-key="crafting-upgrade-copy"
+                    target-tier="mvp"
+                    :kicker="t('billing.readyUpgrade')"
+                    :free-title="t('featurePrompts.crafting.freeTitle')"
+                    :free-title-b="t('featurePrompts.crafting.freeTitleB')"
+                    :free-body="t('featurePrompts.crafting.freeBody')"
+                    :free-body-b="t('featurePrompts.crafting.freeBodyB')"
+                    :premium-title="t('featurePrompts.crafting.premiumTitle')"
+                    :premium-title-b="t('featurePrompts.crafting.premiumTitleB')"
+                    :premium-body="t('featurePrompts.crafting.premiumBody')"
+                    :premium-body-b="t('featurePrompts.crafting.premiumBodyB')"
+                    :cta-label="t('billing.upgradeLink')"
+                    :compare-label="t('pricingFaq.comparePlans')"
+                />
             </div>
 
             <!-- Filters -->

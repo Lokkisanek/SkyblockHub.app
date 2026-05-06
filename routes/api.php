@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\SkyCryptProxyController;
 use App\Http\Controllers\Api\SocialProofMetricsController;
 use App\Http\Controllers\Api\BinSniperAnalysisController;
 use App\Http\Controllers\Api\BazaarController as ApiBazaarController;
+use App\Http\Controllers\Api\LeaderboardController;
 use App\Http\Controllers\CraftingArbitrageController;
 use App\Http\Controllers\KarmaController;
 use App\Http\Controllers\StripeWebhookController;
@@ -67,3 +68,12 @@ Route::post('/stripe/webhook', [StripeWebhookController::class, 'handle'])
 Route::get('/social-proof-metrics', SocialProofMetricsController::class)
     ->middleware('throttle:60,1')
     ->name('api.social-proof.metrics');
+
+/*
+|--------------------------------------------------------------------------
+| Leaderboard API
+|--------------------------------------------------------------------------
+*/
+Route::get('/v1/leaderboards', [LeaderboardController::class, 'index'])
+    ->middleware('throttle:60,1')
+    ->name('api.leaderboards.index');

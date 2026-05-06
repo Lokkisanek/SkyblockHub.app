@@ -3,9 +3,12 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\ProfileCache;
+use App\Models\ProfileSearch;
 use App\Services\HypixelApiProxy;
 use App\Utils\ItemParser;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -435,11 +438,19 @@ class SkyCryptProxyController extends Controller
     /**
      * GET /api/skycrypt/{username}
      */
-    public function profile(string $username): JsonResponse
+    public function profile(Request $request, string $username): JsonResponse
     {
         if (! preg_match('/^[A-Za-z0-9_]{1,16}$/', $username)) {
             return response()->json(['error' => 'Invalid Minecraft username.'], 422);
         }
+
+        ProfileSearch::query()->create([
+            'username' => mb_substr($username, 0, 16),
+            'user_id' => $request->user()?->id,
+            'searched_at' => now(),
+        ]);
+
+        Cache::forget('landing_social_proof_metrics_v1');
 
         $cacheKey = 'skycrypt:profile:' . strtolower($username);
 
@@ -458,9 +469,24 @@ class SkyCryptProxyController extends Controller
         // ── Fetch profiles from Hypixel API v2 ──────────────────────
         $profilesResponse = $this->hypixelApi->getProfiles($uuid);
         if ($profilesResponse === null) {
+            $cachedProfile = $this->resolveCachedProfileResponse($uuid, $username);
+
+            if ($cachedProfile !== null) {
+                return response()->json([
+                    'source' => 'db-cache',
+                    'data' => $cachedProfile,
+                ]);
+            }
+
             return response()->json([
-                'error' => 'Failed to fetch profile data from Hypixel API. Try again later.',
-            ], 502);
+                'source' => 'fallback',
+                'data' => [
+                    'uuid' => $uuid,
+                    'username' => $username,
+                    'profiles' => [],
+                ],
+                'error' => 'Live profile data is temporarily unavailable.',
+            ]);
         }
 
         $rawProfiles = $profilesResponse['profiles'] ?? [];
@@ -485,8 +511,92 @@ class SkyCryptProxyController extends Controller
 
         // ── Cache result ─────────────────────────────────────────────
         $this->cachePut($cacheKey, $data);
+        $this->persistProfilesCache($data, $playerData);
 
         return response()->json(['source' => 'api', 'data' => $data]);
+    }
+
+    /**
+     * Persist transformed profiles so leaderboard can query them directly.
+     */
+    private function persistProfilesCache(array $data, ?array $playerData = null): void
+    {
+        $uuid = (string) ($data['uuid'] ?? '');
+        $username = (string) ($data['username'] ?? '');
+        $rank = $data['rank'] ?? null;
+        $profiles = $data['profiles'] ?? [];
+
+        if ($uuid === '' || ! is_array($profiles) || empty($profiles)) {
+            return;
+        }
+
+        foreach ($profiles as $profileId => $profilePayload) {
+            if (! is_array($profilePayload)) {
+                continue;
+            }
+
+            $profileData = $profilePayload;
+            $profileData['uuid'] = $uuid;
+            $profileData['username'] = $username;
+            $profileData['player'] = [
+                'rank' => $rank,
+                'online' => (bool) ($playerData['lastLogin'] ?? false) && (($playerData['lastLogin'] ?? 0) > ($playerData['lastLogout'] ?? 0)),
+                'lastLogin' => isset($playerData['lastLogin']) ? (int) $playerData['lastLogin'] : null,
+                'lastLogout' => isset($playerData['lastLogout']) ? (int) $playerData['lastLogout'] : null,
+            ];
+
+            ProfileCache::query()->updateOrCreate(
+                [
+                    'minecraft_uuid' => $uuid,
+                    'profile_id' => (string) $profileId,
+                ],
+                [
+                    'cute_name' => $profilePayload['cute_name'] ?? null,
+                    'selected' => (bool) ($profilePayload['selected'] ?? false),
+                    'raw_data' => $profileData,
+                    'fetched_at' => now(),
+                ]
+            );
+        }
+    }
+
+    /**
+     * Try to rebuild a lightweight profile payload from the local cache.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function resolveCachedProfileResponse(string $uuid, string $username): ?array
+    {
+        $rows = ProfileCache::query()
+            ->where('minecraft_uuid', $uuid)
+            ->orderByDesc('selected')
+            ->orderByDesc('fetched_at')
+            ->get();
+
+        if ($rows->isEmpty()) {
+            return null;
+        }
+
+        $profiles = [];
+
+        foreach ($rows as $row) {
+            $profileData = is_array($row->raw_data) ? $row->raw_data : null;
+            if (! is_array($profileData)) {
+                continue;
+            }
+
+            $profiles[(string) $row->profile_id] = $profileData;
+        }
+
+        if (empty($profiles)) {
+            return null;
+        }
+
+        return [
+            'uuid' => $uuid,
+            'username' => $username,
+            'profiles' => $profiles,
+        ];
     }
 
     // ═══════════════════════════════════════════════════════════════════

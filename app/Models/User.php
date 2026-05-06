@@ -25,6 +25,8 @@ class User extends Authenticatable
         'minecraft_username',
         'is_mc_linked',
         'karma_score',
+        'app_vip_rank',
+        'is_donator',
     ];
 
     protected $hidden = [
@@ -35,6 +37,7 @@ class User extends Authenticatable
     {
         return [
             'is_mc_linked' => 'boolean',
+            'is_donator' => 'boolean',
             'karma_score' => 'integer',
         ];
     }
@@ -62,5 +65,15 @@ class User extends Authenticatable
     public function karmaVotesReceived(): HasMany
     {
         return $this->hasMany(KarmaVote::class, 'target_id');
+    }
+
+    public function activity(): HasMany
+    {
+        return $this->hasMany(UserActivity::class);
+    }
+
+    public function onboarding(): HasOne
+    {
+        return $this->hasOne(UserOnboarding::class);
     }
 }

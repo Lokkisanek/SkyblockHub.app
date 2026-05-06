@@ -106,6 +106,61 @@ class DashboardController extends Controller
         ]);
     }
 
+    public function visit(string $minecraftUuid): Response
+    {
+        $dashboard = UserDashboard::query()
+            ->where('is_public', true)
+            ->whereHas('user', function ($query) use ($minecraftUuid): void {
+                $query->where('minecraft_uuid', $minecraftUuid);
+            })
+            ->orderBy('slot_index')
+            ->firstOrFail()
+            ->load('widgets');
+
+        $dashboard->setRelation(
+            'widgets',
+            $dashboard->widgets
+                ->filter(fn ($widget) => in_array($widget->type, self::ALLOWED_WIDGET_TYPES, true))
+                ->values()
+        );
+
+        return Inertia::render('Dashboard', [
+            'canEditDashboard' => false,
+            'requiresLogin' => false,
+            'requiresMinecraftLink' => false,
+            'activeSlotIndex' => (int) $dashboard->slot_index,
+            'dashboard' => [
+                'id' => $dashboard->id,
+                'name' => $dashboard->name,
+                'slot_index' => $dashboard->slot_index,
+                'is_public' => $dashboard->is_public,
+                'grid_columns' => $dashboard->grid_columns,
+                'grid_rows' => $dashboard->grid_rows,
+                'widgets' => $dashboard->widgets->map(fn ($widget) => [
+                    'id' => $widget->id,
+                    'type' => $widget->type,
+                    'title' => $widget->title,
+                    'x' => $widget->x,
+                    'y' => $widget->y,
+                    'w' => $widget->w,
+                    'h' => $widget->h,
+                    'settings' => $widget->settings ?? [],
+                ])->values(),
+            ],
+            'dashboardLimits' => [
+                'free_slots' => 1,
+                'total_slots' => 1,
+                'unlocked_slots' => 1,
+                'locked_slots' => [],
+            ],
+            'subscriptionFeatures' => [
+                'priority_widget_updates' => false,
+            ],
+            'liveWidgetData' => $this->buildLiveWidgetData(),
+            'widgetTemplates' => $this->widgetTemplates(),
+        ]);
+    }
+
     public function save(Request $request): RedirectResponse
     {
         $user = $request->user();

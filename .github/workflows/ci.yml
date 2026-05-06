@@ -36,6 +36,7 @@ jobs:
         run: |
           cp .env.example .env
           php artisan key:generate
+          printf '\nAPP_RELEASE=%s\nVITE_APP_RELEASE=%s\nSENTRY_RELEASE=%s\nVITE_SENTRY_RELEASE=%s\n' "$GITHUB_SHA" "$GITHUB_SHA" "$GITHUB_SHA" "$GITHUB_SHA" >> .env
 
       - name: Run PHP tests
         run: php artisan test

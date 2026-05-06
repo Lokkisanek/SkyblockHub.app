@@ -4,6 +4,7 @@ import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import { useI18n } from 'vue-i18n';
 import ApplicationLogo from '@/Components/ApplicationLogo.vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import { trackFunnelEvent } from '@/lib/funnelAnalytics';
 
 const { t } = useI18n();
 
@@ -224,6 +225,15 @@ function submitSearch() {
     router.get(route('profile-stats'), { username });
 }
 
+function trackLandingCta(cta) {
+    trackFunnelEvent('landing_cta_click', {
+        cta,
+        is_guest: Boolean(props.canLogin),
+    }, {
+        path: '/',
+    });
+}
+
 function cardAccentClass(accent) {
     if (accent === 'emerald') return 'card-accent-emerald';
     if (accent === 'amber') return 'card-accent-amber';
@@ -300,7 +310,8 @@ function cardAccentClass(accent) {
                             <h2 class="text-2xl font-bold text-white sm:text-3xl">{{ $t('welcome.getStarted') }}</h2>
                             <p class="mx-auto mt-3 max-w-lg text-base text-white/60">{{ $t('welcome.connectCta') }}</p>
                             <a
-                                :href="route('auth.discord')"
+                                :href="route('auth.discord', { redirect: page.url || '/' })"
+                                @click="trackLandingCta('discord_login')"
                                 class="mt-6 inline-flex items-center justify-center gap-3 rounded-xl border border-[#5865F2]/50 bg-[#5865F2] px-8 py-3.5 text-base font-bold text-white shadow-[0_4px_20px_rgba(88,101,242,0.35)] transition hover:bg-[#4752C4] hover:shadow-[0_4px_24px_rgba(88,101,242,0.5)]"
                             >
                                 <svg class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor"><path d="M20.318 4.369A19.791 19.791 0 0 0 15.432 2.85a.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.1 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg>
@@ -311,6 +322,7 @@ function cardAccentClass(accent) {
                         <div v-else class="mb-10 text-center">
                             <Link
                                 :href="route('dashboard')"
+                                @click="trackLandingCta('open_dashboard')"
                                 class="inline-flex items-center justify-center gap-2 rounded-xl border border-profit/40 bg-profit/15 px-8 py-4 text-lg font-semibold text-profit transition hover:bg-profit/30 hover:text-white"
                             >
                                 {{ $t('welcome.openDashboard') }}
@@ -347,6 +359,7 @@ function cardAccentClass(accent) {
                                 </ul>
                                 <Link
                                     :href="route('billing')"
+                                    @click="trackLandingCta('pricing_vip')"
                                     class="mt-6 flex w-full items-center justify-center rounded-xl border border-emerald-400/30 bg-emerald-500/10 py-3 text-sm font-semibold text-emerald-400 transition hover:bg-emerald-500/20 hover:text-emerald-300"
                                 >
                                     {{ $t('welcome.pricing.subscribeVip') }}
@@ -378,12 +391,14 @@ function cardAccentClass(accent) {
                                 </ul>
                                 <Link
                                     :href="route('billing')"
+                                    @click="trackLandingCta('trial_mvp')"
                                     class="mt-6 flex w-full items-center justify-center rounded-xl border border-amber-400/40 bg-amber-500/15 py-3 text-sm font-bold text-amber-400 transition hover:bg-amber-500/25 hover:text-amber-300"
                                 >
                                     {{ $t('welcome.pricing.startTrial') }}
                                 </Link>
                                 <Link
                                     :href="route('billing')"
+                                    @click="trackLandingCta('pricing_mvp')"
                                     class="mt-2 flex w-full items-center justify-center rounded-xl border border-white/10 bg-white/5 py-3 text-sm font-semibold text-white/70 transition hover:bg-white/10 hover:text-white"
                                 >
                                     {{ $t('welcome.pricing.subscribeMvp') }}
@@ -394,6 +409,20 @@ function cardAccentClass(accent) {
                         <p class="mt-5 text-center text-xs text-white/30">
                             <Link :href="`${route('billing')}#faq`" class="underline decoration-white/20 underline-offset-2 transition hover:text-white/60">{{ $t('welcome.pricing.comparePlans') }}</Link>
                         </p>
+
+                        <div class="mx-auto mt-8 max-w-4xl rounded-2xl border border-[#5865F2]/30 bg-[#5865F2]/[0.08] px-5 py-5 text-center shadow-[0_14px_38px_rgba(88,101,242,0.14)] backdrop-blur-sm sm:px-8 sm:py-6">
+                            <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#B6BCFF]">Discord</p>
+                            <h2 class="mt-2 text-2xl font-bold text-white sm:text-3xl">{{ $t('welcome.discordInviteTitle') }}</h2>
+                            <p class="mx-auto mt-2 max-w-2xl text-sm leading-relaxed text-white/75 sm:text-base">{{ $t('welcome.discordInviteBody') }}</p>
+                            <a
+                                href="https://discord.gg/4MyP8Pfu5N"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                class="mt-5 inline-flex items-center justify-center gap-2 rounded-xl border border-[#5865F2]/55 bg-[#5865F2] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[#4752C4]"
+                            >
+                                {{ $t('welcome.discordInviteButton') }}
+                            </a>
+                        </div>
                     </div>
                 </section>
 
@@ -615,6 +644,7 @@ function cardAccentClass(accent) {
                         <h3 class="text-[10px] font-bold uppercase tracking-widest text-white/40">{{ $t('welcome.footer.project') }}</h3>
                         <ul class="mt-3 space-y-2">
                             <li><Link :href="route('about')" class="text-xs text-white/35 transition hover:text-white">{{ $t('welcome.footer.about') }}</Link></li>
+                            <li v-if="isTestingAdmin"><Link :href="route('admin.index')" class="text-xs text-white/35 transition hover:text-white">Admin</Link></li>
                             <li><a href="https://github.com/Lokkisanek/SkyblockHub.play" target="_blank" rel="noopener noreferrer" class="text-xs text-white/35 transition hover:text-white">{{ $t('welcome.footer.github') }}</a></li>
                             <li><a href="https://buymeacoffee.com/lokkisan" target="_blank" rel="noopener noreferrer" class="text-xs text-white/35 transition hover:text-white">{{ $t('welcome.footer.patreon') }}</a></li>
                         </ul>

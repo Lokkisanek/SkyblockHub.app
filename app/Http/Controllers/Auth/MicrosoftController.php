@@ -6,14 +6,17 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Services\MinecraftAuthService;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Laravel\Socialite\Facades\Socialite;
 
 class MicrosoftController extends Controller
 {
-    public function redirect(): RedirectResponse
+    public function redirect(Request $request): RedirectResponse
     {
+        $this->storeIntendedRedirect($request);
+
         return Socialite::driver('microsoft')
             ->scopes(['User.Read', 'XboxLive.signin', 'offline_access'])
             ->with(['prompt' => 'select_account'])
@@ -131,5 +134,23 @@ class MicrosoftController extends Controller
             'name' => $microsoftUser->getName() ?? $microsoftUser->getNickname(),
             'email' => $email,
         ], $mcData));
+    }
+
+    private function storeIntendedRedirect(Request $request): void
+    {
+        $redirect = (string) $request->query('redirect', '');
+
+        if ($this->isSafeLocalRedirect($redirect)) {
+            $request->session()->put('url.intended', $redirect);
+        }
+    }
+
+    private function isSafeLocalRedirect(string $redirect): bool
+    {
+        return $redirect !== ''
+            && str_starts_with($redirect, '/')
+            && ! str_starts_with($redirect, '//')
+            && ! str_contains($redirect, "\n")
+            && ! str_contains($redirect, "\r");
     }
 }

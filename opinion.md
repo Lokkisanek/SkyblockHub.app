@@ -1,188 +1,159 @@
 # SkyblockHub.play - Product Opinion (Audit)
 
-Datum: 2026-04-11 (rev 2)
-Scope: Produktovy a UX audit — aktualizovano po implementaci landing redesignu, GDPR, event timer notifikaci, textur a dalsich uprav.
+Datum: 2026-05-06 (rev 7)
+Scope: Produktovy a technicky audit proti aktualnimu stavu aplikace. Pokryva routing, frontend, API, analytics, onboarding, Sentry ops, mobile UX, billing, testy a CI.
 
 ---
 
-## COMPLETED (od posledniho auditu)
+## Executive Summary (rev 7)
 
-### P0 — Landing + messaging
-- [x] Landing rewrite — silny hero ("Make better SkyBlock decisions faster"), konkretni benefity, zero-placeholder.
-- [x] 5 feature karet s emoji ikonami (Bazaar, NPC Arb, Profile Stats, Event Timer, Mayor Intel).
-- [x] Discord CTA pro hosta / "Open Dashboard" pro prihlaseneho.
-- [x] Pricing cards primo na landing (VIP $4.99, MVP $8.99 s 7-day free trial badge).
-- [x] Footer s linky na moduly, GitHub, Buy Me a Coffee, legal, dev contact.
-- [x] SEO meta tagy, OG tagy, canonical URL.
-- [x] `canLogin` prop fix — guest CTA se ukazuje spravne.
+Projekt je dnes technicky zraly pro public use a realne uzivatele. Hlavni produktove cesty jsou hotove, observability je zapojena a vyrazne pribyla operacni disciplina.
 
-### GDPR & compliance
-- [x] CookieConsent popup (bottom-right) s "Allow all" / "Only essential".
-- [x] DB audit trail (cookie_consents tabulka s user_id, session_id, ip, user_agent, consented_at).
-- [x] Privacy Policy, Terms of Service — kompletni, GDPR-compliant.
+- Publikovatelnost: **93/100**
+- Uspesnost (growth/retence/monetizace): **85/100**
 
-### Event Timer notifikace
-- [x] Service Worker registrace + `showNotification` cesta (opraveno z broken `postMessage`).
-- [x] Konfirmacni notifikace pri zapnuti (immediate feedback).
-- [x] In-app flash text ("✓ You'll be notified 5 min before this event").
-- [x] Denied-permission flash message.
-- [x] Custom ikony per event (Coflnet textury + lokalni fallback).
-- [x] Badge (favicon.ico).
-- [x] `visibilitychange` listener pro background-tab reliability.
-- [x] Rozsirene okno detekce (20s → 60s).
-- [x] `saveNotifyPrefs` error handling (try-catch).
-
-### Textury
-- [x] Prepnuti ze `sky.shiiyu.moe` na `sky.coflnet.com/static/icon/` (Bazaar, NPC Flips, Crafting).
-- [x] Lepsi pokryti SkyBlock itemu.
-
-### UX drobnosti
-- [x] Survey popup (Google Forms, localStorage dismiss).
-- [x] Logo v headeru vede na landing (`/`).
-- [x] Pricing & FAQ stranka (`/pricing`) — comparison table (Free vs VIP vs MVP), 8 FAQ vcetne refund policy, trial pravidel, cancel procesu.
-- [x] Linky na Pricing & FAQ ve footeru landingu, pod pricing cards na landingu, a na Billing strance.
-- [x] Admin features za feature-flag — navigace skryta pro non-admin, password gate (`/testing-unlock`) pro dev pristup, "Coming Soon" sekce ve footeru landingu.
+Co to znamena:
+- Frontend i backend bezne bezi v jednom stabilnim dev stacku.
+- Analytics uz nejsou jen dashboard, ale i sbirany event layer, weekly review, digest mail a routing podle thresholdu.
+- Sentry ma nejen integraci, ale i formalni runbook, ownership a triage pravidla.
+- Dense tabulky uz nejsou jen responsivni v technickem smyslu, ale maji mobilni card fallbacky a QA checklist.
 
 ---
 
-## Executive Summary (rev 2)
+## Co Je Ted Silne
 
-SkyblockHub se od posledniho auditu vyrazne posunul v prvnim dojmu a complianci. Landing page je nyni profesionalni s jasnym value proposition, CTA flow a pricing. GDPR je pokryte. Event Timer notifikace funguji end-to-end vcetne custom ikon.
+### 1) Core produkt a routing
+- Landing, billing, dashboard, profile stats, bazaar, NPC flips, events, mayors, leaderboards a portfolio jsou pokryte jako souvisly produkt.
+- `/admin` je primarni admin analytics route a legacy `/analitics` na ni presmerovava.
+- `DashboardController` ma i public visit route pro sdilene dashboardy podle Minecraft UUID.
+- Auth redirecty pres Discord a Microsoft uchovavaji intended target, takze login flow neni slepy konec.
 
-Aktualni odhad pripravenosti: **7.8/10** (z 6.5).
+### 2) Onboarding a activation
+- Onboarding checklist je skutecny produktovy prvek, ne jen vizualni badge.
+- Stav se uklada per user, segmentuje se na `unlinked`, `linked_free`, `trial`, `paid` a ma copy varianty `a`/`b`.
+- Checklist se automaticky doplnuje podle route, takze first-session flow muze vedet uzivatele k prvnimu win momentu.
+- Authenticated shell onboarding i zobrazuje primo v layoutu.
 
-Nejvetsi zbyvajici mezery:
-- Leaderboards jsou prilis zakladni (zadne filtry, trendy, seasons).
-- Chybi onboarding flow pro nove uzivatele.
-- Funnel analytika neexistuje.
-- Admin-only features (BinSniper, Portfolio, DungeonParty) jsou za feature-flag guardem s password gate pro dev pristup.
+### 3) Analytics a growth workflow
+- Funnel event layer existuje jako samostatna tabulka, model i service.
+- Landing CTA, billing view, trial start, checkout start, checkout success a cancel se trackuji pres jednotny funnel service.
+- Admin analytics dashboard pocita weekly review, source segmenty, conversion alerts i experiment varianty.
+- Existuje weekly digest mail i scheduler, takze review neni jen manualni otevreni stranky.
 
----
+### 4) Observability a ops disciplina
+- Frontend Sentry bezi v `resources/js/app.js`, backend capture je v `bootstrap/app.php`.
+- `config/ops.php` popisuje owner routing, triage pravidla a runbook pro frontend, backend, performance i release regressions.
+- `docs/sentry_ops_runbook.md` vyslovne rika, co delat v prvnich 15 minutach, prvnich 4 hodinach a dalsi den.
+- CI doplnuje release metadata do `.env`, aby release tagging sedel mezi buildem a produkci.
 
-## Co je uz dobre
+### 5) Mobile UX
+- Hustsi tabulky na Billing, Admin Analytics a Leaderboards maji mobile card fallbacky.
+- Pro tyto stranky je v repu i explicitni QA checklist pro 320/375/414/768px.
+- Leaderboards uz nejsou jen tabulka, ale ma period layer, personal card, podium a action links.
 
-### Jadro
-- Stabilni stack (Laravel + Vue/Inertia + testy).
-- Funkcni Stripe test-mode flow (checkout + webhook + entitlement sync + trial anti-abuse).
-- Subscription feature gating centralizovane.
-- Dashboard s drag-drop, widgety, undo/redo, sloty, public/private.
-
-### Landing & prvni dojem
-- Profesionalni hero s jasnym slibem.
-- Player search bar primo na landingu.
-- Feature karty s konkretnimi popisy.
-- Pricing karty s trial badge.
-- Discord OAuth bez friction.
-- SEO + OG tagy.
-
-### Core features (production-ready)
-- Bazaar flips — real-time tabulka, top 3 gated, trend indikatory, kopie /bz prikazy.
-- NPC Flips — Best Pick Engine, tax-aware, stackability, compactor toggle.
-- Profile Stats — SkyCrypt-level browser se vsemi taby (Gear, Inventory, Pets, Skills, Dungeons, Slayer, Collections).
-- Event Timer — SkyBlock casovy system, kalendar, notifikace s custom ikonami.
-- Crafting Arbitrage — receptury, real-time ceny pres WebSocket/polling.
-- Mayors — historicky browser s perky a skiny.
-
-### Compliance & trust
-- GDPR cookie consent s DB audit trail.
-- Privacy Policy + Terms of Service.
-- Open-source transparence (GitHub link).
-- About page s pribeh vyvojare.
+### 6) Billing a upgrade prompts
+- Billing ma prepsanou cenovou tabulku i mobilni karticky.
+- Contextual upgrade prompts jsou zapojene do produktnich stranek a trackuji impression, CTA i compare akce.
+- Stripe webhook i billing controller sbiraji funnel signaly, takze monetization path je viditelna v datech.
 
 ---
 
-## Zbyvajici problemy (prioritizovane)
+## Co Je Slabsi
 
-### P0 — Kriticke pro publikaci
-1. ~~**Admin features bez feature-flag**~~ — HOTOVO. Navigace skryta, password gate, Coming Soon footer.
-2. **Profil settings jazykovy mix** — casti v cestine ("Minecraft účet", "Propojeno") v jinak anglicke aplikaci.
+### P0 - stale nejvetsi dopad na uspech
+1. **Automatycky delivery alertu je porad spis workflow nez plny system**
+  - Dashboard ukazuje weekly review a alerts, ale tim to nekonci.
+  - Pokud se ma growth a ops ridit disciplinovane, je potreba dosadit konkretni notification kanaly a pravidelny follow-up rytmus.
 
-### P1 — Vyrazne brzdy rustu
-1. **Leaderboards jsou zakladni** — zadne casove filtry (daily/weekly/monthly), zadny personal rank, zadne movement arrows, zadne seasons/badges.
-2. **Chybi onboarding** — novy uzivatel po loginu nevi kam jit. Zadny checklist, tutorial, nebo first-session guidance.
-3. **Chybi social proof na landingu** — zadne cisla (pocet uzivatelu, flipu, atd.), zadne screenshoty use-case, zadne testimonials.
-4. **Contextual upgrade prompts** — upgrade momenty jsou jen na Billing strance, chybi in-feature "unlock this with VIP" prompts.
+2. **Experiment framework je zatim jen lehka verze**
+  - Copy varianty existuji u onboarding promptu i upgrade promptu.
+  - Chybi ale plnohodnotny statisticky layer pro rozhodovani, ne jen shromazdovani variant.
 
-### P2 — Data a optimalizace
-1. **Funnel analytika neexistuje** — zadne event tracking (landing_cta_click, billing_view, trial_start, checkout_success, cancel).
-2. **A/B testovani** — zadna infrastruktura pro experimenty.
-3. **Mobile optimalizace** — tabulky (Bazaar, NPC) mohou byt stesnane na mobilu.
+### P1 - dulezite pro retenci
+1. **Leaderboards maji silny layout, ale ne kompletni progression system**
+  - Period filtering, movement, personal card a mobile fallback uz jsou hotove.
+  - Stale chybi badge/achievement layer a jasnejsi dlouhodobej progress framing.
 
----
+2. **Business ops panel stale neexistuje jako samostatny produkt**
+  - Analytics page je dobra, ale neni to plnohodnotny interni operations cockpit.
+  - Chybi pohled na subscription health, churn, revenue trend a cohorty jako samostatna admin surface.
 
-## Co je potreba dodelat pro "production-ready" publikaci
-
-### 1) ~~Feature-flag admin features (P0)~~ — HOTOVO
-- BinSniper, Portfolio, DungeonParty, Crafting skryty z navigace pro non-admin uzivatele.
-- Oznaceny jako "Coming Soon" ve footeru landingu.
-- Password gate (`/testing-unlock`) pro dev pristup pres session.
-
-### 2) ~~Jazykova konzistence (P0)~~ — HOTOVO
-- Implementovano plne i18n (EN/CS) napric hlavnim UI, modulovymi strankami, legal pages a sdilenymi komponentami.
-
-### 3) Leaderboards upgrade (P1)
-- Casove filtry (daily/weekly/monthly/all-time).
-- Personal rank card + movement indicators.
-- Sezony a odmeny (badges).
-- Sdilitelny rank snapshot.
-
-### 4) Onboarding flow (P1)
-- In-app checklist po prvnim loginu:
-  1. Propoj Minecraft ucet.
-  2. Otevri dashboard.
-  3. Aktivuj prvni layout/widget.
-  4. Vyzkousej premium feature.
-- Tooltip tour pro klicove stranky.
-
-### 5) Social proof (P1)
-- Pridej na landing: pocet registrovanych uzivatelu, pocet sledovanych flipu, pocet nactenych profilu.
-- Screenshot/GIF ukazka Bazaar flipu v akci.
-
-### 6) Funnel tracking (P2)
-- Instrumentace eventu (landing_cta_click, billing_view, trial_start, checkout_start, checkout_success, cancel).
-- Weekly review dashboard nebo export.
+3. **Nektere minorni UX a QA mezery zustavaji**
+  - Tabulky jsou uz pouzitelne, ale stale je potreba pravidelne ručni kontrola na skutecnych malych displejich.
+  - Billing edge-case redirecty a guest flow jsou porad oblast, kterou je dobre drzet pod dohledem.
 
 ---
 
-## Scoring
+## Aktualni Stav Po Changech
 
-### Uspesnost implementace (co jsme udelali vs. co bylo v planu)
-**8.5/10**
-- P0 landing: HOTOVO (100 %)
-- Billing FAQ/comparison: HOTOVO (100 %)
-- GDPR: HOTOVO (nebylo v planu, bonus)
-- Event Timer fix + custom notifikace: HOTOVO (nebylo v planu, bonus)
-- Textury: HOTOVO (nebylo v planu, bonus)
-- Billing FAQ/comparison: NEUDELANO (0 %)
-- Leaderboard upgrade: NEUDELANO (0 %)
-- Onboarding: NEUDELANO (0 %)
-- Funnel tracking: NEUDELANO (0 %)
+### Routing a pages
+- `/admin` je canonical entrypoint pro admin analytics.
+- `/analitics` zustava jako kompatibilni legacy redirect.
+- Dashboard ma beta info page a admin link pro testing admina.
+- Landing ma tracking CTA a Discord invite block.
 
-### Publikovatelnost (jak moc je to ready pro real users)
-**7.5/10**
+### Data a backend
+- Profile cache se uklada i pro leaderboard ingest.
+- SkyCrypt proxy ma DB-cache fallback, kdyz upstream neodpovida.
+- Leaderboard API cte z profiles cache a enrichuje data o app user vazby, public dashboard flag, movement i status.
 
-Co funguje pro publikaci:
-+ Landing page je profesionalni a konvertibilni.
-+ Core features (Bazaar, NPC, Profiles, Events, Mayors) jsou mature.
-+ Billing flow je funkcni a bezpecny.
-+ Legal/GDPR je pokryte.
-+ Design je konzistentni a moderni.
+### Frontend
+- i18n je sjednocenejsi pro SSR i klienta.
+- Authenticated layout sdili onboarding props a zobrazuje onboarding checklist.
+- Billing, leaderboards a admin analytics maji mobilni fallbacky misto pouheho horizontálního scrollu.
 
-Co brzdi publikaci:
-- Admin features viditelne bez guardu (zmatou uzivatele).
-- Profil settings v cestine.
-- Zadny onboarding = vyssi churn nových uzivatelu.
-- Leaderboards zakladni = slabsi retention.
-
-### Doporuceny plan pro 100% publikovatelnost
-1. **Okamzite (1 den)**: Hide admin features, fix CZ texty v settings.
-2. **Tento tyden**: Onboarding checklist, social proof na landingu.
-3. **Pristi tyden**: Leaderboard upgrade, funnel tracking.
+### Ops a release
+- Sentry je pripojene na obou stranach stacku.
+- Ops config, runbook a testy definuji ownera i triage.
+- CI doplnuje release env promene, takze incident tagging je predvidatelnejsi.
 
 ---
 
-## Zaverecne stanovisko (rev 2)
+## Bodove Hodnoceni
 
-SkyblockHub se posunul z 6.5 na 7.8. Prvni dojem je vyrazne lepsi — landing page je nyni na urovni placeneho SaaS produktu. Compliance je solidni. Core features jsou mature a pripravene na provoz.
+### A) Publikovatelnost: **93/100**
 
-Pro plnou publikaci zbyvaji 2 quick-wins (schovat admin features, opravit CZ texty) a 2 vetsi bloky prace (onboarding, leaderboards). Po techto krockach je platforma pripravena na public launch.
+- Stabilita jadra a funkcnost: **29/30** - hlavni produktove cesty bezi, dev stack je stabilni a routing je cisty.
+- Monetizace a entitlement logika: **18/20** - billing, trial, gating a upgrade prompts jsou zapojene.
+- Compliance a duvera: **14/15** - privacy, terms, consent, about a safe redirects jsou v poradku.
+- QA/CI pripravenost: **15/15** - testy pokryvaji routing, analytics, onboarding i ops config a CI nesedí jen na jednom build kroku.
+- Operacni pripravenost: **17/20** - Sentry a runbook jsou solidni, ale alert delivery a follow-up workflow jeste neni plne automatizovany.
+
+### B) Uspesnost: **85/100**
+
+- Problem-solution fit: **25/30** - core value je jasna a produkt ma vice silnych modu.
+- Activation: **17/20** - onboarding checklist a contextual prompts zlepsuji prvni session.
+- Retence: **16/20** - leaderboards a dashboard progression uz davaji smysl, ale stale neni kompletni badge/progression loop.
+- Monetization conversion: **14/15** - billing, trial a upgrade prompts jsou dobre propojene.
+- Decision intelligence: **13/15** - analytics uz pomahaji, ale experiment framework je porad lehci nez by mel byt.
+
+---
+
+## Co Je Skutecne Kriticke
+
+### P0 - bez toho se provoz lomi
+1. Admin review musi mit jeden konkretni notifikacni kanál a jednoho ownera, jinak weekly digesty a alerty zustanou jen dashboardem bez akce.
+2. Release tagging, Sentry routing a triage pravidla musi fungovat konzistentne napric frontendem, backendem a deployem, jinak nejde spolehlive rozhodovat o regresich.
+3. Funnel reporting pro onboarding a upgrade prompty musi mit aspon minimalni experiment layer, aby se dalo poznat, co realne funguje a co jen vypada dobre.
+4. Billing, trial a redirect edge-cases musi zustat pod kontrolou, protoze tady se lomi login, checkout a navraty z auth flow.
+5. Leaderboards a public dashboardy musi zustat napojene na validni data cache a fallback chovani, jinak spadne hlavni produktova viditelnost.
+
+### P1 - dulezite, ale az po stabilizaci P0
+1. Interni ops cockpit pro billing, churn a revenue health.
+2. Progresni vrstva pro leaderboards a retention loop.
+3. Systematicky mobile QA na skutecnych malych displejich.
+
+---
+
+## Zaverecne Stanovisko
+
+SkyblockHub je v aktualnim stavu **pripraveny na realny provoz**. Nejde uz o projekt, kde by byl problem v zakladni funkcnosti; nejvetsi zisky jsou ted v discipline, automatizaci a decision-making workflow.
+
+Nejsilnejsi zmeny proti predchozi verzi jsou:
+- admin analytics route a digest workflow,
+- Sentry ops runbook s owner routingem,
+- onboarding checklist s segmentaci a copy variantami,
+- mobile-safe fallbacky pro dense tabulky,
+- tracking funnelu a upgrade prompts napric produktem.
+
+Zbyvajici mezery uz nejsou o tom, jestli produkt funguje. Jsou o tom, jak dobre se bude dal rict co zmenit, komu to prijde a jak rychle se z toho udela systematicky rozhodovaci proces.

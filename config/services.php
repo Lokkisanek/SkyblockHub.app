@@ -40,6 +40,7 @@ return [
         'client_secret' => env('DISCORD_CLIENT_SECRET'),
         'redirect' => env('DISCORD_REDIRECT_URI', '/auth/discord/callback'),
         'redirect_link' => env('DISCORD_REDIRECT_LINK_URI', '/auth/discord/link/callback'),
+        'analytics_webhook_url' => env('DISCORD_ANALYTICS_WEBHOOK_URL'),
     ],
 
     'microsoft' => [

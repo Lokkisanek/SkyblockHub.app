@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\UserEntitlement;
 use App\Models\TrialRedemption;
+use App\Services\FunnelAnalyticsService;
 use App\Services\SubscriptionFeatureService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -17,6 +18,7 @@ class BillingController extends Controller
 {
     public function __construct(
         private readonly SubscriptionFeatureService $subscriptionFeatureService,
+        private readonly FunnelAnalyticsService $funnelAnalyticsService,
     ) {
     }
 
@@ -79,6 +81,11 @@ class BillingController extends Controller
             'first_user_id' => $user->id,
             'tier' => $data['tier'],
             'redeemed_at' => now(),
+        ]);
+
+        $this->funnelAnalyticsService->trackFromRequest($request, 'trial_start', [
+            'tier' => $data['tier'],
+            'source' => 'billing',
         ]);
 
         return back()->with('success', 'Trial activated.');
@@ -179,6 +186,11 @@ class BillingController extends Controller
 
             $session = $stripe->checkout->sessions->create($payload);
 
+            $this->funnelAnalyticsService->trackFromRequest($request, 'checkout_start', [
+                'tier' => $data['tier'],
+                'trial_applied' => $shouldApplyTrial,
+            ]);
+
             if ($request->header('X-Inertia')) {
                 return Inertia::location($session->url);
             }
@@ -195,6 +207,12 @@ class BillingController extends Controller
 
     public function success(): RedirectResponse
     {
+        $request = request();
+
+        $this->funnelAnalyticsService->trackFromRequest($request, 'checkout_success', [
+            'source' => 'stripe_success_redirect',
+        ]);
+
         return redirect()->route('billing')->with('success', 'Checkout completed. Subscription will sync shortly.');
     }
 
@@ -227,6 +245,10 @@ class BillingController extends Controller
             'current_period_ends_at' => null,
             'stripe_subscription_id' => null,
             'stripe_price_id' => null,
+        ]);
+
+        $this->funnelAnalyticsService->trackFromRequest($request, 'subscription_cancel', [
+            'source' => 'billing',
         ]);
 
         return back()->with('status', 'Subscription was cancelled.');

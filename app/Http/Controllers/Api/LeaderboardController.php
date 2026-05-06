@@ -1,0 +1,502 @@
+<?php
+
+namespace App\Http\Controllers\Api;
+
+use App\Http\Controllers\Controller;
+use App\Models\UserDashboard;
+use Illuminate\Database\Query\Builder as QueryBuilder;
+use Illuminate\Database\Query\JoinClause;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Carbon;
+
+class LeaderboardController extends Controller
+{
+    private const CACHE_TTL = 300;
+    private const ITEMS_PER_PAGE = 50;
+    private const SORTS = [
+        'level',
+        'networth',
+        'non_cosmetic_networth',
+        'account_age',
+        'skill_average',
+        'weight',
+        'slayer_total',
+    ];
+    private const FILTERS = [
+        'all',
+        'app_users',
+        'non_app_users',
+    ];
+    private const PERIODS = [
+        'all' => null,
+        'daily' => 1,
+        'weekly' => 7,
+        'monthly' => 30,
+    ];
+    private const RANK_MAP_LIMIT = 1000;
+
+    public function index(Request $request): JsonResponse
+    {
+        $sortType = (string) $request->query('sort', 'level');
+        if (! in_array($sortType, self::SORTS, true)) {
+            $sortType = 'level';
+        }
+
+        $sortDirection = strtolower((string) $request->query('direction', 'desc'));
+        if (! in_array($sortDirection, ['asc', 'desc'], true)) {
+            $sortDirection = 'desc';
+        }
+
+        $filter = (string) $request->query('filter', 'all');
+        if (! in_array($filter, self::FILTERS, true)) {
+            $filter = 'all';
+        }
+
+        $page = max((int) $request->query('page', 1), 1);
+        $periodKey = $this->normalizePeriod((string) $request->query('period', 'all'));
+        [$currentFrom, $currentTo, $previousFrom, $previousTo] = $this->resolvePeriodRange($periodKey);
+
+        $cacheKey = "leaderboard:v4:{$sortType}:{$sortDirection}:{$filter}:{$periodKey}:{$page}";
+
+        $data = Cache::remember($cacheKey, self::CACHE_TTL, function () use ($sortType, $sortDirection, $filter, $page, $periodKey, $currentFrom, $currentTo, $previousFrom, $previousTo, $request): array {
+            $query = $this->buildBaseQuery($filter, $currentFrom, $currentTo);
+            $this->applyOrdering($query, $sortType, $sortDirection);
+
+            $previousRankMap = ($previousFrom && $previousTo)
+                ? $this->buildRankMap($sortType, $sortDirection, $filter, $previousFrom, $previousTo)
+                : [];
+
+            $paginator = $query->paginate(self::ITEMS_PER_PAGE, ['*'], 'page', $page);
+            $firstRank = ($paginator->currentPage() - 1) * $paginator->perPage() + 1;
+
+            $rows = collect($paginator->items())
+                ->values()
+                ->map(function ($row, int $index) use ($firstRank, $previousRankMap): array {
+                    $rank = $firstRank + $index;
+                    return $this->formatLeaderboardRow($row, $rank, $previousRankMap);
+                });
+
+            $personal = $this->buildPersonalCard(
+                $request,
+                $sortType,
+                $sortDirection,
+                $filter,
+                $currentFrom,
+                $currentTo,
+                $previousRankMap
+            );
+
+            return [
+                'rows' => $rows,
+                'pagination' => [
+                    'current_page' => $paginator->currentPage(),
+                    'per_page' => $paginator->perPage(),
+                    'total' => $paginator->total(),
+                    'last_page' => $paginator->lastPage(),
+                ],
+                'period' => [
+                    'key' => $periodKey,
+                    'from' => $currentFrom?->toDateString(),
+                    'to' => $currentTo?->toDateString(),
+                ],
+                'personal' => $personal,
+            ];
+        });
+
+        return response()->json([
+            'data' => $data,
+        ]);
+    }
+
+    private function buildBaseQuery(string $filter, ?Carbon $from = null, ?Carbon $to = null): QueryBuilder
+    {
+        $skyblockLevelExpr = $this->jsonNumberExpr('profile_data.raw_data', '$.data.skyblock_level.level');
+        $networthExpr = $this->jsonNumberExpr('profile_data.raw_data', '$.data.networth.networth');
+        $nonCosmeticExpr = $this->jsonNumberCoalesceExpr('profile_data.raw_data', [
+            '$.data.networth.unsoulboundNetworth',
+            '$.data.networth.networth_no_cosmetics',
+            '$.data.networth.purse',
+        ]);
+        $hypixelRankExpr = $this->jsonStringCoalesceExpr('profile_data.raw_data', [
+            '$.player.rank.prefix',
+            '$.rank.prefix',
+            '$.data.player.rank.prefix',
+        ]);
+        $hypixelRankColorExpr = $this->jsonStringCoalesceExpr('profile_data.raw_data', [
+            '$.player.rank.color',
+            '$.rank.color',
+            '$.data.player.rank.color',
+        ]);
+        $displayNameExpr = $this->jsonStringCoalesceExpr('profile_data.raw_data', [
+            '$.username',
+            '$.data.username',
+        ]);
+        $skillAverageExpr = $this->jsonDecimalExpr('profile_data.raw_data', [
+            '$.data.average_skill_level',
+        ]);
+        $slayerTotalExpr = $this->jsonNumberExpr('profile_data.raw_data', '$.data.slayers.total_slayer_xp');
+        $weightExpr = "ROUND(({$skillAverageExpr} * 10) + ({$slayerTotalExpr} / 1000), 0)";
+        $onlineExpr = $this->jsonBoolExpr('profile_data.raw_data', [
+            '$.player.online',
+            '$.data.player.online',
+        ]);
+        $lastSeenExpr = $this->jsonNumberCoalesceExpr('profile_data.raw_data', [
+            '$.player.lastLogout',
+            '$.player.lastLogin',
+            '$.data.player.lastLogout',
+            '$.data.player.lastLogin',
+        ]);
+        $firstJoinExpr = $this->jsonNumberCoalesceExpr('profile_data.raw_data', [
+            '$.data.first_join',
+            '$.first_join',
+        ]);
+
+        $nowMs = (int) round(microtime(true) * 1000);
+        $accountAgeExpr = "CASE WHEN MAX({$firstJoinExpr}) > 0 THEN CAST(({$nowMs} - MAX({$firstJoinExpr})) / 86400000 AS INTEGER) ELSE 0 END";
+
+        $normalizedUuidExpr = "LOWER(REPLACE(profile_data.minecraft_uuid, '-', ''))";
+        $appUserExistsSubquery = DB::table('users')
+            ->selectRaw('1')
+            ->whereRaw("LOWER(REPLACE(users.minecraft_uuid, '-', '')) = {$normalizedUuidExpr}")
+            ->where('users.is_mc_linked', true)
+            ->limit(1);
+
+        $publicDashboardExistsSubquery = DB::table('user_dashboards')
+            ->selectRaw('1')
+            ->join('users', 'users.id', '=', 'user_dashboards.user_id')
+            ->whereRaw("LOWER(REPLACE(users.minecraft_uuid, '-', '')) = {$normalizedUuidExpr}")
+            ->where('user_dashboards.is_public', true)
+            ->limit(1);
+
+        $linkedUserIdSubquery = DB::table('users')
+            ->select('users.id')
+            ->whereRaw("LOWER(REPLACE(users.minecraft_uuid, '-', '')) = {$normalizedUuidExpr}")
+            ->where('users.is_mc_linked', true)
+            ->limit(1);
+
+        $linkedUuidSubquery = DB::table('users')
+            ->select('users.minecraft_uuid')
+            ->whereRaw("LOWER(REPLACE(users.minecraft_uuid, '-', '')) = {$normalizedUuidExpr}")
+            ->where('users.is_mc_linked', true)
+            ->limit(1);
+
+        $query = DB::query()
+            ->from('profiles_cache as profile_data')
+            ->where('profile_data.selected', true)
+            ->whereNotNull('profile_data.minecraft_uuid')
+            ->select([
+                DB::raw("({$linkedUserIdSubquery->toSql()}) as user_id"),
+                'profile_data.minecraft_uuid',
+                DB::raw("({$linkedUuidSubquery->toSql()}) as linked_minecraft_uuid"),
+                DB::raw("CASE WHEN EXISTS({$appUserExistsSubquery->toSql()}) THEN 1 ELSE 0 END as is_app_user"),
+                DB::raw("(SELECT app_vip_rank FROM users WHERE LOWER(REPLACE(users.minecraft_uuid, '-', '')) = {$normalizedUuidExpr} AND users.is_mc_linked = 1 LIMIT 1) as app_vip_rank"),
+                DB::raw("(SELECT is_donator FROM users WHERE LOWER(REPLACE(users.minecraft_uuid, '-', '')) = {$normalizedUuidExpr} AND users.is_mc_linked = 1 LIMIT 1) as is_donator"),
+            ])
+            ->selectRaw("COALESCE((SELECT minecraft_username FROM users WHERE LOWER(REPLACE(users.minecraft_uuid, '-', '')) = {$normalizedUuidExpr} AND users.is_mc_linked = 1 LIMIT 1), {$displayNameExpr}, profile_data.minecraft_uuid) as display_name")
+            ->selectRaw("COALESCE((SELECT minecraft_username FROM users WHERE LOWER(REPLACE(users.minecraft_uuid, '-', '')) = {$normalizedUuidExpr} AND users.is_mc_linked = 1 LIMIT 1), {$displayNameExpr}) as profile_username")
+            ->selectRaw("MAX({$skyblockLevelExpr}) as skyblock_level")
+            ->selectRaw("MAX({$networthExpr}) as networth")
+            ->selectRaw("MAX({$nonCosmeticExpr}) as non_cosmetic_networth")
+            ->selectRaw("{$accountAgeExpr} as account_age_days")
+            ->selectRaw("MAX({$skillAverageExpr}) as skill_average")
+            ->selectRaw("MAX({$slayerTotalExpr}) as slayer_total")
+            ->selectRaw("MAX({$weightExpr}) as weight")
+            ->selectRaw("MAX({$onlineExpr}) as online")
+            ->selectRaw("MAX({$lastSeenExpr}) as last_seen_ts")
+            ->selectRaw("MAX({$hypixelRankExpr}) as hypixel_rank")
+            ->selectRaw("COALESCE(MAX({$hypixelRankColorExpr}), '#AAAAAA') as hypixel_rank_color")
+            ->selectRaw("CASE WHEN EXISTS({$publicDashboardExistsSubquery->toSql()}) THEN 1 ELSE 0 END as has_public_dashboard")
+            ->groupBy([
+                'profile_data.minecraft_uuid',
+            ]);
+
+        if ($from && $to) {
+            $query->whereNotNull('profile_data.fetched_at')
+                ->whereBetween('profile_data.fetched_at', [$from, $to]);
+        }
+
+        $query->addBinding($linkedUserIdSubquery->getBindings(), 'select');
+        $query->addBinding($linkedUuidSubquery->getBindings(), 'select');
+        $query->addBinding($appUserExistsSubquery->getBindings(), 'select');
+        $query->addBinding($publicDashboardExistsSubquery->getBindings(), 'select');
+
+        if ($filter === 'app_users') {
+            $query->whereRaw("EXISTS({$appUserExistsSubquery->toSql()})");
+            $query->addBinding($appUserExistsSubquery->getBindings(), 'where');
+        }
+
+        if ($filter === 'non_app_users') {
+            $query->whereRaw("NOT EXISTS({$appUserExistsSubquery->toSql()})");
+            $query->addBinding($appUserExistsSubquery->getBindings(), 'where');
+        }
+
+        return $query;
+    }
+
+    /**
+     * @return array<string, int>
+     */
+    private function buildRankMap(string $sortType, string $direction, string $filter, ?Carbon $from, ?Carbon $to): array
+    {
+        $query = $this->buildBaseQuery($filter, $from, $to);
+        $this->applyOrdering($query, $sortType, $direction);
+
+        $rows = $query->limit(self::RANK_MAP_LIMIT)->get();
+        $rankMap = [];
+
+        foreach ($rows as $index => $row) {
+            $uuid = $this->normalizeUuid((string) ($row->minecraft_uuid ?? ''));
+            if ($uuid !== '') {
+                $rankMap[$uuid] = $index + 1;
+            }
+        }
+
+        return $rankMap;
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function buildPersonalCard(
+        Request $request,
+        string $sortType,
+        string $direction,
+        string $filter,
+        ?Carbon $from,
+        ?Carbon $to,
+        array $previousRankMap
+    ): ?array {
+        $user = $request->user();
+        if (! $user || ! $user->minecraft_uuid) {
+            return null;
+        }
+
+        $normalizedUuid = $this->normalizeUuid($user->minecraft_uuid);
+        if ($normalizedUuid === '') {
+            return null;
+        }
+
+        $query = $this->buildBaseQuery($filter, $from, $to);
+        $query->whereRaw("LOWER(REPLACE(profile_data.minecraft_uuid, '-', '')) = ?", [$normalizedUuid]);
+
+        $row = $query->first();
+        if (! $row) {
+            return null;
+        }
+
+        $rankMap = $this->buildRankMap($sortType, $direction, $filter, $from, $to);
+        $rank = $rankMap[$normalizedUuid] ?? null;
+
+        if (! $rank) {
+            return null;
+        }
+
+        return $this->formatLeaderboardRow($row, $rank, $previousRankMap);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function formatLeaderboardRow(object $row, int $rank, array $previousRankMap): array
+    {
+        $hasPublicDashboard = false;
+        if ($row->user_id !== null) {
+            $hasPublicDashboard = UserDashboard::query()
+                ->where('user_id', (int) $row->user_id)
+                ->where('is_public', true)
+                ->exists();
+        }
+
+        $profileVisits = 0;
+        if (! empty($row->profile_username)) {
+            $profileVisits = DB::table('profile_searches')
+                ->whereRaw('LOWER(username) = ?', [mb_strtolower((string) $row->profile_username)])
+                ->count();
+        }
+
+        $uuid = $this->normalizeUuid((string) ($row->minecraft_uuid ?? ''));
+        $previousRank = $uuid !== '' ? ($previousRankMap[$uuid] ?? null) : null;
+        $movement = $previousRank !== null ? $previousRank - $rank : null;
+
+        return [
+            'rank' => $rank,
+            'previous_rank' => $previousRank,
+            'movement' => $movement,
+            'user_id' => $row->user_id !== null ? (int) $row->user_id : null,
+            'display_name' => $row->display_name,
+            'profile_username' => $row->profile_username,
+            'minecraft_uuid' => $row->minecraft_uuid,
+            'linked_minecraft_uuid' => $row->linked_minecraft_uuid,
+            'is_app_user' => (bool) ($row->is_app_user ?? false),
+            'app_vip_rank' => $row->app_vip_rank,
+            'is_donator' => (bool) $row->is_donator,
+            'hypixel_rank' => $row->hypixel_rank,
+            'hypixel_rank_color' => $row->hypixel_rank_color ?: '#AAAAAA',
+            'skyblock_level' => (int) ($row->skyblock_level ?? 0),
+            'networth' => (int) ($row->networth ?? 0),
+            'non_cosmetic_networth' => (int) ($row->non_cosmetic_networth ?? 0),
+            'account_age_days' => (int) ($row->account_age_days ?? 0),
+            'skill_average' => (float) ($row->skill_average ?? 0),
+            'weight' => (int) ($row->weight ?? 0),
+            'slayer_total' => (int) ($row->slayer_total ?? 0),
+            'online' => (bool) ($row->online ?? false),
+            'last_seen_ts' => $row->last_seen_ts !== null ? (int) $row->last_seen_ts : null,
+            'profile_visits' => $profileVisits,
+            'has_public_dashboard' => $hasPublicDashboard,
+        ];
+    }
+
+    private function normalizePeriod(string $period): string
+    {
+        $period = strtolower(trim($period));
+
+        if (! array_key_exists($period, self::PERIODS)) {
+            return 'all';
+        }
+
+        return $period;
+    }
+
+    /**
+     * @return array{0:?Carbon,1:?Carbon,2:?Carbon,3:?Carbon}
+     */
+    private function resolvePeriodRange(string $period): array
+    {
+        $days = self::PERIODS[$period] ?? null;
+        if (! $days) {
+            return [null, null, null, null];
+        }
+
+        $now = Carbon::now();
+        $currentFrom = $now->copy()->startOfDay()->subDays($days - 1);
+        $currentTo = $now->copy()->endOfDay();
+        $previousTo = $currentFrom->copy()->subSecond();
+        $previousFrom = $previousTo->copy()->startOfDay()->subDays($days - 1);
+
+        return [$currentFrom, $currentTo, $previousFrom, $previousTo];
+    }
+
+    private function normalizeUuid(string $uuid): string
+    {
+        return strtolower(str_replace('-', '', $uuid));
+    }
+
+    private function applyOrdering(QueryBuilder $query, string $sortType, string $direction): void
+    {
+        $primaryOrder = $direction === 'asc' ? 'orderBy' : 'orderByDesc';
+
+        if ($sortType === 'level') {
+            $query->{$primaryOrder}('skyblock_level')->orderByDesc('networth');
+            return;
+        }
+
+        if ($sortType === 'networth') {
+            $query->{$primaryOrder}('networth')->orderByDesc('skyblock_level');
+            return;
+        }
+
+        if ($sortType === 'non_cosmetic_networth') {
+            $query->{$primaryOrder}('non_cosmetic_networth')->orderByDesc('skyblock_level');
+            return;
+        }
+
+        if ($sortType === 'skill_average') {
+            $query->{$primaryOrder}('skill_average')->orderByDesc('skyblock_level');
+            return;
+        }
+
+        if ($sortType === 'weight') {
+            $query->{$primaryOrder}('weight')->orderByDesc('skill_average');
+            return;
+        }
+
+        if ($sortType === 'slayer_total') {
+            $query->{$primaryOrder}('slayer_total')->orderByDesc('skyblock_level');
+            return;
+        }
+
+        $query->{$primaryOrder}('account_age_days')->orderByDesc('skyblock_level');
+    }
+
+    private function jsonNumberExpr(string $column, string $path): string
+    {
+        if (DB::connection()->getDriverName() === 'sqlite') {
+            return "CAST(COALESCE(json_extract({$column}, '{$path}'), 0) AS INTEGER)";
+        }
+
+        return "CAST(COALESCE(JSON_UNQUOTE(JSON_EXTRACT({$column}, '{$path}')), '0') AS UNSIGNED)";
+    }
+
+    /**
+     * @param array<int, string> $paths
+     */
+    private function jsonDecimalExpr(string $column, array $paths): string
+    {
+        $expressions = array_map(function (string $path) use ($column): string {
+            if (DB::connection()->getDriverName() === 'sqlite') {
+                return "CAST(COALESCE(json_extract({$column}, '{$path}'), 0) AS REAL)";
+            }
+
+            return "CAST(COALESCE(JSON_UNQUOTE(JSON_EXTRACT({$column}, '{$path}')), '0') AS DECIMAL(18, 2))";
+        }, $paths);
+
+        return 'COALESCE('.implode(', ', $expressions).', 0)';
+    }
+
+    /**
+     * @param array<int, string> $paths
+     */
+    private function jsonNumberCoalesceExpr(string $column, array $paths): string
+    {
+        $expressions = array_map(function (string $path) use ($column): string {
+            if (DB::connection()->getDriverName() === 'sqlite') {
+                return "json_extract({$column}, '{$path}')";
+            }
+
+            return "JSON_UNQUOTE(JSON_EXTRACT({$column}, '{$path}'))";
+        }, $paths);
+
+        $coalesced = implode(', ', $expressions);
+
+        if (DB::connection()->getDriverName() === 'sqlite') {
+            return "CAST(COALESCE({$coalesced}, 0) AS INTEGER)";
+        }
+
+        return "CAST(COALESCE({$coalesced}, '0') AS UNSIGNED)";
+    }
+
+    /**
+     * @param array<int, string> $paths
+     */
+    private function jsonStringCoalesceExpr(string $column, array $paths): string
+    {
+        $expressions = array_map(function (string $path) use ($column): string {
+            if (DB::connection()->getDriverName() === 'sqlite') {
+                return "NULLIF(CAST(json_extract({$column}, '{$path}') AS TEXT), '')";
+            }
+
+            return "NULLIF(JSON_UNQUOTE(JSON_EXTRACT({$column}, '{$path}')), '')";
+        }, $paths);
+
+        return 'COALESCE('.implode(', ', $expressions).', NULL)';
+    }
+
+    /**
+     * @param array<int, string> $paths
+     */
+    private function jsonBoolExpr(string $column, array $paths): string
+    {
+        $expressions = array_map(function (string $path) use ($column): string {
+            if (DB::connection()->getDriverName() === 'sqlite') {
+                return "CAST(COALESCE(json_extract({$column}, '{$path}'), 0) AS INTEGER)";
+            }
+
+            return "CAST(COALESCE(JSON_UNQUOTE(JSON_EXTRACT({$column}, '{$path}')), '0') AS UNSIGNED)";
+        }, $paths);
+
+        return 'COALESCE('.implode(', ', $expressions).', 0)';
+    }
+}
