@@ -125,6 +125,40 @@ Otevřete http://localhost:8000
 - Nasměrujte webserver na složku `public/`
 - Použijte process manager (systemd/supervisor) pro `php artisan queue:work` a `php artisan reverb:start`
 
+### Stripe production setup
+
+Stripe je v aplikaci napojený přes `.env`, takže v produkci stačí doplnit klíče a price IDs, které máte ve Stripe Dashboardu.
+
+1. Vytvořte nebo otevřete produkty `VIP` a `MVP` ve Stripe.
+2. U každého produktu vytvořte měsíční recurring price.
+3. Do produkčního `.env` doplňte:
+
+```dotenv
+STRIPE_KEY=...                # publishable key
+STRIPE_SECRET=...             # secret key
+STRIPE_WEBHOOK_SECRET=...     # signing secret z webhook endpointu
+STRIPE_PRICE_VIP_MONTHLY=...  # price ID pro VIP
+STRIPE_PRICE_MVP_MONTHLY=...  # price ID pro MVP
+STRIPE_TRIAL_DAYS=7
+```
+
+4. Ve Stripe Dashboardu nastavte webhook endpoint na:
+
+```text
+https://your-domain.com/api/stripe/webhook
+```
+
+5. Zapněte tyto eventy:
+
+- `checkout.session.completed`
+- `customer.subscription.created`
+- `customer.subscription.updated`
+- `customer.subscription.deleted`
+
+6. Z webhook endpointu zkopírujte `Signing secret` a vložte ho do `STRIPE_WEBHOOK_SECRET`.
+
+Poznámka k trialu: trial je řízený aplikací, ne Stripe. Stripe dostane jen checkout/subscription stav, zatímco entitlementy a trial logika zůstávají v aplikaci.
+
 ---
 
 ## Tutorial: Jak to zapnout (podrobný)
