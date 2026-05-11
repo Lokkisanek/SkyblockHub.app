@@ -699,5 +699,16 @@ tr.vip-restricted::after {
 tr.vip-restricted:hover {
   filter: blur(5px);
 }
+
+tr.vip-restricted td {
+  pointer-events: none;
+}
+
+/* Allow buttons to remain clickable even in restricted rows */
+tr.vip-restricted td button {
+  pointer-events: auto;
+  position: relative;
+  z-index: 30;
+}
 </style>
 
