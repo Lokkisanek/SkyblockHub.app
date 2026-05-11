@@ -432,7 +432,7 @@ class LeaderboardController extends Controller
 
         if ($driver === 'pgsql') {
             $textExpr = $this->jsonTextExpr($column, $path);
-            return "COALESCE(NULLIF({$textExpr}, '')::bigint, 0)";
+            return "COALESCE(NULLIF({$textExpr}, '')::numeric, 0)";
         }
 
         return "CAST(COALESCE(JSON_UNQUOTE(JSON_EXTRACT({$column}, '{$path}')), '0') AS UNSIGNED)";
@@ -492,7 +492,7 @@ class LeaderboardController extends Controller
         }
 
         if ($driver === 'pgsql') {
-            return "COALESCE(NULLIF(COALESCE({$coalesced}), '')::bigint, 0)";
+            return "COALESCE(NULLIF(COALESCE({$coalesced}), '')::numeric, 0)";
         }
 
         return "CAST(COALESCE({$coalesced}, '0') AS UNSIGNED)";
