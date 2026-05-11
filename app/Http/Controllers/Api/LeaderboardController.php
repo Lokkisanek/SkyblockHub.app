@@ -196,8 +196,8 @@ class LeaderboardController extends Controller
                 DB::raw("(SELECT app_vip_rank FROM users WHERE LOWER(REPLACE(users.minecraft_uuid, '-', '')) = {$normalizedUuidExpr} AND {$linkedUserPredicate} LIMIT 1) as app_vip_rank"),
                 DB::raw("(SELECT is_donator FROM users WHERE LOWER(REPLACE(users.minecraft_uuid, '-', '')) = {$normalizedUuidExpr} AND {$linkedUserPredicate} LIMIT 1) as is_donator"),
             ])
-            ->selectRaw("COALESCE((SELECT minecraft_username FROM users WHERE LOWER(REPLACE(users.minecraft_uuid, '-', '')) = {$normalizedUuidExpr} AND {$linkedUserPredicate} LIMIT 1), {$displayNameExpr}, profile_data.minecraft_uuid) as display_name")
-            ->selectRaw("COALESCE((SELECT minecraft_username FROM users WHERE LOWER(REPLACE(users.minecraft_uuid, '-', '')) = {$normalizedUuidExpr} AND {$linkedUserPredicate} LIMIT 1), {$displayNameExpr}) as profile_username")
+            ->selectRaw("COALESCE((SELECT minecraft_username FROM users WHERE LOWER(REPLACE(users.minecraft_uuid, '-', '')) = {$normalizedUuidExpr} AND {$linkedUserPredicate} LIMIT 1), MAX({$displayNameExpr}), profile_data.minecraft_uuid) as display_name")
+            ->selectRaw("COALESCE((SELECT minecraft_username FROM users WHERE LOWER(REPLACE(users.minecraft_uuid, '-', '')) = {$normalizedUuidExpr} AND {$linkedUserPredicate} LIMIT 1), MAX({$displayNameExpr})) as profile_username")
             ->selectRaw("MAX({$skyblockLevelExpr}) as skyblock_level")
             ->selectRaw("MAX({$networthExpr}) as networth")
             ->selectRaw("MAX({$nonCosmeticExpr}) as non_cosmetic_networth")
