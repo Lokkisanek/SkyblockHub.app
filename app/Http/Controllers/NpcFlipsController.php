@@ -10,6 +10,7 @@ use App\Services\SubscriptionFeatureService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
+use Illuminate\Database\Query\Expression;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -56,10 +57,11 @@ class NpcFlipsController extends Controller
 
         // Search filter
         if ($search = $request->input('search')) {
-            $likeOperator = DB::getDriverName() === 'pgsql' ? 'ilike' : 'like';
-            $query->where(function ($q) use ($search, $likeOperator) {
-                $q->where('bazaar_products.name', $likeOperator, "%{$search}%")
-                  ->orWhere('bazaar_prices.product_id', $likeOperator, "%{$search}%");
+            $likeOperator = DB::getDriverName() === 'pgsql' ? 'ILIKE' : 'LIKE';
+            $searchPattern = "%{$search}%";
+            $query->where(function ($q) use ($searchPattern, $likeOperator) {
+                $q->whereRaw("\"bazaar_products\".\"name\" {$likeOperator} ?", [$searchPattern])
+                  ->orWhereRaw("\"bazaar_prices\".\"product_id\" {$likeOperator} ?", [$searchPattern]);
             });
         }
 
