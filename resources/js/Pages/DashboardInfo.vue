@@ -72,7 +72,7 @@ const { t } = useI18n();
                         <p class="info-body">{{ t('dashboardInfo.feedbackBody') }}</p>
                         <p class="mt-2 text-sm text-white/70">{{ t('dashboardInfo.feedbackDiscord') }}</p>
                         <a
-                            href="https://discord.gg/4MyP8Pfu5N"
+                            href="https://discord.gg/TkavZSfUAd"
                             target="_blank"
                             rel="noopener noreferrer"
                             class="mt-4 inline-flex items-center rounded-full border border-[#5865F2]/45 bg-[#5865F2]/20 px-4 py-2 text-sm font-semibold text-white transition hover:border-[#5865F2]/70 hover:bg-[#5865F2]/35"

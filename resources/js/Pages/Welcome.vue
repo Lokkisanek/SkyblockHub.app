@@ -415,7 +415,7 @@ function cardAccentClass(accent) {
                             <h2 class="mt-2 text-2xl font-bold text-white sm:text-3xl">{{ $t('welcome.discordInviteTitle') }}</h2>
                             <p class="mx-auto mt-2 max-w-2xl text-sm leading-relaxed text-white/75 sm:text-base">{{ $t('welcome.discordInviteBody') }}</p>
                             <a
-                                href="https://discord.gg/4MyP8Pfu5N"
+                                href="https://discord.gg/TkavZSfUAd"
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 class="mt-5 inline-flex items-center justify-center gap-2 rounded-xl border border-[#5865F2]/55 bg-[#5865F2] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[#4752C4]"

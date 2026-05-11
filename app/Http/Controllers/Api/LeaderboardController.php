@@ -158,6 +158,7 @@ class LeaderboardController extends Controller
         $accountAgeExpr = "CASE WHEN MAX({$firstJoinExpr}) > 0 THEN CAST(({$nowMs} - MAX({$firstJoinExpr})) / 86400000 AS INTEGER) ELSE 0 END";
 
         $normalizedUuidExpr = "LOWER(REPLACE(profile_data.minecraft_uuid, '-', ''))";
+        $linkedUserPredicate = $this->booleanPredicate('users.is_mc_linked');
         $appUserExistsSubquery = DB::table('users')
             ->selectRaw('1')
             ->whereRaw("LOWER(REPLACE(users.minecraft_uuid, '-', '')) = {$normalizedUuidExpr}")
@@ -192,11 +193,11 @@ class LeaderboardController extends Controller
                 'profile_data.minecraft_uuid',
                 DB::raw("({$linkedUuidSubquery->toSql()}) as linked_minecraft_uuid"),
                 DB::raw("CASE WHEN EXISTS({$appUserExistsSubquery->toSql()}) THEN 1 ELSE 0 END as is_app_user"),
-                DB::raw("(SELECT app_vip_rank FROM users WHERE LOWER(REPLACE(users.minecraft_uuid, '-', '')) = {$normalizedUuidExpr} AND users.is_mc_linked = 1 LIMIT 1) as app_vip_rank"),
-                DB::raw("(SELECT is_donator FROM users WHERE LOWER(REPLACE(users.minecraft_uuid, '-', '')) = {$normalizedUuidExpr} AND users.is_mc_linked = 1 LIMIT 1) as is_donator"),
+                DB::raw("(SELECT app_vip_rank FROM users WHERE LOWER(REPLACE(users.minecraft_uuid, '-', '')) = {$normalizedUuidExpr} AND {$linkedUserPredicate} LIMIT 1) as app_vip_rank"),
+                DB::raw("(SELECT is_donator FROM users WHERE LOWER(REPLACE(users.minecraft_uuid, '-', '')) = {$normalizedUuidExpr} AND {$linkedUserPredicate} LIMIT 1) as is_donator"),
             ])
-            ->selectRaw("COALESCE((SELECT minecraft_username FROM users WHERE LOWER(REPLACE(users.minecraft_uuid, '-', '')) = {$normalizedUuidExpr} AND users.is_mc_linked = 1 LIMIT 1), {$displayNameExpr}, profile_data.minecraft_uuid) as display_name")
-            ->selectRaw("COALESCE((SELECT minecraft_username FROM users WHERE LOWER(REPLACE(users.minecraft_uuid, '-', '')) = {$normalizedUuidExpr} AND users.is_mc_linked = 1 LIMIT 1), {$displayNameExpr}) as profile_username")
+            ->selectRaw("COALESCE((SELECT minecraft_username FROM users WHERE LOWER(REPLACE(users.minecraft_uuid, '-', '')) = {$normalizedUuidExpr} AND {$linkedUserPredicate} LIMIT 1), {$displayNameExpr}, profile_data.minecraft_uuid) as display_name")
+            ->selectRaw("COALESCE((SELECT minecraft_username FROM users WHERE LOWER(REPLACE(users.minecraft_uuid, '-', '')) = {$normalizedUuidExpr} AND {$linkedUserPredicate} LIMIT 1), {$displayNameExpr}) as profile_username")
             ->selectRaw("MAX({$skyblockLevelExpr}) as skyblock_level")
             ->selectRaw("MAX({$networthExpr}) as networth")
             ->selectRaw("MAX({$nonCosmeticExpr}) as non_cosmetic_networth")
@@ -423,8 +424,15 @@ class LeaderboardController extends Controller
 
     private function jsonNumberExpr(string $column, string $path): string
     {
-        if (DB::connection()->getDriverName() === 'sqlite') {
+        $driver = DB::connection()->getDriverName();
+
+        if ($driver === 'sqlite') {
             return "CAST(COALESCE(json_extract({$column}, '{$path}'), 0) AS INTEGER)";
+        }
+
+        if ($driver === 'pgsql') {
+            $textExpr = $this->jsonTextExpr($column, $path);
+            return "COALESCE(NULLIF({$textExpr}, '')::bigint, 0)";
         }
 
         return "CAST(COALESCE(JSON_UNQUOTE(JSON_EXTRACT({$column}, '{$path}')), '0') AS UNSIGNED)";
@@ -435,15 +443,25 @@ class LeaderboardController extends Controller
      */
     private function jsonDecimalExpr(string $column, array $paths): string
     {
+        $driver = DB::connection()->getDriverName();
         $expressions = array_map(function (string $path) use ($column): string {
-            if (DB::connection()->getDriverName() === 'sqlite') {
+            $driver = DB::connection()->getDriverName();
+
+            if ($driver === 'sqlite') {
                 return "CAST(COALESCE(json_extract({$column}, '{$path}'), 0) AS REAL)";
+            }
+
+            if ($driver === 'pgsql') {
+                $textExpr = $this->jsonTextExpr($column, $path);
+                return "COALESCE(NULLIF({$textExpr}, '')::numeric, 0)";
             }
 
             return "CAST(COALESCE(JSON_UNQUOTE(JSON_EXTRACT({$column}, '{$path}')), '0') AS DECIMAL(18, 2))";
         }, $paths);
 
-        return 'COALESCE('.implode(', ', $expressions).', 0)';
+        return $driver === 'pgsql'
+            ? 'COALESCE('.implode(', ', $expressions).', 0::numeric)'
+            : 'COALESCE('.implode(', ', $expressions).', 0)';
     }
 
     /**
@@ -451,9 +469,17 @@ class LeaderboardController extends Controller
      */
     private function jsonNumberCoalesceExpr(string $column, array $paths): string
     {
+        $driver = DB::connection()->getDriverName();
+
         $expressions = array_map(function (string $path) use ($column): string {
-            if (DB::connection()->getDriverName() === 'sqlite') {
+            $driver = DB::connection()->getDriverName();
+
+            if ($driver === 'sqlite') {
                 return "json_extract({$column}, '{$path}')";
+            }
+
+            if ($driver === 'pgsql') {
+                return $this->jsonTextExpr($column, $path);
             }
 
             return "JSON_UNQUOTE(JSON_EXTRACT({$column}, '{$path}'))";
@@ -461,8 +487,12 @@ class LeaderboardController extends Controller
 
         $coalesced = implode(', ', $expressions);
 
-        if (DB::connection()->getDriverName() === 'sqlite') {
+        if ($driver === 'sqlite') {
             return "CAST(COALESCE({$coalesced}, 0) AS INTEGER)";
+        }
+
+        if ($driver === 'pgsql') {
+            return "COALESCE(NULLIF(COALESCE({$coalesced}), '')::bigint, 0)";
         }
 
         return "CAST(COALESCE({$coalesced}, '0') AS UNSIGNED)";
@@ -474,8 +504,15 @@ class LeaderboardController extends Controller
     private function jsonStringCoalesceExpr(string $column, array $paths): string
     {
         $expressions = array_map(function (string $path) use ($column): string {
-            if (DB::connection()->getDriverName() === 'sqlite') {
+            $driver = DB::connection()->getDriverName();
+
+            if ($driver === 'sqlite') {
                 return "NULLIF(CAST(json_extract({$column}, '{$path}') AS TEXT), '')";
+            }
+
+            if ($driver === 'pgsql') {
+                $textExpr = $this->jsonTextExpr($column, $path);
+                return "NULLIF({$textExpr}, '')";
             }
 
             return "NULLIF(JSON_UNQUOTE(JSON_EXTRACT({$column}, '{$path}')), '')";
@@ -489,14 +526,70 @@ class LeaderboardController extends Controller
      */
     private function jsonBoolExpr(string $column, array $paths): string
     {
+        $driver = DB::connection()->getDriverName();
+
         $expressions = array_map(function (string $path) use ($column): string {
-            if (DB::connection()->getDriverName() === 'sqlite') {
+            $driver = DB::connection()->getDriverName();
+
+            if ($driver === 'sqlite') {
                 return "CAST(COALESCE(json_extract({$column}, '{$path}'), 0) AS INTEGER)";
+            }
+
+            if ($driver === 'pgsql') {
+                $textExpr = $this->jsonTextExpr($column, $path);
+                return "CASE WHEN LOWER(COALESCE({$textExpr}, '')) IN ('1', 'true', 't', 'yes') THEN 1 ELSE 0 END";
             }
 
             return "CAST(COALESCE(JSON_UNQUOTE(JSON_EXTRACT({$column}, '{$path}')), '0') AS UNSIGNED)";
         }, $paths);
 
-        return 'COALESCE('.implode(', ', $expressions).', 0)';
+        return $driver === 'pgsql'
+            ? 'COALESCE('.implode(', ', $expressions).', 0::integer)'
+            : 'COALESCE('.implode(', ', $expressions).', 0)';
+    }
+
+    private function booleanPredicate(string $column): string
+    {
+        return DB::connection()->getDriverName() === 'pgsql'
+            ? "{$column} = true"
+            : "{$column} = 1";
+    }
+
+    private function jsonTextExpr(string $column, string $path): string
+    {
+        $driver = DB::connection()->getDriverName();
+
+        if ($driver === 'sqlite') {
+            return "CAST(json_extract({$column}, '{$path}') AS TEXT)";
+        }
+
+        if ($driver === 'pgsql') {
+            $segments = $this->jsonPathSegments($path);
+            $quoted = implode(', ', array_map(
+                static fn (string $segment): string => "'" . str_replace("'", "''", $segment) . "'",
+                $segments
+            ));
+
+            return "jsonb_extract_path_text(({$column})::jsonb, {$quoted})";
+        }
+
+        return "JSON_UNQUOTE(JSON_EXTRACT({$column}, '{$path}'))";
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function jsonPathSegments(string $path): array
+    {
+        $trimmed = trim($path);
+        if ($trimmed === '' || $trimmed === '$') {
+            return [];
+        }
+
+        if (str_starts_with($trimmed, '$.')) {
+            $trimmed = substr($trimmed, 2);
+        }
+
+        return array_values(array_filter(explode('.', $trimmed), static fn (string $segment): bool => $segment !== ''));
     }
 }
