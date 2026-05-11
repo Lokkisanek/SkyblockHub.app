@@ -611,9 +611,9 @@ onBeforeUnmount(() => {
 
 <style scoped>
 tr.vip-restricted {
-  filter: blur(5px);
+  filter: blur(2px);
   position: relative;
-  opacity: 0.6;
+  opacity: 0.65;
 }
 
 tr.vip-restricted::after {
@@ -635,6 +635,14 @@ tr.vip-restricted::after {
 }
 
 tr.vip-restricted:hover {
-  filter: blur(5px);
+  filter: blur(2px);
+}
+
+/* Allow interactive elements to work despite blur */
+tr.vip-restricted a,
+tr.vip-restricted button {
+  pointer-events: auto;
+  position: relative;
+  z-index: 30;
 }
 </style>
