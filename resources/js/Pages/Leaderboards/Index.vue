@@ -294,9 +294,24 @@ onBeforeUnmount(() => {
         <div class="leaderboards-page">
             <div class="leaderboards-shell mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
                 <section class="leaderboards-hero">
-                    <p class="leaderboards-kicker">{{ t('leaderboards.kicker') }}</p>
+                    <div class="mb-5 flex items-center justify-between gap-4">
+                        <div>
+                            <p class="leaderboards-kicker">{{ t('leaderboards.kicker') }}</p>
+                            <div class="mt-2 flex flex-wrap items-center gap-2.5">
+                                <h1 class="leaderboards-title">{{ t('leaderboards.title') }}</h1>
+                                <span class="inline-flex items-center rounded-full border border-amber-300/35 bg-amber-300/12 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-amber-100">
+                                    {{ t('leaderboards.betaTag') }}
+                                </span>
+                                <Link
+                                    :href="route('leaderboards.info')"
+                                    class="inline-flex items-center rounded-full border border-white/15 bg-white/5 px-2.5 py-1 text-[11px] font-medium text-white/75 transition hover:border-white/30 hover:bg-white/10 hover:text-white"
+                                >
+                                    {{ t('leaderboards.seeMoreInfo') }}
+                                </Link>
+                            </div>
+                        </div>
+                    </div>
                     <div class="leaderboards-hero__copy">
-                        <h1 class="leaderboards-title">{{ t('leaderboards.title') }}</h1>
                         <p class="leaderboards-copy">{{ t('leaderboards.copy') }}</p>
                     </div>
 

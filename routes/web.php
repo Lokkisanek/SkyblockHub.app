@@ -47,6 +47,10 @@ Route::get('/dashboard/info', function () {
     return Inertia::render('DashboardInfo');
 })->name('dashboard.info');
 
+Route::get('/leaderboards/info', function () {
+    return Inertia::render('LeaderboardsInfo');
+})->name('leaderboards.info');
+
 Route::get('/bazaar', [BazaarController::class, 'index'])->name('bazaar');
 Route::get('/npc-flips', [NpcFlipsController::class, 'index'])->name('npc-flips');
 Route::get('/profile-stats', [ProfileStatsController::class, 'index'])->name('profile-stats');
