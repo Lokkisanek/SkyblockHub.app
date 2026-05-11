@@ -10,7 +10,6 @@ const { t, tm, rt } = useI18n();
 
 const props = defineProps({
     plans: { type: Object, default: () => ({}) },
-    trialDays: { type: Number, default: 7 },
     subscriptionFeatures: { type: Object, default: () => ({}) },
     entitlement: { type: Object, default: null },
 });
@@ -21,10 +20,6 @@ const page = usePage();
 const user = computed(() => page.props.auth?.user ?? null);
 const isTestingAdmin = computed(() => Boolean(page.props.auth?.testing_admin));
 const hasActiveEntitlement = computed(() => Boolean(props.subscriptionFeatures?.has_active_entitlement));
-const showTrialConfirmModal = ref(false);
-const showTrialSuccessModal = ref(false);
-const selectedTrialTier = ref('vip');
-const trialActivatedTier = ref('vip');
 const billingError = computed(() => page.props.errors?.billing || '');
 
 const openFaq = ref(null);
@@ -110,38 +105,6 @@ function requireLogin() {
         preserveScroll: true,
     });
     return false;
-}
-
-function openTrialConfirm(tier) {
-    if (!requireLogin()) {
-        return;
-    }
-
-    selectedTrialTier.value = tier;
-    showTrialConfirmModal.value = true;
-}
-
-function confirmTrialStart() {
-    if (!requireLogin()) {
-        return;
-    }
-
-    if (isBusy.value) {
-        return;
-    }
-
-    isBusy.value = true;
-    router.post(route('billing.trial'), { tier: selectedTrialTier.value }, {
-        preserveScroll: true,
-        onSuccess: () => {
-            trialActivatedTier.value = selectedTrialTier.value;
-            showTrialConfirmModal.value = false;
-            showTrialSuccessModal.value = true;
-        },
-        onFinish: () => {
-            isBusy.value = false;
-        },
-    });
 }
 
 function checkout(tier) {
@@ -238,20 +201,6 @@ onMounted(() => {
                             </tr>
                         </tbody>
                         <tfoot>
-                            <tr class="border-t border-white/10" v-if="trialDays > 0 && (!user || subscriptionFeatures?.trial_eligible)">
-                                <td class="px-5 py-4 text-xs text-white/45">Activate free trial</td>
-                                <td class="px-5 py-4 text-center">
-                                    <span class="text-[11px] font-semibold uppercase tracking-wider text-white/30">No trial</span>
-                                </td>
-                                <td class="px-5 py-4 text-center">
-                                    <span class="text-[11px] font-semibold uppercase tracking-wider text-white/30">No trial</span>
-                                </td>
-                                <td class="px-5 py-4 text-center">
-                                    <button class="trial-btn" :disabled="isBusy" @click="openTrialConfirm('mvp')">
-                                        {{ t('billing.startTrial', { days: trialDays }) }}
-                                    </button>
-                                </td>
-                            </tr>
                             <tr class="border-t border-white/10">
                                 <td class="px-5 py-4"></td>
                                 <td class="px-5 py-4 text-center">
@@ -294,15 +243,6 @@ onMounted(() => {
 
                         <div v-if="plan.cta" class="mt-4 flex">
                             <button
-                                v-if="plan.tier === 'mvp' && trialDays > 0 && (!user || subscriptionFeatures?.trial_eligible)"
-                                class="trial-btn w-full"
-                                :disabled="isBusy"
-                                @click="openTrialConfirm('mvp')"
-                            >
-                                {{ t('billing.startTrial', { days: trialDays }) }}
-                            </button>
-                            <button
-                                v-else
                                 class="buy-btn buy-btn--vip w-full"
                                 :disabled="isBusy"
                                 @click="checkout(plan.cta)"
@@ -346,29 +286,6 @@ onMounted(() => {
                             <div v-if="openFaq === i" class="px-5 pb-4">
                                 <p class="text-sm leading-relaxed text-white/60">{{ faq.a }}</p>
                             </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div v-if="showTrialConfirmModal" class="modal-backdrop" @click.self="showTrialConfirmModal = false">
-                    <div class="modal-card">
-                        <h3 class="modal-title">{{ t('billing.confirmTitle', { tier: String(selectedTrialTier).toUpperCase(), days: trialDays }) }}</h3>
-                        <p class="modal-copy">{{ t('billing.confirmDesc') }}</p>
-                        <div class="modal-actions">
-                            <button class="plan-secondary" :disabled="isBusy" @click="showTrialConfirmModal = false">{{ t('billing.confirmNo') }}</button>
-                            <button class="modal-btn" :disabled="isBusy" @click="confirmTrialStart">{{ t('billing.confirmYes') }}</button>
-                        </div>
-                    </div>
-                </div>
-
-                <div v-if="showTrialSuccessModal" class="modal-backdrop" @click.self="showTrialSuccessModal = false">
-                    <div class="modal-card">
-                        <h3 class="modal-title">{{ t('billing.trialActivated') }}</h3>
-                        <p class="modal-copy">
-                            {{ t('billing.trialSuccess', { tier: String(trialActivatedTier).toUpperCase() }) }}
-                        </p>
-                        <div class="modal-actions">
-                            <button class="modal-btn" @click="showTrialSuccessModal = false">{{ t('billing.great') }}</button>
                         </div>
                     </div>
                 </div>
@@ -453,22 +370,6 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.plan-secondary {
-    border-radius: 4px;
-    border: 2px solid rgba(255, 255, 255, 0.15);
-    background: rgba(255, 255, 255, 0.06);
-    padding: 8px 16px;
-    font-size: 12px;
-    font-weight: 600;
-    color: rgba(255, 255, 255, 0.7);
-    transition: all 0.15s ease;
-}
-
-.plan-secondary:hover:not(:disabled) {
-    background: rgba(255, 255, 255, 0.1);
-    color: #fff;
-}
-
 .dev-toggle-btn {
     border-radius: 4px;
     border: 1px solid rgba(34, 211, 238, 0.5);
@@ -482,22 +383,6 @@ onMounted(() => {
 
 .dev-toggle-btn:hover:not(:disabled) {
     background: rgba(6, 182, 212, 0.25);
-}
-
-.trial-btn {
-    border-radius: 4px;
-    border: 1px solid rgba(96, 165, 250, 0.45);
-    background: rgba(96, 165, 250, 0.14);
-    padding: 7px 10px;
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.03em;
-    color: #bfdbfe;
-    transition: all 0.15s ease;
-}
-
-.trial-btn:hover:not(:disabled) {
-    background: rgba(96, 165, 250, 0.24);
 }
 
 .buy-btn {
@@ -547,8 +432,6 @@ onMounted(() => {
 }
 
 .buy-btn:disabled,
-.plan-secondary:disabled,
-.trial-btn:disabled,
 .dev-toggle-btn:disabled {
     opacity: 0.45;
     cursor: not-allowed;
@@ -582,58 +465,6 @@ onMounted(() => {
 
 .plan-col {
     width: 18%;
-}
-
-.modal-backdrop {
-    position: fixed;
-    inset: 0;
-    z-index: 90;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 16px;
-    background: rgba(4, 6, 10, 0.74);
-    backdrop-filter: blur(6px);
-}
-
-.modal-card {
-    width: min(520px, calc(100vw - 28px));
-    border-radius: 16px;
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    background: rgba(16, 22, 30, 0.96);
-    padding: 18px;
-}
-
-.modal-title {
-    font-size: 18px;
-    font-weight: 700;
-    color: #fff;
-}
-
-.modal-copy {
-    margin-top: 10px;
-    font-size: 13px;
-    line-height: 1.55;
-    color: rgba(255, 255, 255, 0.72);
-}
-
-.modal-actions {
-    margin-top: 14px;
-    display: flex;
-    justify-content: flex-end;
-    gap: 8px;
-}
-
-.modal-btn {
-    border-radius: 4px;
-    border: 2px solid #55ff55;
-    background: rgba(0, 0, 0, 0.65);
-    padding: 8px 20px;
-    font-size: 13px;
-    font-weight: 700;
-    color: #55ff55;
-    cursor: pointer;
-    transition: all 0.15s ease;
 }
 
 .footer-wrapper {
@@ -695,15 +526,6 @@ onMounted(() => {
 @keyframes footerSlimePulse {
     0%, 100% { opacity: 0.5; }
     50% { opacity: 1; }
-}
-
-.modal-btn:hover:not(:disabled) {
-    background: rgba(85, 255, 85, 0.12);
-}
-
-.modal-btn:disabled {
-    opacity: 0.45;
-    cursor: not-allowed;
 }
 
 @media (max-width: 767px) {
