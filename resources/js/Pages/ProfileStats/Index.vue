@@ -1069,9 +1069,9 @@ onMounted(async () => {
 
                                     <!-- Tier kills table -->
                                     <div class="slayer-tiers">
-                                        <div v-for="t in slayerMaxTier(key)" :key="t" class="slayer-tier-col">
-                                            <span class="slayer-tier-label">{{ t('profileStats.tier') }} {{ romanNumeral(t) }}</span>
-                                            <span class="slayer-tier-value">{{ (slayer.kills?.[t] ?? 0).toLocaleString() }}</span>
+                                        <div v-for="tier in slayerMaxTier(key)" :key="tier" class="slayer-tier-col">
+                                            <span class="slayer-tier-label">{{ t('profileStats.tier') }} {{ romanNumeral(tier) }}</span>
+                                            <span class="slayer-tier-value">{{ (slayer.kills?.[tier] ?? 0).toLocaleString() }}</span>
                                         </div>
                                         <div class="slayer-tier-col">
                                             <span class="slayer-tier-label">{{ t('profileStats.total') }}</span>
