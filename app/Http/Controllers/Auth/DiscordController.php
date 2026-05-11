@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Auth;
 use Laravel\Socialite\Facades\Socialite;
 
@@ -14,6 +15,7 @@ class DiscordController extends Controller
     public function redirect(Request $request): RedirectResponse
     {
         $this->storeIntendedRedirect($request);
+        
 
         return Socialite::driver('discord')
             ->scopes(['identify', 'email'])
@@ -22,7 +24,10 @@ class DiscordController extends Controller
 
     public function callback(): RedirectResponse
     {
-        $discordUser = Socialite::driver('discord')->user();
+        $discordUser = $this->fetchDiscordUser(
+            request(),
+            config('services.discord.redirect')
+        );
 
         $user = $this->resolveUser($discordUser);
 
@@ -31,17 +36,19 @@ class DiscordController extends Controller
         return redirect()->intended('/dashboard');
     }
 
-    private function resolveUser($discordUser): User
+    private function resolveUser(array $discordUser): User
     {
-        $discordId = $discordUser->getId();
-        $email = $discordUser->getEmail();
+        $discordId = $discordUser['id'];
+        $email = $discordUser['email'] ?? null;
+        $username = $discordUser['username'] ?? $discordUser['global_name'] ?? $discordId;
+        $avatar = $this->discordAvatarUrl($discordUser['id'], $discordUser['avatar'] ?? null);
 
         // 1. Check by Discord ID — returning user
         $userByDiscord = User::where('discord_id', $discordId)->first();
         if ($userByDiscord) {
             $userByDiscord->update([
-                'discord_username' => $discordUser->getNickname(),
-                'discord_avatar' => $discordUser->getAvatar(),
+                'discord_username' => $username,
+                'discord_avatar' => $avatar,
                 'email' => $userByDiscord->email ?? $email,
             ]);
             return $userByDiscord;
@@ -52,8 +59,8 @@ class DiscordController extends Controller
         if ($userByEmail) {
             $userByEmail->update([
                 'discord_id' => $discordId,
-                'discord_username' => $discordUser->getNickname(),
-                'discord_avatar' => $discordUser->getAvatar(),
+                'discord_username' => $username,
+                'discord_avatar' => $avatar,
             ]);
             return $userByEmail;
         }
@@ -61,10 +68,10 @@ class DiscordController extends Controller
         // 3. New user — Discord-only account
         return User::create([
             'discord_id' => $discordId,
-            'name' => $discordUser->getName() ?? $discordUser->getNickname(),
+            'name' => $discordUser['global_name'] ?? $username,
             'email' => $email,
-            'discord_username' => $discordUser->getNickname(),
-            'discord_avatar' => $discordUser->getAvatar(),
+            'discord_username' => $username,
+            'discord_avatar' => $avatar,
         ]);
     }
 
@@ -81,14 +88,17 @@ class DiscordController extends Controller
 
     public function callbackLink(Request $request): RedirectResponse
     {
-        $discordUser = Socialite::driver('discord')
-            ->redirectUrl(config('services.discord.redirect_link'))
-            ->user();
+        $discordUser = $this->fetchDiscordUser(
+            $request,
+            config('services.discord.redirect_link')
+        );
 
         $user = $request->user();
+        $username = $discordUser['username'] ?? $discordUser['global_name'] ?? $discordUser['id'];
+        $avatar = $this->discordAvatarUrl($discordUser['id'], $discordUser['avatar'] ?? null);
 
         // Check if this Discord ID is already linked to a different user
-        $existingDiscord = User::where('discord_id', $discordUser->getId())
+        $existingDiscord = User::where('discord_id', $discordUser['id'])
             ->where('id', '!=', $user->id)
             ->first();
 
@@ -98,13 +108,47 @@ class DiscordController extends Controller
         }
 
         $user->update([
-            'discord_id' => $discordUser->getId(),
-            'discord_username' => $discordUser->getNickname(),
-            'discord_avatar' => $discordUser->getAvatar(),
+            'discord_id' => $discordUser['id'],
+            'discord_username' => $username,
+            'discord_avatar' => $avatar,
         ]);
 
         return redirect()->route('profile.edit')
             ->with('status', 'Discord úspěšně propojen!');
+    }
+
+    private function fetchDiscordUser(Request $request, string $redirectUri): array
+    {
+        $code = (string) $request->query('code', '');
+
+        if ($code === '') {
+            abort(400, 'Chybí OAuth code.');
+        }
+
+        $tokenResponse = Http::asForm()
+            ->post('https://discord.com/api/oauth2/token', [
+                'client_id' => config('services.discord.client_id'),
+                'client_secret' => config('services.discord.client_secret'),
+                'grant_type' => 'authorization_code',
+                'code' => $code,
+                'redirect_uri' => $redirectUri,
+            ])
+            ->throw()
+            ->json();
+
+        return Http::withToken($tokenResponse['access_token'])
+            ->get('https://discord.com/api/users/@me')
+            ->throw()
+            ->json();
+    }
+
+    private function discordAvatarUrl(string $discordId, ?string $avatarHash): ?string
+    {
+        if (! $avatarHash) {
+            return null;
+        }
+
+        return "https://cdn.discordapp.com/avatars/{$discordId}/{$avatarHash}.png?size=128";
     }
 
     private function storeIntendedRedirect(Request $request): void

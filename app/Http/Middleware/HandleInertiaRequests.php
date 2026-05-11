@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use App\Services\MayorService;
 use App\Services\OnboardingChecklistService;
 use App\Services\PerkService;
+use App\Services\SeoService;
 use App\Services\SubscriptionFeatureService;
 use App\Support\TestingAdminGate;
 use Illuminate\Http\Request;
@@ -52,6 +53,7 @@ class HandleInertiaRequests extends Middleware
             'subscriptionFeatures' => fn () => app(SubscriptionFeatureService::class)->forUser($request->user()),
             'onboarding' => fn () => app(OnboardingChecklistService::class)->captureAndGetState($request),
             'currentMayor' => fn () => $this->buildCurrentMayorWidget(),
+            'seo' => SeoService::getPageSeo($request),
             'ziggy' => fn () => [
                 ...(new Ziggy)->toArray(),
                 'location' => $request->url(),

@@ -5,7 +5,6 @@ import { createInertiaApp } from '@inertiajs/vue3';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { createApp, h } from 'vue';
 import * as Sentry from '@sentry/vue';
-import { I18nInjectionKey } from 'vue-i18n';
 import { ZiggyVue } from '../../vendor/tightenco/ziggy';
 import i18n from './i18n';
 
@@ -23,7 +22,7 @@ createInertiaApp({
         const app = createApp({ render: () => h(App, props) });
         const sentryDsn = import.meta.env.VITE_SENTRY_DSN;
 
-        if (sentryDsn) {
+        if (sentryDsn && import.meta.env.PROD) {
             Sentry.init({
                 app,
                 dsn: sentryDsn,
@@ -33,11 +32,17 @@ createInertiaApp({
             });
         }
 
-        app.provide(I18nInjectionKey, i18n);
-        app.config.globalProperties.$t = i18n.global.t.bind(i18n.global);
-        app.config.globalProperties.$te = i18n.global.te.bind(i18n.global);
-        app.config.globalProperties.$d = i18n.global.d.bind(i18n.global);
-        app.config.globalProperties.$n = i18n.global.n.bind(i18n.global);
+        // Defensive bindings: i18n may be a lightweight plugin with a minimal shape.
+        const safeGlobal = (i18n && i18n.global) ? i18n.global : i18n || {};
+        const safeT = typeof safeGlobal.t === 'function' ? safeGlobal.t.bind(safeGlobal) : (k => (typeof safeGlobal.t === 'function' ? safeGlobal.t(k) : k));
+        const safeTe = typeof safeGlobal.te === 'function' ? safeGlobal.te.bind(safeGlobal) : (k => (typeof safeGlobal.te === 'function' ? safeGlobal.te(k) : false));
+        const safeD = typeof safeGlobal.d === 'function' ? safeGlobal.d.bind(safeGlobal) : (() => undefined);
+        const safeN = typeof safeGlobal.n === 'function' ? safeGlobal.n.bind(safeGlobal) : (() => undefined);
+
+        app.config.globalProperties.$t = safeT;
+        app.config.globalProperties.$te = safeTe;
+        app.config.globalProperties.$d = safeD;
+        app.config.globalProperties.$n = safeN;
 
         return app
             .use(plugin)

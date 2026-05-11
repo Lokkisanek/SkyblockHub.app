@@ -18,6 +18,10 @@ return Application::configure(basePath: dirname(__DIR__))
             \Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class,
         ]);
 
+        $middleware->validateCsrfTokens(except: [
+            'analytics/funnel-event',
+        ]);
+
         $middleware->alias([
             'testing.admin' => \App\Http\Middleware\EnsureTestingAdmin::class,
         ]);

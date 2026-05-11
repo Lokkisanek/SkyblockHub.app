@@ -35,7 +35,7 @@ class BazaarController extends Controller
         $hourlyInstasellsSql = '(bazaar_prices.buy_moving_week / 168.0)';
 
         // Coins/hour = margin × min(hourly instabuys, hourly instasells)
-        $coinsPerHourSql = "({$marginSql} * MIN({$hourlyInstabuysSql}, {$hourlyInstasellsSql}))";
+        $coinsPerHourSql = "({$marginSql} * LEAST({$hourlyInstabuysSql}, {$hourlyInstasellsSql}))";
 
         $query = BazaarPrice::query()
             ->join('bazaar_products', 'bazaar_prices.product_id', '=', 'bazaar_products.product_id')
@@ -76,7 +76,7 @@ class BazaarController extends Controller
             : null;
 
         // Only show items with positive margin and sufficient daily trading volume
-        $query->whereRaw("MIN({$dailyInstabuysSql}, {$dailyInstasellsSql}) >= ?", [$minDailyVolume])
+        $query->whereRaw("LEAST({$dailyInstabuysSql}, {$dailyInstasellsSql}) >= ?", [$minDailyVolume])
               ->whereRaw("{$marginSql} > 0");
 
         if ($maxBuyPrice !== null) {
@@ -144,12 +144,12 @@ class BazaarController extends Controller
                 DB::raw("{$coinsPerHourSql} as coins_per_hour"),
             ])
             ->whereRaw("{$marginSql} > 0")
-            ->whereRaw("MIN({$dailyInstabuysSql}, {$dailyInstasellsSql}) >= 100");
+            ->whereRaw("LEAST({$dailyInstabuysSql}, {$dailyInstasellsSql}) >= 100");
 
         $bestCoinsPerHour = (clone $bestPicksBase)->orderByRaw("{$coinsPerHourSql} DESC")->first();
         $bestMargin = (clone $bestPicksBase)->orderByRaw("{$marginSql} DESC")->first();
         $bestThroughput = (clone $bestPicksBase)
-            ->orderByRaw("MIN({$hourlyInstabuysSql}, {$hourlyInstasellsSql}) DESC")
+            ->orderByRaw("LEAST({$hourlyInstabuysSql}, {$hourlyInstasellsSql}) DESC")
             ->first();
 
         $topFlipsLimit = max(1, min(3, (int) ($subscriptionFeatures['top_flips_limit'] ?? 1)));

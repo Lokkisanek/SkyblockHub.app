@@ -33,6 +33,19 @@ class BillingFeatureTest extends TestCase
             ->assertRedirect('/billing');
     }
 
+    public function test_checkout_uses_get_and_requires_stripe_configuration(): void
+    {
+        $user = User::factory()->create([
+            'discord_id' => '1234567890',
+            'discord_username' => 'Tester',
+        ]);
+
+        $this->actingAs($user)
+            ->get('/billing/checkout?tier=vip')
+            ->assertSessionHasErrors('billing')
+            ->assertRedirect('/billing');
+    }
+
     public function test_discord_user_can_start_trial_once(): void
     {
         $user = User::factory()->create([

@@ -3,20 +3,26 @@ import Echo from 'laravel-echo';
 import Pusher from 'pusher-js';
 window.Pusher = Pusher;
 
-// Only instantiate Echo when Vite-exposed Reverb key is present.
-// Prevents "You must pass your app key when you instantiate Pusher" in browser when env is missing.
+const appConfig = window.__SKYBLOCKHUB_CONFIG__ || {};
+
+// Only instantiate Echo when the server says broadcasting is enabled and
+// the production Vite env exposes the Reverb connection details.
 const reverbKey = import.meta.env.VITE_REVERB_APP_KEY;
-if (reverbKey) {
+const reverbHost = import.meta.env.VITE_REVERB_HOST;
+const reverbPort = import.meta.env.VITE_REVERB_PORT;
+const reverbScheme = import.meta.env.VITE_REVERB_SCHEME ?? 'https';
+
+if (appConfig.broadcastingEnabled && reverbKey && reverbHost && import.meta.env.PROD) {
     window.Echo = new Echo({
         broadcaster: 'reverb',
         key: reverbKey,
-        wsHost: import.meta.env.VITE_REVERB_HOST,
-        wsPort: import.meta.env.VITE_REVERB_PORT ?? 80,
-        wssPort: import.meta.env.VITE_REVERB_PORT ?? 443,
-        forceTLS: (import.meta.env.VITE_REVERB_SCHEME ?? 'https') === 'https',
+        wsHost: reverbHost,
+        wsPort: reverbPort ?? 80,
+        wssPort: reverbPort ?? 443,
+        forceTLS: reverbScheme === 'https',
         enabledTransports: ['ws', 'wss'],
     });
 } else {
-    // If no key, avoid creating Echo - useful for local dev without Reverb configured.
+    // If broadcasting is disabled or the env is incomplete, avoid creating Echo.
     // window.Echo remains undefined and code that listens should check for window.Echo.
 }

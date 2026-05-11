@@ -154,12 +154,7 @@ function checkout(tier) {
     }
 
     isBusy.value = true;
-    router.post(route('billing.checkout'), { tier }, {
-        preserveScroll: true,
-        onFinish: () => {
-            isBusy.value = false;
-        },
-    });
+    window.location.href = route('billing.checkout', { tier });
 }
 
 function toggleDevSubscription() {

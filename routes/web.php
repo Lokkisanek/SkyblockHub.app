@@ -19,6 +19,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProfileStatsController;
 use App\Services\SocialProofMetricsService;
 use Illuminate\Foundation\Application;
+use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -35,6 +36,7 @@ Route::get('/', function () {
 
 Route::post('/cookie-consent', [CookieConsentController::class, 'store'])->name('cookie-consent.store');
 Route::post('/analytics/funnel-event', [FunnelAnalyticsController::class, 'store'])
+    ->withoutMiddleware([ValidateCsrfToken::class])
     ->middleware('throttle:120,1')
     ->name('analytics.funnel-event');
 
@@ -105,7 +107,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/onboarding/complete-step', [OnboardingController::class, 'completeStep'])->name('onboarding.complete-step');
     Route::post('/onboarding/dismiss', [OnboardingController::class, 'dismiss'])->name('onboarding.dismiss');
 
-    Route::post('/billing/checkout', [BillingController::class, 'checkout'])->name('billing.checkout');
+    Route::get('/billing/checkout', [BillingController::class, 'checkout'])->name('billing.checkout');
     Route::post('/billing/trial', [BillingController::class, 'startTrial'])->name('billing.trial');
     Route::post('/billing/cancel', [BillingController::class, 'cancel'])->name('billing.cancel');
     Route::post('/billing/dev-toggle-subscription', [BillingController::class, 'devToggleSubscription'])
@@ -141,5 +143,33 @@ Route::middleware('auth')->group(function () {
         Route::patch('/bin-sniper/alert', [BinSniperController::class, 'toggleAlert'])->name('bin-sniper.alert.toggle');
     });
 });
+
+// SEO Routes
+Route::get('/sitemap.xml', function () {
+    $sitemap = '<?xml version="1.0" encoding="UTF-8"?>'.PHP_EOL;
+    $sitemap .= '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'.PHP_EOL;
+    
+    $urls = [
+        ['url' => url('/'), 'changefreq' => 'weekly', 'priority' => '1.0'],
+        ['url' => url('/dashboard'), 'changefreq' => 'daily', 'priority' => '0.9'],
+        ['url' => url('/bazaar'), 'changefreq' => 'daily', 'priority' => '0.9'],
+        ['url' => url('/npc-flips'), 'changefreq' => 'daily', 'priority' => '0.8'],
+        ['url' => url('/profile-stats'), 'changefreq' => 'weekly', 'priority' => '0.7'],
+        ['url' => url('/event-timer'), 'changefreq' => 'daily', 'priority' => '0.8'],
+        ['url' => url('/leaderboards'), 'changefreq' => 'weekly', 'priority' => '0.7'],
+    ];
+    
+    foreach ($urls as $page) {
+        $sitemap .= '  <url>'.PHP_EOL;
+        $sitemap .= '    <loc>'.$page['url'].'</loc>'.PHP_EOL;
+        $sitemap .= '    <changefreq>'.$page['changefreq'].'</changefreq>'.PHP_EOL;
+        $sitemap .= '    <priority>'.$page['priority'].'</priority>'.PHP_EOL;
+        $sitemap .= '  </url>'.PHP_EOL;
+    }
+    
+    $sitemap .= '</urlset>';
+    
+    return response($sitemap, 200, ['Content-Type' => 'application/xml']);
+})->name('sitemap');
 
 require __DIR__.'/auth.php';

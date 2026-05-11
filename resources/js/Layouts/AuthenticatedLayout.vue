@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { useSeo } from '@/composables/useSeo';
 import ApplicationLogo from '@/Components/ApplicationLogo.vue';
 import AuthSlidePanel from '@/Components/AuthSlidePanel.vue';
 import CookieConsent from '@/Components/CookieConsent.vue';
@@ -11,6 +12,7 @@ import DropdownLink from '@/Components/DropdownLink.vue';
 import { Link, usePage, router } from '@inertiajs/vue3';
 
 const { locale, t } = useI18n();
+useSeo();
 
 const showingNavigationDropdown = ref(false);
 const showAuthPanel = ref(false);
