@@ -221,10 +221,10 @@
             </thead>
             <tbody class="divide-y divide-border">
               <tr
-                v-for="flip in flips"
+                v-for="(flip, index) in flips"
                 :key="flip.product_id"
-                class="hover:bg-surface-700/50"
-                :class="rowClass(flip)"
+                class="hover:bg-surface-700/50 relative"
+                :class="[rowClass(flip), isRestrictedFlip(index) ? 'vip-restricted' : '']"
               >
                 <td class="px-4 py-3 font-semibold text-white">
                   <div class="flex items-center gap-2">
@@ -343,6 +343,8 @@ const props = defineProps({
 const tier = computed(() => String(props.subscriptionFeatures?.tier || 'free'))
 const isVipOrHigher = computed(() => tier.value === 'vip' || tier.value === 'mvp')
 const isMvp = computed(() => tier.value === 'mvp')
+
+const isRestrictedFlip = (index) => !isVipOrHigher.value && index < 2
 
 const search = ref(props.filters.search || '')
 const sortBy = ref(props.filters.sort || 'best_pick_score')
@@ -668,4 +670,34 @@ onBeforeUnmount(() => {
   }
 })
 </script>
+
+<style scoped>
+tr.vip-restricted {
+  filter: blur(5px);
+  position: relative;
+  opacity: 0.6;
+}
+
+tr.vip-restricted::after {
+  content: 'VIP/MVP Only';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0, 0, 0, 0.8);
+  color: rgb(96, 165, 250);
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+  z-index: 20;
+  pointer-events: none;
+  border: 1px solid rgb(96, 165, 250);
+}
+
+tr.vip-restricted:hover {
+  filter: blur(5px);
+}
+</style>
 

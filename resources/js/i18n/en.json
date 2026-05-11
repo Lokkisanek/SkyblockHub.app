@@ -569,7 +569,9 @@
         "upsellFreeCta": "Upgrade to VIP",
         "upsellVipCta": "Upgrade to MVP",
         "upsellCompareCta": "See full plan comparison",
-        "noFlips": "No NPC flips found. Try adjusting filters."
+        "noFlips": "No NPC flips found. Try adjusting filters.",
+        "vipOnlyContent": "VIP/MVP members only",
+        "upgradeToVip": "Upgrade to view"
     },
     "eventTimer": {
         "title": "Visual Event Timer",

@@ -569,7 +569,9 @@
         "upsellFreeCta": "Upgradovat na VIP",
         "upsellVipCta": "Upgradovat na MVP",
         "upsellCompareCta": "Zobrazit porovnání plánů",
-        "noFlips": "Žádné NPC flipy nenalezeny. Zkus upravit filtry."
+        "noFlips": "Žádné NPC flipy nenalezeny. Zkus upravit filtry.",
+        "vipOnlyContent": "Pouze pro VIP/MVP členy",
+        "upgradeToVip": "Upgraduj pro zobrazení"
     },
     "eventTimer": {
         "title": "Vizuální Časovač Eventů",
