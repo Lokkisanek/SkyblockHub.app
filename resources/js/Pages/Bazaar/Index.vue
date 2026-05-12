@@ -616,21 +616,6 @@ tr.vip-restricted {
   position: relative;
 }
 
-tr.vip-restricted td {
-  filter: blur(12px);
-  opacity: 0.28;
-  user-select: none;
-}
-
-tr.vip-restricted::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: rgba(15, 23, 42, 0.35);
-  z-index: 30;
-  pointer-events: none;
-}
-
 tr.vip-restricted::after {
   content: 'VIP/MVP Only';
   position: absolute;
@@ -662,12 +647,6 @@ tr.vip-restricted button {
 
 .top-flip-card {
   position: relative;
-}
-
-.top-flip-card[data-locked='1'] .top-flip-content {
-  filter: blur(10px);
-  opacity: 0.32;
-  user-select: none;
 }
 
 .top-flip-card[data-locked='1']::after {
