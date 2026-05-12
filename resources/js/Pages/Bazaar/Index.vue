@@ -81,12 +81,13 @@
         <div
           v-for="index in 3"
           :key="`top-flip-${index}`"
-          class="rounded-xl border bg-surface-800 p-4 text-center"
+          class="top-flip-card rounded-xl border bg-surface-800 p-4 text-center"
+          :data-locked="isRestrictedTopFlip(index) ? '1' : '0'"
           :class="index === 1 ? 'border-yellow-400/70 bg-[radial-gradient(circle_at_top,rgba(250,204,21,0.14),rgba(15,23,42,0.8))]' : 'border-border'"
         >
           <h3 class="text-xs font-semibold uppercase tracking-wide" :class="index === 1 ? 'text-yellow-200' : 'text-cyan-200'">{{ t('bazaar.topFlip', { n: index }) }}</h3>
           <template v-if="top_flips?.[index - 1]">
-            <div class="mt-3 flex flex-col items-center">
+            <div class="top-flip-content mt-3 flex flex-col items-center">
               <img
                 :src="getTextureUrl(top_flips[index - 1].product_id)"
                 :data-fallback="getTextureFallbackUrl(top_flips[index - 1].product_id)"
@@ -312,7 +313,8 @@ const tier = computed(() => String(props.subscriptionFeatures?.tier || 'free'))
 const isVipOrHigher = computed(() => tier.value === 'vip' || tier.value === 'mvp')
 const isMvp = computed(() => tier.value === 'mvp')
 
-const isRestrictedFlip = (index) => !isVipOrHigher.value && index < 2
+const isRestrictedFlip = (index) => !isVipOrHigher.value && sortBy.value === 'coins_per_hour' && index < 2
+const isRestrictedTopFlip = (index) => !isVipOrHigher.value && index <= 2
 
 const pagination = ref({
   current_page: props.items.current_page,
@@ -614,10 +616,19 @@ tr.vip-restricted {
   position: relative;
 }
 
-tr.vip-restricted td > * {
+tr.vip-restricted td {
   filter: blur(12px);
   opacity: 0.28;
   user-select: none;
+}
+
+tr.vip-restricted::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.35);
+  z-index: 30;
+  pointer-events: none;
 }
 
 tr.vip-restricted::after {
@@ -647,5 +658,33 @@ tr.vip-restricted button {
   pointer-events: none;
   position: relative;
   z-index: 10;
+}
+
+.top-flip-card {
+  position: relative;
+}
+
+.top-flip-card[data-locked='1'] .top-flip-content {
+  filter: blur(10px);
+  opacity: 0.32;
+  user-select: none;
+}
+
+.top-flip-card[data-locked='1']::after {
+  content: 'VIP/MVP Only';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0, 0, 0, 0.86);
+  color: rgb(96, 165, 250);
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+  z-index: 50;
+  pointer-events: none;
+  border: 1px solid rgb(96, 165, 250);
 }
 </style>

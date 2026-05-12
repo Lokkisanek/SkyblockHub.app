@@ -128,7 +128,7 @@ class BazaarController extends Controller
         $items = $query->paginate(50)->withQueryString();
 
         $isVipOrHigher = in_array((string) ($subscriptionFeatures['tier'] ?? 'free'), ['vip', 'mvp'], true);
-        if (! $isVipOrHigher) {
+        if (! $isVipOrHigher && $sortBy === 'coins_per_hour') {
             $items->setCollection(
                 $items->getCollection()->values()->map(function ($item, $index) {
                     if ($index >= 2) {
@@ -199,6 +199,24 @@ class BazaarController extends Controller
 
             return $record;
         })->values();
+
+        if (! $isVipOrHigher) {
+            $topFlips = $topFlips->values()->map(function (array $row, int $index): array {
+                if ($index >= 2) {
+                    return $row;
+                }
+
+                $row['product_id'] = 'LOCKED';
+                $row['name'] = 'VIP/MVP Only';
+                $row['coins_per_hour'] = 0;
+                $row['margin'] = 0;
+                $row['hourly_instabuys'] = 0;
+                $row['hourly_instasells'] = 0;
+                unset($row['trust_score']);
+
+                return $row;
+            });
+        }
 
         $aiInsights = [];
         if ($subscriptionFeatures['can_ai_flips'] ?? false) {

@@ -653,12 +653,6 @@ tr.vip-restricted {
   position: relative;
 }
 
-tr.vip-restricted td > * {
-  filter: blur(12px);
-  opacity: 0.28;
-  user-select: none;
-}
-
 tr.vip-restricted::after {
   content: 'VIP/MVP Only';
   position: absolute;
