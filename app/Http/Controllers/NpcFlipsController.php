@@ -172,7 +172,7 @@ class NpcFlipsController extends Controller
                     return $flip;
                 }
 
-                $flip['name'] = 'VIP/MVP Only';
+                $flip['name'] = 'Locked';
                 $flip['product_id'] = 'LOCKED';
                 $flip['buy_price'] = 0;
                 $flip['npc_sell_price'] = 0;

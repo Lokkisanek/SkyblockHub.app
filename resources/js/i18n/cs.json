@@ -543,7 +543,7 @@
         "sellPrice": "Prodejní cena",
         "topFlip": "Top Flip #{n}",
         "perHour": "/hod",
-        "lockedFree": "Zamčeno ve Free. Upgraduj na VIP/MVP pro Top 3 flipy.",
+        "lockedFree": "Zamčeno",
         "aiTitle": "AI Flip Ovládací Panel",
         "aiDesc": "AI sleduje chování trhu a přiřazuje skóre důvěry top příležitostem.",
         "trustScore": "Skóre důvěry: {score}/100",

@@ -543,7 +543,7 @@
         "sellPrice": "Sell Price",
         "topFlip": "Top Flip #{n}",
         "perHour": "/hr",
-        "lockedFree": "Locked in Free. Upgrade to VIP/MVP for Top 3 flips.",
+        "lockedFree": "Locked",
         "aiTitle": "AI Flip Control Panel",
         "aiDesc": "AI tracks market behavior and assigns trust score to top opportunities.",
         "trustScore": "Trust score: {score}/100",

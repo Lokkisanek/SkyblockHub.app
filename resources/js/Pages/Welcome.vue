@@ -391,7 +391,7 @@ function cardAccentClass(accent) {
                                 <Link
                                     :href="route('billing')"
                                     @click="trackLandingCta('pricing_mvp')"
-                                    class="mt-2 flex w-full items-center justify-center rounded-xl border border-white/10 bg-white/5 py-3 text-sm font-semibold text-white/70 transition hover:bg-white/10 hover:text-white"
+                                    class="mt-6 flex w-full items-center justify-center rounded-xl border border-amber-400/30 bg-amber-500/10 py-3 text-sm font-semibold text-amber-400 transition hover:bg-amber-500/20 hover:text-amber-300"
                                 >
                                     {{ $t('welcome.pricing.subscribeMvp') }}
                                 </Link>

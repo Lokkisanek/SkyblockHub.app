@@ -135,7 +135,7 @@ class BazaarController extends Controller
                         return $item;
                     }
 
-                    $item->name = 'VIP/MVP Only';
+                    $item->name = 'Locked';
                     $item->product_id = 'LOCKED';
                     $item->buy_price = 0;
                     $item->sell_price = 0;
@@ -207,7 +207,7 @@ class BazaarController extends Controller
                 }
 
                 $row['product_id'] = 'LOCKED';
-                $row['name'] = 'VIP/MVP Only';
+                $row['name'] = 'Locked';
                 $row['coins_per_hour'] = 0;
                 $row['margin'] = 0;
                 $row['hourly_instabuys'] = 0;
