@@ -368,7 +368,6 @@ function cardAccentClass(accent) {
 
                             <!-- MVP (highlighted) -->
                             <div class="relative rounded-2xl border border-amber-400/25 bg-surface-900/75 p-6 shadow-[0_16px_40px_rgba(0,0,0,0.25),0_0_60px_rgba(251,191,36,0.06)] backdrop-blur-sm">
-                                <span class="absolute -top-3 right-5 rounded-full border border-amber-400/40 bg-amber-500/15 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-amber-400">{{ $t('welcome.pricing.freeTrial') }}</span>
                                 <p class="text-[10px] font-bold uppercase tracking-[0.24em] text-amber-400/80">{{ $t('welcome.pricing.mvpTitle') }}</p>
                                 <p class="mt-3 text-4xl font-black text-white">{{ $t('welcome.pricing.mvpPrice') }}<span class="text-lg font-medium text-white/45">{{ $t('welcome.pricing.mvpPeriod') }}</span></p>
                                 <ul class="mt-5 space-y-2.5 text-sm leading-relaxed text-white/75">
@@ -389,13 +388,6 @@ function cardAccentClass(accent) {
                                         {{ $t('welcome.pricing.mvpFeature4') }}
                                     </li>
                                 </ul>
-                                <Link
-                                    :href="route('billing')"
-                                    @click="trackLandingCta('trial_mvp')"
-                                    class="mt-6 flex w-full items-center justify-center rounded-xl border border-amber-400/40 bg-amber-500/15 py-3 text-sm font-bold text-amber-400 transition hover:bg-amber-500/25 hover:text-amber-300"
-                                >
-                                    {{ $t('welcome.pricing.startTrial') }}
-                                </Link>
                                 <Link
                                     :href="route('billing')"
                                     @click="trackLandingCta('pricing_mvp')"

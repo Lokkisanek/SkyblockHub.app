@@ -30,7 +30,8 @@
         <meta name="twitter:description" inertia content="SkyblockHub is a Hypixel SkyBlock intelligence dashboard for Bazaar flips, NPC arbitrage, crafting opportunities, profile stats, mayor tracking, and event timers.">
         <meta name="twitter:image" inertia content="{{ asset('img/logo-white.webp') }}">
 
-        <link rel="icon" type="image/webp" href="{{ asset('favicon.webp') }}">
+        <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
+        <link rel="shortcut icon" href="{{ asset('favicon.ico') }}">
         <link rel="apple-touch-icon" href="{{ asset('apple-touch-icon.webp') }}">
 
         <!-- Fonts -->

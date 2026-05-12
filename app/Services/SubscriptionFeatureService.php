@@ -58,7 +58,7 @@ class SubscriptionFeatureService
             'requires_discord_for_paid' => true,
             'dashboard_slots_unlocked' => $slotUnlock,
             'top_flips_limit' => 3,
-            'refresh_seconds' => $isMvp ? 60 : ($isVipOrMvp ? 120 : 180),
+            'refresh_seconds' => $isMvp ? 90 : ($isVipOrMvp ? 90 : 180),
             'priority_widget_updates' => $isVipOrMvp,
             'can_ai_flips' => $isMvp,
             'leaderboard_tag' => $tier === self::TIER_MVP ? 'MVP' : ($tier === self::TIER_VIP ? 'VIP' : null),

@@ -51,7 +51,6 @@ const comparisonRows = computed(() => [
     { key: 'leaderboard', label: t('pricingFaq.leaderboardTierTag'), free: t('pricingFaq.free'), vip: 'VIP', mvp: 'MVP' },
     { key: 'ai_flips', label: t('pricingFaq.aiControlledFlips'), free: '—', vip: '—', mvp: '✓' },
     { key: 'ai_signals', label: t('pricingFaq.aiTrustSignals'), free: '—', vip: '—', mvp: '✓' },
-    { key: 'trial', label: t('pricingFaq.trial7days'), free: '—', vip: '—', mvp: '✓' },
 ]);
 
 const mobilePlanCards = computed(() => [
@@ -90,7 +89,6 @@ const mobilePlanCards = computed(() => [
         bullets: [
             t('pricingFaq.aiControlledFlips'),
             t('pricingFaq.aiTrustSignals'),
-            t('pricingFaq.trial7days'),
         ],
         cta: 'mvp',
     },

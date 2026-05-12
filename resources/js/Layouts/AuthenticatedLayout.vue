@@ -11,7 +11,7 @@ import Dropdown from '@/Components/Dropdown.vue';
 import DropdownLink from '@/Components/DropdownLink.vue';
 import { Link, usePage, router } from '@inertiajs/vue3';
 
-const { locale, t } = useI18n();
+const { t } = useI18n();
 useSeo();
 
 const showingNavigationDropdown = ref(false);
@@ -33,13 +33,6 @@ const mayorPerkSummary = computed(() => {
     return count === 1 ? '1 active perk' : `${count} active perks`;
 });
 const mayorPerks = computed(() => Array.isArray(currentMayor.value?.perks) ? currentMayor.value.perks : []);
-
-function toggleLocale() {
-    const next = locale.value === 'en' ? 'cs' : 'en';
-    locale.value = next;
-    localStorage.setItem('locale', next);
-    document.documentElement.lang = next;
-}
 
 const displayName = computed(() => {
     if (!user.value) return '';
@@ -213,7 +206,7 @@ watch(
                                 </template>
                             </div>
 
-                        <!-- Right: Mayor + Lang + Auth -->
+                        <!-- Right: Mayor + Auth -->
                         <div class="hidden items-center gap-4 md:flex">
                             <!-- Mayor info -->
                             <Dropdown v-if="currentMayor?.name" align="right" width="96">
@@ -262,15 +255,6 @@ watch(
                                     <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
                                 </svg>
                             </a>
-
-                            <!-- Locale toggle -->
-                            <button
-                                @click="toggleLocale"
-                                class="text-xs font-medium text-white/50 transition hover:text-white"
-                                :title="locale === 'en' ? 'Přepnout do češtiny' : 'Switch to English'"
-                            >
-                                {{ locale === 'en' ? 'CZ' : 'EN' }}
-                            </button>
 
                             <!-- Auth: Login/Register or Profile -->
                             <template v-if="user">
@@ -374,12 +358,6 @@ watch(
 
                         <!-- Mobile auth -->
                         <div class="mt-3 flex items-center gap-3 border-t border-white/10 pt-3">
-                            <button
-                                @click="toggleLocale"
-                                class="text-xs font-medium text-white/50 hover:text-white"
-                            >
-                                {{ locale === 'en' ? 'CZ' : 'EN' }}
-                            </button>
                             <template v-if="user">
                                 <div v-if="mcAvatarUrl" class="h-6 w-6 overflow-hidden rounded border border-white/10 bg-surface-800" aria-hidden="true">
                                     <img :src="mcAvatarUrl" :alt="displayName" class="h-6 w-6" loading="lazy" decoding="async" />
