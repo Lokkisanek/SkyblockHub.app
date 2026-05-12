@@ -92,8 +92,8 @@ class BazaarController extends Controller
         // Search filter
         if ($search = $request->input('search')) {
             $query->where(function ($q) use ($search, $likeOperator) {
-                $q->where('name', $likeOperator, "%{$search}%")
-                  ->orWhere('product_id', $likeOperator, "%{$search}%");
+                $q->where('bazaar_products.name', $likeOperator, "%{$search}%")
+                  ->orWhere('bazaar_prices.product_id', $likeOperator, "%{$search}%");
             });
         }
 
@@ -126,6 +126,31 @@ class BazaarController extends Controller
         }
 
         $items = $query->paginate(50)->withQueryString();
+
+        $isVipOrHigher = in_array((string) ($subscriptionFeatures['tier'] ?? 'free'), ['vip', 'mvp'], true);
+        if (! $isVipOrHigher) {
+            $items->setCollection(
+                $items->getCollection()->values()->map(function ($item, $index) {
+                    if ($index >= 2) {
+                        return $item;
+                    }
+
+                    $item->name = 'VIP/MVP Only';
+                    $item->product_id = 'LOCKED';
+                    $item->buy_price = 0;
+                    $item->sell_price = 0;
+                    $item->margin = 0;
+                    $item->margin_percent = 0;
+                    $item->hourly_instabuys = 0;
+                    $item->hourly_instasells = 0;
+                    $item->coins_per_hour = 0;
+                    $item->sell_moving_week = 0;
+                    $item->buy_moving_week = 0;
+
+                    return $item;
+                })
+            );
+        }
 
         // Best picks — top items across different criteria (unfiltered except positive margin + min volume)
         $bestPicksBase = BazaarPrice::query()

@@ -57,7 +57,7 @@ class SubscriptionFeatureService
             'trial_eligible' => $trialEligible,
             'requires_discord_for_paid' => true,
             'dashboard_slots_unlocked' => $slotUnlock,
-            'top_flips_limit' => $isVipOrMvp ? 3 : 1,
+            'top_flips_limit' => 3,
             'refresh_seconds' => $isMvp ? 60 : ($isVipOrMvp ? 120 : 180),
             'priority_widget_updates' => $isVipOrMvp,
             'can_ai_flips' => $isMvp,

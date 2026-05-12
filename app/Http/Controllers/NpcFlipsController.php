@@ -10,7 +10,6 @@ use App\Services\SubscriptionFeatureService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
-use Illuminate\Database\Query\Expression;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -165,6 +164,28 @@ class NpcFlipsController extends Controller
                 : strcmp($b['name'], $a['name'])),
             default => $flips->sortByDesc('coins_per_hour'),
         };
+
+        $isVipOrHigher = in_array((string) ($subscriptionFeatures['tier'] ?? 'free'), ['vip', 'mvp'], true);
+        if (! $isVipOrHigher) {
+            $flips = $flips->values()->map(function ($flip, $index) {
+                if ($index >= 2) {
+                    return $flip;
+                }
+
+                $flip['name'] = 'VIP/MVP Only';
+                $flip['product_id'] = 'LOCKED';
+                $flip['buy_price'] = 0;
+                $flip['npc_sell_price'] = 0;
+                $flip['profit_per_item'] = 0;
+                $flip['profit_percent'] = 0;
+                $flip['coins_per_hour'] = 0;
+                $flip['profit_per_inventory'] = 0;
+                $flip['one_hour_instasells'] = 0;
+                $flip['time_to_fill_minutes'] = 0;
+
+                return $flip;
+            });
+        }
 
         // Pagination
         $perPage = (int) $request->input('per_page', 50);

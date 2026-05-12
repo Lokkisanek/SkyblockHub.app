@@ -611,9 +611,13 @@ onBeforeUnmount(() => {
 
 <style scoped>
 tr.vip-restricted {
-  filter: blur(2px);
   position: relative;
-  opacity: 0.65;
+}
+
+tr.vip-restricted td > * {
+  filter: blur(12px);
+  opacity: 0.28;
+  user-select: none;
 }
 
 tr.vip-restricted::after {
@@ -629,20 +633,19 @@ tr.vip-restricted::after {
   font-size: 0.75rem;
   font-weight: 600;
   white-space: nowrap;
-  z-index: 20;
+  z-index: 40;
   pointer-events: none;
   border: 1px solid rgb(96, 165, 250);
 }
 
 tr.vip-restricted:hover {
-  filter: blur(2px);
+  background-color: rgba(15, 23, 42, 0.75);
 }
 
-/* Allow interactive elements to work despite blur */
 tr.vip-restricted a,
 tr.vip-restricted button {
-  pointer-events: auto;
+  pointer-events: none;
   position: relative;
-  z-index: 30;
+  z-index: 10;
 }
 </style>

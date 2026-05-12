@@ -78,19 +78,6 @@
         </div>
       </div>
 
-      <div class="flex items-center gap-3 rounded border border-border bg-surface-800 px-4 py-3">
-        <button
-          @click="toggleCompactor"
-          class="inline-flex items-center rounded border px-3 py-1.5 text-xs font-semibold"
-          :class="hasCompactor
-            ? 'border-info bg-info/20 text-info'
-            : 'border-border bg-surface-700 text-text-secondary'"
-        >
-          {{ t('npc.compactorLabel') }}{{ hasCompactor ? t('npc.compactorOn') : t('npc.compactorOff') }}
-        </button>
-        <span class="text-xs text-text-secondary">{{ t('npc.compactorHint') }}</span>
-      </div>
-
       <div v-if="!isMvp" class="rounded-2xl border border-sky-300/30 bg-[radial-gradient(circle_at_top,rgba(56,189,248,0.2),rgba(15,23,42,0.88))] p-5">
         <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -380,7 +367,6 @@ function applyFilters() {
     search: search.value || undefined,
     sort: sortBy.value,
     dir: sortDir.value,
-    has_compactor: hasCompactor.value ? 1 : 0,
   }, {
     preserveState: true,
     preserveScroll: true,
@@ -424,7 +410,6 @@ function refreshMarket() {
     search: search.value || undefined,
     sort: sortBy.value,
     dir: sortDir.value,
-    has_compactor: hasCompactor.value ? 1 : 0,
     refresh: 1,
   }, {
     preserveState: true,
@@ -468,16 +453,8 @@ function buildPaginationUrl(page) {
     search: search.value || undefined,
     sort: sortBy.value,
     dir: sortDir.value,
-    has_compactor: hasCompactor.value ? 1 : 0,
     page,
   })
-}
-
-const hasCompactor = ref(Boolean(props.has_compactor))
-
-function toggleCompactor() {
-  hasCompactor.value = !hasCompactor.value
-  applyFilters()
 }
 
 function getFlipTextureUrl(flip) {
@@ -673,9 +650,13 @@ onBeforeUnmount(() => {
 
 <style scoped>
 tr.vip-restricted {
-  filter: blur(2px);
   position: relative;
-  opacity: 0.65;
+}
+
+tr.vip-restricted td > * {
+  filter: blur(12px);
+  opacity: 0.28;
+  user-select: none;
 }
 
 tr.vip-restricted::after {
@@ -691,21 +672,20 @@ tr.vip-restricted::after {
   font-size: 0.75rem;
   font-weight: 600;
   white-space: nowrap;
-  z-index: 20;
+  z-index: 40;
   pointer-events: none;
   border: 1px solid rgb(96, 165, 250);
 }
 
 tr.vip-restricted:hover {
-  filter: blur(2px);
+  background-color: rgba(15, 23, 42, 0.75);
 }
 
-/* Allow interactive elements to work despite blur */
 tr.vip-restricted a,
 tr.vip-restricted button {
-  pointer-events: auto;
+  pointer-events: none;
   position: relative;
-  z-index: 30;
+  z-index: 10;
 }
 </style>
 
