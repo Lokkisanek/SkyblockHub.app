@@ -47,6 +47,7 @@ deploy_assets(){
   log \"Deploy: building frontend (if present) and caching Laravel\"
   if [ -d \"$APP_DIR\" ]; then
     cd \"$APP_DIR\"
+    rm -f public/hot
     if [ -f package.json ]; then
       npm ci --no-audit --no-fund
       npm run build

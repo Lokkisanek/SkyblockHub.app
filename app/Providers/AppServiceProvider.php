@@ -20,6 +20,12 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // In production always resolve frontend assets from the build manifest.
+        // This prevents accidental reliance on a stale public/hot file.
+        if (app()->environment('production')) {
+            Vite::useHotFile(storage_path('framework/vite.hot'));
+        }
+
         Vite::prefetch(concurrency: 3);
 
         Event::listen(
