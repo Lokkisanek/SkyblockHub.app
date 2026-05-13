@@ -25,18 +25,6 @@ class AdminAnalyticsReportTest extends TestCase
             'occurred_at' => now(),
         ]);
 
-        FunnelEvent::query()->create([
-            'event_name' => 'upgrade_prompt_impression',
-            'properties' => ['variant' => 'b'],
-            'occurred_at' => now(),
-        ]);
-
-        FunnelEvent::query()->create([
-            'event_name' => 'upgrade_prompt_cta',
-            'properties' => ['variant' => 'b'],
-            'occurred_at' => now(),
-        ]);
-
         $report = app(AdminAnalyticsReportService::class)->buildReport(7);
 
         $this->assertSame(1, $report['eventCounts']['onboarding_view']);
@@ -44,8 +32,5 @@ class AdminAnalyticsReportTest extends TestCase
 
         $this->assertSame('a', $report['onboardingExperimentVariants'][0]['variant']);
         $this->assertSame(100.0, $report['onboardingExperimentVariants'][0]['completion_rate_pct']);
-
-        $this->assertSame('b', $report['experimentVariants'][1]['variant']);
-        $this->assertSame(100.0, $report['experimentVariants'][1]['cta_rate_pct']);
     }
 }

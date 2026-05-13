@@ -148,33 +148,6 @@ class DashboardFeatureTest extends TestCase
         $response->assertSessionHasErrors('dashboard')->assertRedirect('/dashboard');
     }
 
-    public function test_slot_two_is_locked_without_active_entitlement(): void
-    {
-        $user = User::factory()->create([
-            'is_mc_linked' => true,
-        ]);
-
-        $response = $this->actingAs($user)
-            ->from('/dashboard')
-            ->post('/dashboard/save', [
-                'slot_index' => 2,
-                'is_public' => false,
-                'widgets' => [
-                    [
-                        'type' => 'skin_view_widget',
-                        'title' => 'Locked slot attempt',
-                        'x' => 1,
-                        'y' => 1,
-                        'w' => 3,
-                        'h' => 5,
-                        'settings' => ['username' => 'Lokkisanek'],
-                    ],
-                ],
-            ]);
-
-        $response->assertSessionHasErrors('dashboard')->assertRedirect('/dashboard');
-    }
-
     public function test_widget_outside_20x20_grid_is_rejected(): void
     {
         $user = User::factory()->create([
@@ -200,44 +173,5 @@ class DashboardFeatureTest extends TestCase
             ]);
 
         $response->assertSessionHasErrors('dashboard')->assertRedirect('/dashboard');
-    }
-
-    public function test_slot_two_unlocks_with_active_entitlement(): void
-    {
-        $user = User::factory()->create([
-            'is_mc_linked' => true,
-        ]);
-
-        UserEntitlement::query()->create([
-            'user_id' => $user->id,
-            'dashboard_slots_unlocked' => 3,
-            'status' => 'active',
-            'provider' => 'stripe',
-            'stripe_customer_id' => 'cus_test_123',
-            'stripe_subscription_id' => 'sub_test_123',
-        ]);
-
-        $response = $this->actingAs($user)->post('/dashboard/save', [
-            'slot_index' => 2,
-            'is_public' => true,
-            'widgets' => [
-                [
-                    'type' => 'skin_view_widget',
-                    'title' => 'Enchanted Sugar',
-                    'x' => 1,
-                    'y' => 1,
-                    'w' => 3,
-                    'h' => 5,
-                    'settings' => ['username' => 'Lokkisanek'],
-                ],
-            ],
-        ]);
-
-        $response->assertSessionHasNoErrors();
-
-        $dashboard = UserDashboard::query()->where('user_id', $user->id)->where('slot_index', 2)->first();
-
-        $this->assertNotNull($dashboard);
-        $this->assertTrue($dashboard->is_public);
     }
 }

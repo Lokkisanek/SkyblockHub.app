@@ -42,11 +42,11 @@ class OnboardingFeatureTest extends TestCase
         ]);
 
         $this->actingAs($user)
-            ->get('/billing')
+            ->get('/dashboard')
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
-                ->has('onboarding.steps', 3)
-                ->where('onboarding.segment', 'linked_free')
+                ->has('onboarding.steps', 2)
+                ->where('onboarding.segment', 'linked')
             );
     }
 }

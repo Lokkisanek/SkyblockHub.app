@@ -27,7 +27,8 @@ class BazaarController extends Controller
         $hourlyInstasellsSql = '(bazaar_prices.buy_moving_week / 168.0)';
 
         // Coins/hour = margin × min(hourly instabuys, hourly instasells)
-        $coinsPerHourSql = "({$marginSql} * LEAST({$hourlyInstabuysSql}, {$hourlyInstasellsSql}))";
+        $minFunc = $this->getMinFunction($hourlyInstabuysSql, $hourlyInstasellsSql);
+        $coinsPerHourSql = "({$marginSql} * {$minFunc})";
 
         $query = BazaarPrice::query()
             ->join('bazaar_products', 'bazaar_prices.product_id', '=', 'bazaar_products.product_id')
@@ -68,7 +69,8 @@ class BazaarController extends Controller
             : null;
 
         // Only show items with positive margin and sufficient daily trading volume
-        $query->whereRaw("LEAST({$dailyInstabuysSql}, {$dailyInstasellsSql}) >= ?", [$minDailyVolume])
+        $dailyMinFunc = $this->getMinFunction($dailyInstabuysSql, $dailyInstasellsSql);
+        $query->whereRaw("{$dailyMinFunc} >= ?", [$minDailyVolume])
               ->whereRaw("{$marginSql} > 0");
 
         if ($maxBuyPrice !== null) {
@@ -136,12 +138,12 @@ class BazaarController extends Controller
                 DB::raw("{$coinsPerHourSql} as coins_per_hour"),
             ])
             ->whereRaw("{$marginSql} > 0")
-            ->whereRaw("LEAST({$dailyInstabuysSql}, {$dailyInstasellsSql}) >= 100");
+            ->whereRaw("{$dailyMinFunc} >= 100");
 
         $bestCoinsPerHour = (clone $bestPicksBase)->orderByRaw("{$coinsPerHourSql} DESC")->first();
         $bestMargin = (clone $bestPicksBase)->orderByRaw("{$marginSql} DESC")->first();
         $bestThroughput = (clone $bestPicksBase)
-            ->orderByRaw("LEAST({$hourlyInstabuysSql}, {$hourlyInstasellsSql}) DESC")
+            ->orderByRaw("{$minFunc} DESC")
             ->first();
 
         $topFlipsLimit = 3;
@@ -205,6 +207,14 @@ class BazaarController extends Controller
                 'min_margin_percent' => $minMarginPercent,
             ],
         ]);
+    }
+
+    private function getMinFunction(string $a, string $b): string
+    {
+        if (DB::getDriverName() === 'sqlite') {
+            return "CASE WHEN ({$a}) < ({$b}) THEN ({$a}) ELSE ({$b}) END";
+        }
+        return "LEAST({$a}, {$b})";
     }
 
     /**

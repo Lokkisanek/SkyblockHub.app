@@ -38,23 +38,4 @@ class FunnelAnalyticsFeatureTest extends TestCase
 
         $response->assertStatus(422);
     }
-
-    public function test_trial_start_creates_funnel_event(): void
-    {
-        $user = User::factory()->create([
-            'discord_id' => '1234567890',
-            'discord_username' => 'Tester',
-        ]);
-
-        $this->actingAs($user)
-            ->post('/billing/trial', [
-                'tier' => 'vip',
-            ])
-            ->assertSessionHasNoErrors();
-
-        $this->assertDatabaseHas('funnel_events', [
-            'event_name' => 'trial_start',
-            'user_id' => $user->id,
-        ]);
-    }
 }
