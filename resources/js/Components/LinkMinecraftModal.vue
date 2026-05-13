@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed } from 'vue';
 import { useForm, usePage } from '@inertiajs/vue3';
-import { useI18n } from 'vue-i18n';
+import { useI18n } from '@/strings/useI18n';
 import Modal from '@/Components/Modal.vue';
 
 const { t } = useI18n();

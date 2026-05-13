@@ -32,10 +32,6 @@
     }
 }
 
-/* ═══════════════════════════════════════════════════════════════ */
-/*  Minecraft Color Code CSS Variables (SkyCrypt-style)           */
-/*  Nice-contrast variants for dark backgrounds                  */
-/* ═══════════════════════════════════════════════════════════════ */
 :root {
     --mc-0: #6e6e6e;  /* black  → visible grey */
     --mc-1: #3333ff;  /* dark blue */
@@ -55,18 +51,12 @@
     --mc-f: #ffffff;  /* white */
 }
 
-/* ── MC Formatting classes (matches SkyCrypt's §l, §o, etc.) ── */
 .mc-fmt-k { background-color: currentColor; border-radius: 0.25em; } /* obfuscated */
 .mc-fmt-l { font-weight: bold; }
 .mc-fmt-m { text-decoration: line-through; }
 .mc-fmt-n { text-decoration: underline; }
 .mc-fmt-o { font-style: italic; }
 
-/* ═══════════════════════════════════════════════════════════════ */
-/*  MC-style inventory system  (matching SkyCrypt's visual style) */
-/* ═══════════════════════════════════════════════════════════════ */
-
-/* ── Rarity background colors (SkyCrypt §-code mapping) ─────── */
 .piece-bg-common       { background-color: rgba(190, 190, 190, 0.13); }
 .piece-bg-uncommon     { background-color: rgba(85, 255, 85, 0.16); }
 .piece-bg-rare         { background-color: rgba(85, 85, 255, 0.20); }
@@ -172,7 +162,6 @@
     line-height: 1;
 }
 
-/* ── Stars badge (top-left like SkyCrypt) ──────────────────── */
 .piece-stars {
     position: absolute;
     z-index: 16;
@@ -184,7 +173,7 @@
     line-height: 1;
 }
 
-/* ── Shine animation (SkyCrypt-style) ──────────────────────── */
+
 .piece-shine {
     position: absolute;
     inset: 0;
@@ -221,7 +210,6 @@
     border: 1px solid rgba(255, 255, 255, 0.03);
 }
 
-/* ── Inventory grid (9 columns, SkyCrypt-style) ────────────── */
 .inventory-grid {
     display: grid;
     place-content: center center;
@@ -449,7 +437,6 @@
     border-bottom: 2px solid rgba(11, 202, 81, 0.3);
 }
 
-/* ── MC-style lore tooltip panel (SkyCrypt-style) ──────────── */
 .mc-lore-panel {
     position: fixed;
     z-index: 9999;
@@ -567,9 +554,6 @@
     }
 }
 
-/* ═══════════════════════════════════════════════════════════════ */
-/*  Skills (SkyCrypt-style)                                       */
-/* ═══════════════════════════════════════════════════════════════ */
 
 .skills-grid {
     display: grid;
@@ -694,9 +678,6 @@
     text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8), 0 0 6px rgba(0, 0, 0, 0.5);
 }
 
-/* ═══════════════════════════════════════════════════════════════ */
-/*  Player Stats Grid (SkyCrypt-style)                            */
-/* ═══════════════════════════════════════════════════════════════ */
 
 .stats-section {
     margin-top: 28px;
@@ -733,9 +714,6 @@
     font-weight: 700;
 }
 
-/* ═══════════════════════════════════════════════════════════════ */
-/*  Dungeons (SkyCrypt-style)                                      */
-/* ═══════════════════════════════════════════════════════════════ */
 
 .dungeon-skill-bars {
     display: grid;
@@ -815,9 +793,6 @@
     overflow: hidden;
 }
 
-/* ═══════════════════════════════════════════════════════════ */
-/*  SLAYER TAB (SkyCrypt-style)                               */
-/* ═══════════════════════════════════════════════════════════ */
 
 .slayer-card {
     background: rgba(255, 255, 255, 0.03);
@@ -1000,9 +975,6 @@ details[open] > .dungeon-details-toggle::before {
 .grade-D { color: #FF5555; }
 .grade-F { color: #AA0000; }
 
-/* ═══════════════════════════════════════════════════════════ */
-/*  COLLECTIONS TAB (SkyCrypt-style)                          */
-/* ═══════════════════════════════════════════════════════════ */
 
 .collection-category {
     background: rgba(255, 255, 255, 0.03);
@@ -1155,9 +1127,6 @@ details[open] > .dungeon-details-toggle::before {
     /* inherits color from inline style */
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   Pets Section (SkyCrypt-style layout)
-   ═══════════════════════════════════════════════════════════════ */
 
 /* ── Stats header ─────────────────────────────────────────── */
 .pets-stats-header {

@@ -2,7 +2,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { Head, router } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { useI18n } from 'vue-i18n';
+import { useI18n } from '@/strings/useI18n';
 
 const { t } = useI18n();
 

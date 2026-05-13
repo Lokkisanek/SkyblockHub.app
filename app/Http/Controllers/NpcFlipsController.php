@@ -4,11 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Jobs\FetchHypixelBazaarJob;
 use App\Models\BazaarPrice;
+use App\Models\BazaarProduct;
 use App\Services\NpcFlipService;
 use App\Services\PlayerBazaarTaxService;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -17,8 +18,7 @@ class NpcFlipsController extends Controller
     public function __construct(
         private readonly NpcFlipService $npcFlipService,
         private readonly PlayerBazaarTaxService $playerBazaarTaxService,
-    ) {
-    }
+    ) {}
 
     public function index(Request $request): Response
     {
@@ -27,8 +27,12 @@ class NpcFlipsController extends Controller
             app(FetchHypixelBazaarJob::class)->handle();
         }
 
-        $taxMeta = $this->playerBazaarTaxService->getTaxMetaForUser(Auth::user());
-        $currentTaxRate = (float) ($taxMeta['rate'] ?? 0.01);
+        $flipTax = $this->playerBazaarTaxService->getBazaarFlipTaxForUser(Auth::user());
+        $currentTaxRate = (float) $flipTax['instant_buy_tax_rate'];
+        $taxMeta = array_merge($flipTax['buy_tax_meta'], [
+            'instant_buy_tax_rate' => $flipTax['instant_buy_tax_rate'],
+            'instant_sell_tax_rate' => $flipTax['instant_sell_tax_rate'],
+        ]);
         $query = BazaarPrice::query()
             ->join('bazaar_products', 'bazaar_prices.product_id', '=', 'bazaar_products.product_id')
             ->select([
@@ -56,8 +60,12 @@ class NpcFlipsController extends Controller
             $searchPattern = "%{$search}%";
             $query->where(function ($q) use ($searchPattern, $likeOperator) {
                 $q->whereRaw("\"bazaar_products\".\"name\" {$likeOperator} ?", [$searchPattern])
-                  ->orWhereRaw("\"bazaar_prices\".\"product_id\" {$likeOperator} ?", [$searchPattern]);
+                    ->orWhereRaw("\"bazaar_prices\".\"product_id\" {$likeOperator} ?", [$searchPattern]);
             });
+        }
+
+        if ($category = $request->input('category')) {
+            $query->where('bazaar_products.category', $category);
         }
 
         $items = $query->get();
@@ -66,7 +74,7 @@ class NpcFlipsController extends Controller
         $flips = $items
             ->mapWithKeys(function ($item) use ($currentTaxRate, $hasCompactor) {
                 // Skip items without NPC price data
-                if (!$item->npc_sell_price || $item->npc_sell_price <= 0) {
+                if (! $item->npc_sell_price || $item->npc_sell_price <= 0) {
                     return [];
                 }
 
@@ -106,10 +114,25 @@ class NpcFlipsController extends Controller
             ->values();
 
         // Hard safety filters requested by user.
-        $flips = $flips
+        $flipsAfterCore = $flips
             ->filter(fn ($flip) => ($flip['profit_per_item'] ?? 0) > 0)
             ->filter(fn ($flip) => ($flip['roi'] ?? 0) >= 1.1)
             ->values();
+
+        $profitableForRanking = $flipsAfterCore
+            ->filter(fn ($flip) => $flip['profit_per_item'] > 0)
+            ->values()
+            ->toArray();
+        $bestPicks = $this->npcFlipService->rankBestPicks($profitableForRanking);
+        $overallBestPick = $this->npcFlipService->findBestPick($profitableForRanking);
+
+        $flips = $flipsAfterCore;
+        $minCoinsPerHour = max(0.0, (float) $request->input('min_coins_per_hour', 0));
+        if ($minCoinsPerHour > 0) {
+            $flips = $flips
+                ->filter(fn ($flip) => (float) ($flip['coins_per_hour'] ?? 0) >= $minCoinsPerHour)
+                ->values();
+        }
 
         // Sorting
         $sortBy = $request->input('sort', 'best_pick_score');
@@ -161,17 +184,20 @@ class NpcFlipsController extends Controller
             default => $flips->sortByDesc('coins_per_hour'),
         };
 
-
         // Pagination
         $perPage = (int) $request->input('per_page', 50);
         $page = (int) $request->input('page', 1);
         $total = $flips->count();
         $flipsForPage = $flips->slice(($page - 1) * $perPage, $perPage)->values();
 
-        // Best picks analysis (only from profitable flips)
-        $profitableFlips = $flips->filter(fn ($flip) => $flip['profit_per_item'] > 0)->toArray();
-        $bestPicks = $this->npcFlipService->rankBestPicks($profitableFlips);
-        $overallBestPick = $this->npcFlipService->findBestPick($profitableFlips);
+        $npcCategories = BazaarProduct::query()
+            ->select('category')
+            ->distinct()
+            ->orderBy('category')
+            ->pluck('category')
+            ->filter()
+            ->values()
+            ->all();
 
         return Inertia::render('NpcFlips/Index', [
             'flips' => $flipsForPage,
@@ -179,17 +205,21 @@ class NpcFlipsController extends Controller
                 'current_page' => $page,
                 'per_page' => $perPage,
                 'total' => $total,
-                'last_page' => ceil($total / $perPage),
+                'last_page' => ceil($total / $perPage) ?: 1,
             ],
             'filters' => [
                 'search' => $request->input('search', ''),
                 'sort' => $sortBy,
                 'dir' => $sortDir,
+                'category' => $request->input('category', ''),
+                'min_coins_per_hour' => $minCoinsPerHour,
+                'has_compactor' => $hasCompactor,
             ],
             'best_picks' => $bestPicks,
             'overall_best_pick' => $overallBestPick,
             'tax_meta' => $taxMeta,
             'has_compactor' => $hasCompactor,
+            'categories' => $npcCategories,
         ]);
     }
 
@@ -221,4 +251,3 @@ class NpcFlipsController extends Controller
         return abs($instaBuyPrice - $instaSellPrice) / $instaBuyPrice * 100;
     }
 }
-

@@ -90,3 +90,9 @@ Schedule::command('analytics:review-digest --days=7')
     ->name('analytics:review-digest')
     ->weeklyOn(1, '09:00')
     ->withoutOverlapping(120);
+
+Schedule::command('profiles:ingest-scheduled')
+    ->name('profiles:ingest-scheduled')
+    ->everyTwoHours()
+    ->withoutOverlapping(120)
+    ->when(fn (): bool => (bool) config('hypixel.profile_ingest.enabled'));

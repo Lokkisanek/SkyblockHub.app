@@ -3,7 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { Head, router } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { getItemTextureUrl } from '@/utils/textures';
-import { useI18n } from 'vue-i18n';
+import { useI18n } from '@/strings/useI18n';
 
 const { t } = useI18n();
 

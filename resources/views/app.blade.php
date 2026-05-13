@@ -4,6 +4,12 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
+        @php
+            $__hypixelSiteVerify = trim((string) config('hypixel.site_verification.meta_content'));
+        @endphp
+        @if($__hypixelSiteVerify !== '')
+            <meta name="{{ e(config('hypixel.site_verification.meta_name')) }}" content="{{ e($__hypixelSiteVerify) }}">
+        @endif
         <script>
             window.__SKYBLOCKHUB_CONFIG__ = {
                 broadcastingEnabled: @json(config('broadcasting.default') === 'reverb'),

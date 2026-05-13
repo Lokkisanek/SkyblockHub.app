@@ -46,13 +46,13 @@
         },
         "payments": {
             "heading": "Payments",
-            "description": "Current payment state, tier and cancellation controls.",
-            "tier": "Tier",
+            "description": "Current payment state, plan, and cancellation controls.",
+            "tier": "Plan",
             "status": "Status",
             "currentPeriodEndsAt": "Current period ends at",
             "cancelling": "Cancelling...",
-            "cancelSubscription": "Cancel subscription",
-            "openBilling": "Open VIP/MVP billing"
+            "cancelPlan": "Cancel plan",
+            "openBilling": "Open billing"
         },
         "delete": {
             "heading": "Delete Account",
@@ -60,7 +60,7 @@
             "button": "Delete Account",
             "confirmTitle": "Are you sure you want to delete your account?",
             "confirmDescription": "Once your account is deleted, all data will be permanently removed.",
-            "confirmIrreversible": "This action cannot be undone. If you have an active subscription plan, it will be automatically cancelled.",
+            "confirmIrreversible": "This action cannot be undone. Any active plan on your account will end according to its terms.",
             "cancel": "Cancel"
         }
     },
@@ -126,39 +126,49 @@
                 "title": "Open your dashboard",
                 "description": "Visit Dashboard and see your personal workspace in action.",
                 "description_variants": {
-                    "paid": "Visit Dashboard and tune your premium workspace layout.",
-                    "trial": "Visit Dashboard and explore your trial widgets."
+                    "paid": "Visit Dashboard and tune your workspace layout.",
+                    "trial": "Visit Dashboard and explore your widgets."
                 }
             },
             "explore_module": {
                 "title": "Try a core tool",
                 "description": "Open Bazaar, NPC Flips, Profile Stats, Events, Mayors, or Leaderboards.",
                 "description_variants": {
-                    "paid": "Open a core tool and use your VIP/MVP perks right away.",
-                    "trial": "Open a core tool and test premium data depth."
+                    "paid": "Open a core tool and use the full data depth right away.",
+                    "trial": "Open a core tool and explore the data depth."
                 }
             },
             "visit_billing": {
-                "title": "Check plans and trial",
-                "description": "Open Billing to understand VIP/MVP benefits and trial options.",
+                "title": "Account & billing",
+                "description": "Review account options and billing from settings when available.",
                 "title_variants": {
                     "trial": "Manage your trial",
-                    "paid": "Manage your subscription"
+                    "paid": "Manage billing"
                 },
                 "description_variants": {
-                    "trial": "Check remaining trial days and compare VIP/MVP perks.",
-                    "paid": "Review your current tier and billing status."
+                    "trial": "Check remaining trial time and plan details.",
+                    "paid": "Review your current plan and billing status."
                 }
             }
         }
     },
     "welcome": {
         "brand": "SkyblockHub",
-        "hero": "Make better SkyBlock decisions faster",
-        "subtitle": "Real-time Bazaar flips, NPC arbitrage, AI-powered signals, and profile intel — all in one place. Zero ads, zero bloat.",
-        "searchPlaceholder": "Search SkyBlock player...",
+        "hero": "Hypixel Skyblock Hub",
+        "subtitle": "Bazaar flips, NPC flips and profile stats — all in one place",
+        "loggedInKicker": "Welcome back",
+        "loggedInSubtitle": "Look up any player, open a module below, or go to your dashboard for widgets and saved layout.",
+        "loggedInSearchHelper": "While signed in, your dashboard can keep widget layouts and linked profile summaries.",
+        "loggedInFreeTitle": "Your SkyBlock toolkit",
+        "loggedInCoreModules": "Same destinations as the top nav — jump in with one click.",
+        "continueSetup": "Finish setup",
+        "searchPlaceholder": "Search player...",
+        "searchProfile": "Search profile",
+        "searchEmpty": "Enter a Minecraft username.",
+        "searchFailed": "Could not open profile. Try again.",
         "openProfile": "Open profile",
         "searchHelper": "Enter a username and jump straight into profile stats.",
+        "joinDiscordServer": "Join our Discord server",
         "discordInviteTitle": "Join the SkyblockHub Discord",
         "discordInviteBody": "Get update announcements, share ideas, and chat with other players in one place.",
         "discordInviteButton": "Join Discord Server",
@@ -190,68 +200,23 @@
         "support": {
             "kicker": "Support",
             "title": "Keep SkyblockHub running",
-            "body": "Subscriptions are gone. If the app helps you, you can support development directly with a one-time coffee.",
+            "body": "If the app helps you, you can support development with a one-time tip.",
             "cta": "Buy me a coffee",
             "note": "Optional, but appreciated."
         },
-        "pricing": {
-            "vipTitle": "VIP",
-            "vipPrice": "$4.99",
-            "vipPeriod": "/month",
-            "mvpTitle": "MVP",
-            "mvpPrice": "$8.99",
-            "mvpPeriod": "/month",
-            "comparePlans": "Compare all plans & read the FAQ",
-            "subscribeVip": "Subscribe to VIP",
-            "subscribeMvp": "Subscribe to MVP",
-            "vipFeature1": "Top 3 flips highlighted",
-            "vipFeature2": "Faster refresh rate",
-            "vipFeature3": "Priority widget updates",
-            "vipFeature4": "VIP tag in leaderboards",
-            "vipFeature5": "+2 dashboard slots",
-            "mvpFeature1": "Everything from VIP",
-            "mvpFeature2": "AI-controlled flips section",
-            "mvpFeature3": "AI trust score & risk signals",
-            "mvpFeature4": "MVP tag in leaderboards"
-        },
         "social": {
-            "kicker": "Social Proof",
-            "title": "Trusted by active SkyBlock players",
-            "subtitle": "Live counters are pulled from database and refreshed automatically. Add real screenshots and verified testimonials for full trust layer.",
-            "betaTag": "Beta version",
-            "placeholderTag": "Screenshot Placeholder",
+            "trustLine": "Trusted by active SkyBlock players — live stats below.",
             "stats": {
-                "playersLabel": "Active Players",
+                "playersLabel": "Online now",
                 "playersNote": "Active counter from users table.",
                 "flipsLabel": "Tracked Flips",
                 "flipsNote": "Active counter from bazaar_history records.",
                 "profilesLabel": "Profiles Loaded",
                 "profilesNote": "Active counter from profile_searches events."
-            },
-            "useCases": {
-                "bazaarTitle": "Live flips board",
-                "bazaarDesc": "Top opportunities with margin, volume, and one-click /bz copy workflow.",
-                "npcTitle": "Use-case screenshot: NPC arbitrage",
-                "npcDesc": "Show buy price vs NPC sell price with profit and stack multiplier.",
-                "dashboardTitle": "Personal dashboard setup",
-                "dashboardDesc": "Flexible slot layout for your preferred widgets, alerts, and daily workflow.",
-                "profileTitle": "Deep profile browser",
-                "profileDesc": "Gear, skills, dungeons, and networth in one clear player overview."
-            },
-            "testimonials": {
-                "quote1": "I built this app for my own SkyBlock routine and I still use it every day. I genuinely love it.",
-                "author1": "Lokkisanecek",
-                "role1": "Creator",
-                "quote2": "I check this before every farming and event session. It saves me a lot of time and bad calls.",
-                "author2": "shdr",
-                "role2": "Player",
-                "quote3": "Having flips, profiles, and timers in one place is exactly what I needed for daily grind.",
-                "author3": "zeusak15",
-                "role3": "Player"
             }
         },
         "footer": {
-            "tagline": "Skyblock intelligence platform. Real-time data, zero ads.",
+            "tagline": "Hypixel SkyBlock all in one platform",
             "modules": "Modules",
             "comingSoon": "Coming Soon",
             "project": "Project",
@@ -267,6 +232,7 @@
             "dungeonPartyFinder": "Dungeon Party Finder",
             "about": "About",
             "github": "GitHub",
+            "supportProject": "Support the project",
             "patreon": "Buy Me a Coffee",
             "supportLink": "Buy me a coffee",
             "privacyPolicy": "Privacy Policy",
@@ -277,19 +243,19 @@
     },
     "billing": {
         "title": "Billing",
-        "discordRequired": "Paid plans and trial require Discord-linked accounts.",
-        "currentTier": "Current tier:",
-        "freeDesc": "Free keeps web + Discord alerts and flips filters unlocked.",
+        "discordRequired": "Some account options require a Discord-linked login.",
+        "currentTier": "Current plan:",
+        "freeDesc": "Free tier keeps core web tools available.",
         "moreComingSoon": "More coming soon",
-        "startTrial": "Start {days}d Trial",
-        "subscribe": "Subscribe {tier}",
-        "comparePlans": "Compare all plans, read the FAQ & refund policy",
-        "compareKicker": "Plan Comparison",
-        "compareTitle": "Compare VIP vs MVP",
-        "compareLine1": "VIP: best value for faster refresh and dashboard upgrades.",
-        "compareLine2": "MVP: adds AI-ranked signals and trust score workflow.",
-        "compareLine3": "Both plans include future premium modules as they launch.",
-        "compareCta": "Compare these plans",
+        "startTrial": "Start {days}d trial",
+        "subscribe": "Choose {tier}",
+        "comparePlans": "Compare options and read the FAQ",
+        "compareKicker": "Comparison",
+        "compareTitle": "Plan comparison",
+        "compareLine1": "Standard: faster refresh and more dashboard room.",
+        "compareLine2": "Plus: extra signals and tooling for heavier workflows.",
+        "compareLine3": "Features evolve over time; check in-app notes for the latest list.",
+        "compareCta": "Compare options",
         "confirmTitle": "Confirm {tier} {days}d trial",
         "confirmDesc": "Do you really want to activate this trial now? Trial can be used only once per account.",
         "confirmNo": "No",
@@ -298,14 +264,14 @@
         "trialSuccess": "You now have {tier} trial access.",
         "great": "Great",
         "vip": {
-            "name": "VIP",
-            "price": "$4.99/month",
-            "features": ["Top 3 flips", "Faster refresh time", "Priority widget updates", "VIP tag in leaderboards", "+2 dashboard slots"]
+            "name": "Standard",
+            "price": "See in app",
+            "features": ["Top flip highlights", "Faster refresh", "Widget priority", "Community tags", "Extra dashboard slots"]
         },
         "mvp": {
-            "name": "MVP",
-            "price": "$8.99/month",
-            "features": ["Everything from VIP", "AI-controlled flips section", "AI trust score and risk signals", "MVP tag in leaderboards"]
+            "name": "Plus",
+            "price": "See in app",
+            "features": ["Everything in Standard", "Extra flip tooling", "Trust and risk signals", "Community tags"]
         }
     },
     "auth": {
@@ -318,7 +284,7 @@
         "name": "Name",
         "confirmPassword": "Confirm Password",
         "alreadyRegistered": "Already registered?",
-        "subscribeRequiresLogin": "You need to be logged in to subscribe. Please log in with Discord first.",
+        "subscribeRequiresLogin": "You need to be signed in. Please log in with Discord first.",
         "forgotTitle": "Forgot Password",
         "forgotDesc": "Forgot your password? No problem. Just let us know your email address and we will email you a password reset link that will allow you to choose a new one.",
         "sendResetLink": "Email Password Reset Link",
@@ -354,9 +320,9 @@
     },
     "dashboard": {
         "title": "Dashboard",
-        "discordRequired": "Paid plans require Discord-linked accounts.",
+        "kicker": "Workspace",
+        "discordRequired": "Discord-linked accounts unlock editing and linked widgets.",
         "heading": "Custom Dashboard",
-        "betaTag": "Beta",
         "seeMoreInfo": "See more info",
         "edit": "Edit",
         "compactOn": "Compact View",
@@ -366,15 +332,13 @@
         "mcRequired": "Your account is logged in, but dashboard editing unlocks only after Minecraft linking.",
         "openProfileSettings": "Open profile settings",
         "priorityOn": "Priority widget updates: ON",
-        "confirmTitle": "Confirm {tier} subscription",
-        "confirmDesc": "Do you really want to activate this subscription now?",
-        "upsellBadge": "Dashboard Pro",
+        "confirmTitle": "Confirm plan change",
+        "confirmDesc": "Do you really want to continue?",
+        "upsellBadge": "More slots",
         "confirmYes": "Yes, continue",
-        "upsellDesc": "You still have {lockedSlots} locked slot(s) and limited refresh priority.",
-        "subscriptionActivated": "Subscription activated",
-        "subscriptionSuccess": "Your {tier} subscription is now active. Enjoy the premium features.",
-        "upsellCtaPrimary": "Unlock VIP / MVP",
-        "upsellCtaSecondary": "Compare all plans",
+        "upsellDesc": "You still have {lockedSlots} locked slot(s) and standard refresh timing.",
+        "upsellCtaPrimary": "Unlock more",
+        "upsellCtaSecondary": "Compare options",
         "slot": "Slot {n}",
         "locked": "Locked",
         "active": "Active",
@@ -399,7 +363,8 @@
         "size": "Size"
     },
     "dashboardInfo": {
-        "title": "Custom Dashboard Beta",
+        "titleKicker": "Custom dashboard",
+        "title": "Custom Dashboard",
         "subtitle": "How it works now, what is coming next, and where we are heading.",
         "backToDashboard": "Back to Dashboard",
         "whatIsKicker": "What it is",
@@ -409,7 +374,7 @@
         "howItWorksTitle": "Grid slots, live profile data, and edit mode",
         "howItWorksBody": "You can place widgets on a grid, move them around in edit mode, and store separate layouts in slots. Linked profile widgets load a Hypixel-backed profile summary for the entered username.",
         "progressKicker": "Progress",
-        "progressTitle": "Current beta scope",
+        "progressTitle": "Current scope",
         "progressPoint1": "Core drag-and-drop layout editor",
         "progressPoint2": "Slot-based dashboard presets",
         "progressPoint3": "Live profile widgets and inventory visuals",
@@ -422,26 +387,27 @@
         "roadmapPoint4": "Performance and data refresh improvements",
         "feedbackKicker": "Feedback",
         "feedbackTitle": "Help shape the next version",
-        "feedbackBody": "This section is actively evolving. Feedback from real usage drives priorities for the next beta iterations.",
+        "feedbackBody": "This section is actively evolving. Feedback from real usage drives what we build next.",
         "feedbackDiscord": "Have ideas or bugs to report? Write directly in our Discord feedback channel.",
         "joinDiscord": "Join Discord"
     },
     "leaderboardsInfo": {
-        "title": "Community Leaderboards Beta",
-        "subtitle": "How tier rankings work, what's being tracked, and how the system tracks your progress.",
+        "titleKicker": "Community rankings",
+        "title": "Community Leaderboards",
+        "subtitle": "How rankings work, what is tracked, and how often numbers refresh.",
         "backToLeaderboards": "Back to Leaderboards",
         "whatIsKicker": "What it is",
         "whatIsTitle": "Community-wide skill rankings",
-        "whatIsBody": "The Leaderboards page displays global rankings of SkyBlock players across various metrics. Track your position against the community and watch your rank change in real time as you progress.",
-        "tierKicker": "Premium visibility",
-        "tierTitle": "VIP and MVP tier badges",
-        "tierBody": "Upgrade to VIP or MVP to unlock exclusive tier badges in community rankings. Stand out with a visual indicator of your premium membership status.",
+        "whatIsBody": "The Leaderboards page shows global SkyBlock rankings by the metric you choose. Your position updates as profile data is refreshed — no artificial time windows.",
+        "dataKicker": "Data & freshness",
+        "dataTitle": "Rankings follow cached profiles",
+        "dataBody": "Positions are computed from stored profile snapshots. Numbers can lag a few minutes behind in-game reality while Hypixel caches update.",
         "filtersKicker": "Sorting options",
         "filtersTitle": "Multiple ranking metrics",
         "filtersPoint1": "Sort by Skyblock Level, Slayer XP, Skill Average, and more",
-        "filtersPoint2": "Filter by time period: All time, Daily, Weekly, Monthly",
-        "filtersPoint3": "View rankings by player category: All players, Friends, Guild members",
-        "filtersPoint4": "Search for your position instantly with live updates",
+        "filtersPoint2": "Filter who appears in the list: everyone, SkyblockHub-linked accounts only, or everyone else",
+        "filtersPoint3": "Switch metrics with one tap — the list and highlighted row update together",
+        "filtersPoint4": "Find yourself or any player by name and jump straight to their place in the ranking",
         "metricsKicker": "Tracked metrics",
         "metricsTitle": "What we measure",
         "metricsPoint1": "Skyblock Level: Your overall progression tier",
@@ -450,40 +416,40 @@
         "metricsPoint4": "Networth: Total value of gear, inventory, and bank",
         "feedbackKicker": "Feedback",
         "feedbackTitle": "Help us improve rankings",
-        "feedbackBody": "The leaderboards system is actively evolving. Your feedback helps us improve ranking accuracy, add new metrics, and create a more engaging competitive community experience.",
+        "feedbackBody": "The leaderboards system is actively evolving. Your feedback helps us improve ranking accuracy, add new metrics, and refine the experience.",
         "feedbackDiscord": "Have ideas for new metrics or found an issue? Share in our Discord feedback channel.",
         "joinDiscord": "Join Discord"
     },
     "featurePrompts": {
         "portfolio": {
             "freeTitle": "Track swings with faster refresh",
-            "freeBody": "VIP shortens market refresh so your position chart stays closer to live prices.",
+            "freeBody": "",
             "freeTitleB": "Keep positions synced with live moves",
-            "freeBodyB": "VIP tightens refresh so your portfolio view stays aligned with the market.",
-            "premiumTitle": "Move to MVP for a tighter market loop",
-            "premiumBody": "MVP keeps the portfolio panel snappier when you manage more positions and need quicker updates.",
+            "freeBodyB": "",
+            "premiumTitle": "Tighter market loop on higher tiers",
+            "premiumBody": "Heavier portfolios benefit from shorter refresh intervals when you manage more positions.",
             "premiumTitleB": "Run your portfolio on the fastest loop",
-            "premiumBodyB": "MVP keeps updates at the fastest tier for heavy position management."
+            "premiumBodyB": "The fastest refresh tier is meant for active position management."
         },
         "binSniper": {
             "freeTitle": "See sniper opportunities sooner",
-            "freeBody": "VIP shortens the feed refresh so you can react faster when a profitable snipe appears.",
+            "freeBody": "A shorter feed refresh helps you react when a profitable snipe appears.",
             "freeTitleB": "React faster to new snipes",
-            "freeBodyB": "VIP trims refresh time so you catch deals before they disappear.",
-            "premiumTitle": "Use MVP for the fastest detection loop",
-            "premiumBody": "MVP keeps the feed on the quickest refresh tier for heavier flipping workflows.",
+            "freeBodyB": "Lower refresh delay helps you catch deals before they disappear.",
+            "premiumTitle": "Fastest detection loop",
+            "premiumBody": "The quickest refresh tier suits heavier flipping workflows.",
             "premiumTitleB": "Stay on the fastest sniper refresh",
-            "premiumBodyB": "MVP keeps detections at the shortest interval for serious flipping."
+            "premiumBodyB": "Shortest intervals for very active sniping."
         },
         "crafting": {
             "freeTitle": "Keep recipe scans closer to live prices",
-            "freeBody": "VIP shortens refresh and keeps the crafting arbitrage view closer to Bazaar movement.",
+            "freeBody": "",
             "freeTitleB": "Keep crafting margins up to date",
-            "freeBodyB": "VIP reduces refresh delay so your crafting spreads match the market.",
-            "premiumTitle": "Run the fastest market update loop",
-            "premiumBody": "MVP is the best fit if you want the quickest refresh across your market tools.",
-            "premiumTitleB": "Upgrade for the fastest crafting refresh",
-            "premiumBodyB": "MVP keeps crafting scans on the quickest update tier."
+            "freeBodyB": "Shorter refresh delay helps crafting spreads match the market.",
+            "premiumTitle": "Fastest market update loop",
+            "premiumBody": "Best fit when you want the quickest refresh across market tools.",
+            "premiumTitleB": "Fastest crafting refresh",
+            "premiumBodyB": "Crafting scans on the shortest update interval."
         }
     },
     "about": {
@@ -537,37 +503,59 @@
         "no": "No"
     },
     "bazaar": {
-        "title": "Bazaar Flipping",
-        "subtitle": "Instabuy → Instasell margin flips with 1.25% tax deducted.",
+        "title": "Bazaar Flips",
+        "subtitle": "",
+        "taxSummary": "",
+        "refreshPrices": "Refresh prices",
+        "autoRefreshHint": "Auto-refresh in {time}",
+        "howItWorksTitle": "How to read this page",
+        "howItWorks1": "Insta-buy cost is the Hypixel sell-order price (what you pay to grab stock now).",
+        "howItWorks2": "Insta-sell revenue is the Hypixel buy-order price (what you get when you dump into buy orders).",
+        "howItWorks3": "Coins/hour uses the weaker side of weekly volume so you do not overestimate throughput.",
+        "filtersHeading": "Filters",
+        "moreFilters": "More filters",
+        "sortAndFilters": "Sort & filters",
+        "category": "Category",
+        "allCategories": "All categories",
+        "minDailyVolume": "Min. daily fills (both sides)",
+        "minDailyVolumeHint": "Uses the lower of instabuys vs instasells per day from Hypixel moving week.",
+        "maxEntryCost": "Max insta-buy cost",
+        "maxEntryCostHint": "Caps rows by coins you pay per item to enter the flip (Hypixel sellPrice).",
+        "minMarginCoins": "Min margin (coins/item)",
+        "minMarginPercent": "Min margin (% of entry)",
+        "minMarginPercentHint": "Percent is margin ÷ (insta-buy cost including your buy fee).",
+        "optional": "Optional",
         "refreshBazaar": "Refresh Bazaar",
-        "itemPlaceholder": "Item name or ID...",
+        "itemPlaceholder": "Item name or ID…",
         "marginPercent": "Margin %",
-        "buyPrice": "Buy Price",
-        "sellPrice": "Sell Price",
-        "topFlip": "Top Flip #{n}",
+        "buyPrice": "Buy orders (Hypixel)",
+        "sellPrice": "Sell orders (Hypixel)",
+        "instaSellRevenue": "Insta-sell revenue",
+        "instaSellRevenueHint": "Hypixel buyPrice — sell into buy orders",
+        "instaBuyCost": "Insta-buy cost",
+        "instaBuyCostHint": "Hypixel sellPrice — buy from sell orders",
+        "topFlip": "Top flip #{n}",
+        "topFlipMargin": "Margin {m} coins/item",
         "perHour": "/hr",
         "lockedFree": "Locked",
-        "aiTitle": "AI Flip Control Panel",
-        "aiDesc": "AI tracks market behavior and assigns trust score to top opportunities.",
-        "trustScore": "Trust score: {score}/100",
-        "aiMvpOnly": "AI-controlled flips and trust score are available in MVP.",
-        "upgradeVipTitle": "You are seeing only 1 of 3 Top Flips",
-        "upgradeVipDesc": "Upgrade to VIP to unlock full Top 3 picks, faster refresh, and priority updates.",
-        "upgradeVipCta": "Unlock VIP now",
-        "maybeAiUpgradeTitle": "AI signal feed is waiting for you",
-        "maybeAiUpgradeDesc": "MVP unlocks trust score, AI risk signals, and AI-ranked opportunities in real time.",
-        "unlockMvpCta": "Upgrade to MVP",
-        "startTrialCta": "Start 7-day MVP trial",
-        "comparePlansCta": "Compare plans",
-        "buysSells": "buys / sells",
+        "tableFootnote": "Live rows can update via WebSocket; margin recalculates with the fee row above.",
+        "buysSells": "instabuys / instasells per hour (est.)",
         "copyBz": "Copy /bz",
-        "noFlips": "No bazaar flips found. Try adjusting filters."
+        "noFlips": "No flips match your filters. Try a lower min volume or widen max entry cost."
     },
     "npc": {
         "title": "NPC Flips",
-        "heading": "NPC Flipping",
-        "subtitle": "Best Pick engine: tax-aware profit + volume + stackability.",
-        "activeTax": "Active tax: {rate}% ({source})",
+        "heading": "NPC Flips",
+        "subtitle": "",
+        "activeTax": "",
+        "activeBuyTax": "",
+        "sellTaxContext": "",
+        "howItWorksTitle": "How this works",
+        "howItWorks1": "BZ Buy is the coins you pay to instant-buy from sell orders (Hypixel sellPrice).",
+        "howItWorks2": "NPC Sell is what the NPC pays you for that item (from our NPC price table).",
+        "howItWorks3": "Coins/hour is an estimate from recent weekly volume — not a guarantee you can move that much stock.",
+        "minCoinsPerHour": "Min coins/hour (est.)",
+        "tableFootnote": "NPC limits and compactor paths are approximations; always verify in-game before bulk buying.",
         "itemPlaceholder": "Item name...",
         "bestPickScore": "Best Pick Score",
         "profitPerItem": "Profit/Item",
@@ -594,15 +582,15 @@
         "compactsTo": "Compacts to {target} (x{ratio})",
         "tooCloseToNpc": "Too close to NPC",
         "upsellTitle": "Push your flipping loop faster",
-        "upsellFreeDesc": "VIP reduces refresh delay and unlocks stronger tooling for higher hourly consistency.",
-        "upsellVipDesc": "MVP adds AI-ranked opportunities and trust signals to cut bad entries faster.",
+        "upsellFreeDesc": "",
+        "upsellVipDesc": "Higher tiers add extra signals and tooling to cut bad entries faster.",
         "upsellCurrentRefresh": "Current refresh interval: {seconds}s",
-        "upsellFreeCta": "Upgrade to VIP",
-        "upsellVipCta": "Upgrade to MVP",
-        "upsellCompareCta": "See full plan comparison",
+        "upsellFreeCta": "",
+        "upsellVipCta": "See options",
+        "upsellCompareCta": "Compare refresh tiers",
         "noFlips": "No NPC flips found. Try adjusting filters.",
-        "vipOnlyContent": "VIP/MVP members only",
-        "upgradeToVip": "Upgrade to view"
+        "vipOnlyContent": "",
+        "upgradeToVip": "Sign in to view"
     },
     "eventTimer": {
         "title": "Visual Event Timer",
@@ -638,28 +626,40 @@
     "leaderboards": {
         "title": "Leaderboards",
         "kicker": "Community",
-        "copy": "VIP and MVP users are highlighted with tier tags in ranking.",
-        "betaTag": "Beta",
-        "seeMoreInfo": "See more info",
-        "periodAll": "All time",
-        "periodDaily": "Daily",
-        "periodWeekly": "Weekly",
-        "periodMonthly": "Monthly",
+        "copy": "",
+        "filtersHeading": "Filters & sort",
+        "controlFilterCaption": "Filter",
+        "controlSortCaption": "Sort",
+        "controlDirectionCaption": "Order",
+        "filterAllPlayers": "All players",
+        "filterAppUsers": "SkyblockHub users",
+        "filterNonAppUsers": "Other players",
         "personalKicker": "Your Progress",
         "personalTitle": "Personal rank card",
-        "personalCopy": "Track your current rank and movement within the selected period.",
+        "personalCopy": "See where you stand for the selected metric and filter.",
         "personalRank": "Your rank",
-        "upsellKicker": "Tier Boost",
-        "upsellFreeCopy": "Unlock your VIP/MVP tier tag and stand out instantly in community rankings.",
-        "upsellVipCopy": "Move from VIP to MVP for the highest tier visibility and complete premium stack.",
-        "upsellFreeCta": "Get VIP / MVP",
-        "upsellVipCta": "Go MVP",
-        "upsellCompare": "Compare plans",
+        "tableLoading": "Loading rankings…",
+        "emptyLeaderboard": "No players match this filter yet.",
         "rank": "Rank",
         "player": "Player",
         "karma": "Karma",
         "tier": "Tier",
-        "free": "FREE"
+        "free": "FREE",
+        "findPlayerPlaceholder": "Minecraft name or UUID…",
+        "findPlayerGo": "Go to rank",
+        "findPlayerSearching": "Searching…",
+        "findPlayerTooShort": "Enter at least 2 characters.",
+        "findPlayerNotFound": "No player matches the current sort and filter.",
+        "findPlayerError": "Search failed. Try again.",
+        "appUserTag": "App user",
+        "tableStatus": "Status",
+        "tableActions": "Actions",
+        "pageOf": "Page {current} of {last}",
+        "metricOrderHint": "",
+        "otherStatsHeading": "More stats",
+        "visitsLabel": "Profile visits",
+        "expandStats": "Show more stats",
+        "collapseStats": "Hide stats"
     },
     "dungeonParty": {
         "title": "Party Finder",
@@ -782,7 +782,7 @@
     "pricingFaq": {
         "title": "Pricing & FAQ",
         "heading": "Plans & Pricing",
-        "subtitle": "All core modules are free. Paid plans unlock advanced features, faster data, and priority updates.",
+        "subtitle": "Core tools stay free. Optional paid tiers add faster refresh, more dashboard room, and extra signals where available.",
         "feature": "Feature",
         "free": "Free",
         "price": "Price",
@@ -792,43 +792,47 @@
         "eventTimerNotifications": "Event Timer + notifications",
         "mayorIntelPerks": "Mayor intel & perks",
         "dashboardSlots": "Dashboard slots",
-        "top3Flips": "Top 3 flips highlighted",
+        "top3Flips": "Top flip highlights",
         "fasterDataRefresh": "Faster data refresh",
         "priorityWidgetUpdates": "Priority widget updates",
-        "leaderboardTierTag": "Leaderboard tier tag",
-        "aiControlledFlips": "AI-controlled flips",
-        "aiTrustSignals": "AI trust score & risk signals",
+        "leaderboardTierTag": "Community tags in leaderboards",
+        "aiControlledFlips": "Extra flip tooling",
+        "aiTrustSignals": "Trust and risk signals",
         "faqTitle": "Frequently Asked Questions",
-        "readyUpgrade": "Ready to upgrade?",
-        "goToBilling": "Go to Billing",
+        "readyUpgrade": "Want more detail?",
+        "goToBilling": "Open billing",
         "faqs": [
             {
-                "q": "Can I switch between VIP and MVP?",
-                "a": "Yes. You can upgrade from VIP to MVP at any time; the remaining balance of your current billing cycle is prorated toward the new plan. Downgrading works the same way; the change takes effect at the start of your next billing cycle."
+                "q": "What is SkyblockHub?",
+                "a": "SkyblockHub is a companion app for Hypixel SkyBlock players. It brings together live bazaar prices and flip ideas, portfolio tracking, NPC arbitrage hints, BIN sniper tooling, event timers, mayor intel, leaderboards, and a customizable dashboard—so you spend less time tabbing around and more time trading and playing."
             },
             {
-                "q": "How do I cancel my subscription?",
-                "a": "Go to Settings -> Subscription and click Cancel. Your paid features stay active until the end of the current billing period. After that, your account reverts to the free tier. No penalty, no questions asked."
+                "q": "Where does in-game data come from?",
+                "a": "Most stats come from the official Hypixel API (plus Mojang for username → UUID). Responses are cached and rate-limited so the site stays fast and within Hypixel’s rules. Numbers can lag real time by a few minutes. SkyblockHub is not affiliated with Hypixel, Mojang, or Microsoft."
+            },
+            {
+                "q": "Why might Profile Stats or a search fail?",
+                "a": "Hypixel can rate-limit or briefly return errors; some players also disable parts of their API. When live data is unavailable we may serve a recent cached snapshot or show an error—try again in a moment. If a player has no SkyBlock profiles yet, you will see “no profiles” instead of stats."
+            },
+            {
+                "q": "Why Discord sign-in and Minecraft linking?",
+                "a": "Discord is how you sign in securely. Linking your Minecraft account unlocks personalized dashboard widgets, correct rank/skin context, and features that need to know which character is yours. You can browse many tools without linking, but the best experience is with a linked profile."
+            },
+            {
+                "q": "Can I change my plan later?",
+                "a": "Yes. Use Billing in settings to review available options. Plan changes follow the rules shown at checkout and in your receipt emails from the payment provider."
+            },
+            {
+                "q": "How do I cancel or change billing?",
+                "a": "Open account settings and use the billing section. Paid perks typically stay active through the period you already paid for. Your dashboard layouts and settings are kept unless you delete your account."
             },
             {
                 "q": "What is the refund policy?",
-                "a": "All payments are final and non-refundable under normal circumstances. We do not offer refunds for unused time, accidental purchases, or change of mind. Refunds are only considered if SkyblockHub experiences a significant, verified outage lasting more than 7 consecutive days that prevents you from using core paid features. In that case, contact us and we will evaluate a partial credit or refund on a case-by-case basis."
+                "a": "Payments are generally final and non-refundable (unused time, mistaken purchases, or change of mind). We may consider a partial credit or refund only if SkyblockHub has a verified, prolonged outage (typically more than seven consecutive days) that blocks core paid features. Contact support and we will review case by case."
             },
             {
-                "q": "What payment methods are accepted?",
-                "a": "We use Stripe for payment processing. You can pay with any major credit or debit card (Visa, Mastercard, Amex, Discover). Some regions may also support Apple Pay, Google Pay, and local payment methods through Stripe."
-            },
-            {
-                "q": "Is my payment information safe?",
-                "a": "We never store your card details. All payment processing is handled by Stripe, a PCI Level 1 certified payment processor; the highest level of security certification in the payments industry."
-            },
-            {
-                "q": "What happens to my data if I cancel?",
-                "a": "Your dashboard layouts, settings, and linked accounts are preserved. If you re-subscribe later, everything will be exactly as you left it. Your data is only deleted if you explicitly delete your account."
-            },
-            {
-                "q": "Do free users get ads or tracking?",
-                "a": "No. SkyblockHub has zero ads, zero tracking cookies, and zero analytics fingerprinting for all users, free or paid. See our Privacy Policy for details."
+                "q": "How are payments handled—and is my data tracked for ads?",
+                "a": "Checkout runs through Stripe; we never store your card number. Major cards and many local wallets work where Stripe supports them. SkyblockHub does not run third-party ad networks on the product, and we do not use analytics fingerprinting—see the Privacy Policy for exactly what we log."
             }
         ]
     },

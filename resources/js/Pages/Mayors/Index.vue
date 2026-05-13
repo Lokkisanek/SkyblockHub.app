@@ -2,7 +2,7 @@
 import { computed, ref } from 'vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head } from '@inertiajs/vue3';
-import { useI18n } from 'vue-i18n';
+import { useI18n } from '@/strings/useI18n';
 
 const { t } = useI18n();
 

@@ -4,10 +4,10 @@ namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
 
-
 class BuildPackIndex extends Command
 {
     protected $signature = 'pack:build-index';
+
     protected $description = 'Parse resource pack .properties files and build JSON texture indices';
 
     private const MC_ITEMS = [
@@ -75,13 +75,14 @@ class BuildPackIndex extends Command
 
         if (! is_dir($packsDir)) {
             $this->error("No resourcepacks directory found at {$packsDir}");
+
             return 1;
         }
 
-        $packDirs = array_filter(glob($packsDir . '/*'), 'is_dir');
+        $packDirs = array_filter(glob($packsDir.'/*'), 'is_dir');
 
         foreach ($packDirs as $packDir) {
-            $configFile = $packDir . '/config.json';
+            $configFile = $packDir.'/config.json';
             if (! file_exists($configFile)) {
                 continue;
             }
@@ -90,40 +91,42 @@ class BuildPackIndex extends Command
             $packId = $config['id'] ?? basename($packDir);
             $this->info("Processing pack: {$config['name']} ({$packId})");
 
-            $citDir = $packDir . '/assets/minecraft/mcpatcher/cit';
+            $citDir = $packDir.'/assets/minecraft/mcpatcher/cit';
             if (! is_dir($citDir)) {
-                $this->warn("  No CIT directory found, skipping.");
+                $this->warn('  No CIT directory found, skipping.');
+
                 continue;
             }
 
             $index = $this->buildPackIndex($packDir, $citDir, $config);
 
-            $indexFile = $packDir . '/index.json';
+            $indexFile = $packDir.'/index.json';
             file_put_contents($indexFile, json_encode($index, JSON_UNESCAPED_SLASHES));
 
             $this->info("  Indexed {$index['_stats']['total_textures']} textures → {$indexFile}");
         }
 
         $this->info('Done!');
+
         return 0;
     }
 
     private function buildPackIndex(string $packDir, string $citDir, array $config): array
     {
         $index = [
-            'id'       => $config['id'],
-            'name'     => $config['name'],
-            'version'  => $config['version'] ?? '',
-            'author'   => $config['author'] ?? '',
+            'id' => $config['id'],
+            'name' => $config['name'],
+            'version' => $config['version'] ?? '',
+            'author' => $config['author'] ?? '',
             'priority' => $config['priority'] ?? 0,
             'skyblock_id' => [],
             'skyblock_id_patterns' => [],
             'item_id' => [],
-            // Mapping: skull texture value → relative texture path
+
             'texture_value' => [],
-            // Mapping: head entries (id 397) with damage → relative texture path
+
             'heads' => [],
-            // Leather armor entries with overlay textures
+
             'leather' => [],
         ];
 
@@ -138,7 +141,6 @@ class BuildPackIndex extends Command
 
             $stats['total_textures']++;
 
-            // Determine the skyblock_id match
             $skyblockId = $entry['skyblock_id'] ?? null;
             $skyblockIdPattern = $entry['skyblock_id_pattern'] ?? null;
             $itemId = $entry['item_id'] ?? null;
@@ -147,67 +149,66 @@ class BuildPackIndex extends Command
             $texturePath = $entry['texture_path'];
             $textureValueMatch = $entry['texture_value'] ?? null;
 
-            // Leather armor (has overlay texture)
             if ($entry['leather'] ?? false) {
                 $index['leather'][] = [
                     'skyblock_id' => $skyblockId,
                     'skyblock_id_pattern' => $skyblockIdPattern,
-                    'base'    => $entry['leather']['base'] ?? $texturePath,
+                    'base' => $entry['leather']['base'] ?? $texturePath,
                     'overlay' => $entry['leather']['overlay'] ?? $texturePath,
-                    'weight'  => $weight,
+                    'weight' => $weight,
                     'extra_match' => $entry['extra_match'] ?? null,
                 ];
+
                 continue;
             }
 
-            // Exact skyblock_id match (most common)
             if ($skyblockId) {
                 $existing = $index['skyblock_id'][$skyblockId] ?? null;
                 $existingWeight = $existing['weight'] ?? -1;
 
                 if ($weight > $existingWeight) {
-                    // If there's an extra_match (lore-based), store as pattern
+
                     if (isset($entry['extra_match'])) {
                         $index['skyblock_id_patterns'][] = [
                             'skyblock_id' => $skyblockId,
-                            'path'        => $texturePath,
-                            'weight'      => $weight,
-                            'match'       => $entry['extra_match'],
+                            'path' => $texturePath,
+                            'weight' => $weight,
+                            'match' => $entry['extra_match'],
                         ];
                         $stats['skyblock_id_pattern']++;
                     } else {
                         $index['skyblock_id'][$skyblockId] = [
-                            'path'   => $texturePath,
+                            'path' => $texturePath,
                             'weight' => $weight,
                         ];
                         $stats['skyblock_id_exact']++;
                     }
                 }
+
                 continue;
             }
 
-            // Pattern skyblock_id match
             if ($skyblockIdPattern) {
                 $index['skyblock_id_patterns'][] = [
                     'pattern' => $skyblockIdPattern,
-                    'path'    => $texturePath,
-                    'weight'  => $weight,
-                    'match'   => $entry['extra_match'] ?? null,
+                    'path' => $texturePath,
+                    'weight' => $weight,
+                    'match' => $entry['extra_match'] ?? null,
                 ];
                 $stats['skyblock_id_pattern']++;
+
                 continue;
             }
 
-            // Skull texture value match
             if ($textureValueMatch) {
                 $index['texture_value'][$textureValueMatch] = [
-                    'path'   => $texturePath,
+                    'path' => $texturePath,
                     'weight' => $weight,
                 ];
+
                 continue;
             }
 
-            // Item ID match (non-skull)
             if ($itemId !== null && $itemId !== 397) {
                 $key = "{$itemId}:{$damage}";
                 $existing = $index['item_id'][$key] ?? null;
@@ -215,19 +216,19 @@ class BuildPackIndex extends Command
 
                 if ($weight > $existingWeight) {
                     $index['item_id'][$key] = [
-                        'path'   => $texturePath,
+                        'path' => $texturePath,
                         'weight' => $weight,
                     ];
                     $stats['item_id']++;
                 }
+
                 continue;
             }
 
-            // Head (skull) entries by damage
             if ($itemId === 397) {
                 $key = "397:{$damage}";
                 $index['heads'][$key] = [
-                    'path'   => $texturePath,
+                    'path' => $texturePath,
                     'weight' => $weight,
                 ];
                 $stats['heads']++;
@@ -267,7 +268,6 @@ class BuildPackIndex extends Command
             return null;
         }
 
-        // Skip non-item types
         if (isset($props['type']) && $props['type'] !== 'item') {
             return null;
         }
@@ -275,19 +275,13 @@ class BuildPackIndex extends Command
         $dir = dirname($file);
         $baseName = pathinfo($file, PATHINFO_FILENAME);
 
-        // Resolve texture file path
         $texturePath = null;
 
-        // Check for texture.bow_standby (special case for bows)
         if (isset($props['texture.bow_standby'])) {
             $texturePath = $this->resolveTextureTo($dir, $props['texture.bow_standby'], $packDir);
-        }
-        // Check for explicit texture property
-        elseif (isset($props['texture'])) {
+        } elseif (isset($props['texture'])) {
             $texturePath = $this->resolveTextureTo($dir, $props['texture'], $packDir);
-        }
-        // Default: same name as .properties file
-        else {
+        } else {
             $texturePath = $this->resolveTextureTo($dir, $baseName, $packDir);
         }
 
@@ -297,43 +291,38 @@ class BuildPackIndex extends Command
 
         $entry = [
             'texture_path' => $texturePath,
-            'weight'       => (int) ($props['weight'] ?? 0),
+            'weight' => (int) ($props['weight'] ?? 0),
         ];
 
-        // Parse item ID
         if (isset($props['items']) || isset($props['matchItems'])) {
             $itemName = str_replace('minecraft:', '', $props['items'] ?? $props['matchItems'] ?? '');
             $itemName = trim($itemName);
             $entry['item_id'] = self::MC_ITEMS[$itemName] ?? null;
         }
 
-        // Parse damage
         if (isset($props['damage'])) {
             $entry['damage'] = (int) $props['damage'];
         }
 
-        // Parse skyblock_id from nbt.ExtraAttributes.id
         if (isset($props['nbt.ExtraAttributes.id'])) {
             $raw = $props['nbt.ExtraAttributes.id'];
 
             if (str_starts_with($raw, 'regex:') || str_starts_with($raw, 'iregex:')) {
-                // Regex pattern — store as pattern
+
                 $entry['skyblock_id_pattern'] = $raw;
             } elseif (str_starts_with($raw, 'pattern:') || str_starts_with($raw, 'ipattern:')) {
-                // Glob pattern — convert to regex
+
                 $entry['skyblock_id_pattern'] = $raw;
             } else {
-                // Exact match
+
                 $entry['skyblock_id'] = $raw;
             }
         }
 
-        // Parse skull texture value
         if (isset($props['nbt.SkullOwner.Properties.textures.0.Value'])) {
             $entry['texture_value'] = $props['nbt.SkullOwner.Properties.textures.0.Value'];
         }
 
-        // Check for extra matching criteria (lore, display name, etc.)
         $extraMatches = [];
         foreach ($props as $key => $value) {
             if ($key === 'nbt.ExtraAttributes.id' || $key === 'nbt.SkullOwner.Properties.textures.0.Value') {
@@ -347,7 +336,6 @@ class BuildPackIndex extends Command
             $entry['extra_match'] = $extraMatches;
         }
 
-        // Leather armor detection
         $leatherKeys = array_filter(array_keys($props), fn ($k) => str_contains($k, 'texture.leather_'));
         if (! empty($leatherKeys)) {
             $leather = [];
@@ -360,7 +348,7 @@ class BuildPackIndex extends Command
             }
             if (! empty($leather)) {
                 $entry['leather'] = $leather;
-                // If base and overlay are the same, use the overlay as the main texture
+
                 $entry['texture_path'] = $leather['overlay'] ?? $leather['base'] ?? $texturePath;
             }
         }
@@ -368,33 +356,27 @@ class BuildPackIndex extends Command
         return $entry;
     }
 
-    /**
-     * Resolve a texture reference to a relative URL path from public/.
-     */
     private function resolveTextureTo(string $propDir, string $ref, string $packDir): ?string
     {
         if (! str_ends_with($ref, '.png')) {
             $ref .= '.png';
         }
 
-        // Resolve relative to properties file directory
-        $absPath = realpath($propDir . '/' . $ref);
+        $absPath = realpath($propDir.'/'.$ref);
         if (! $absPath || ! file_exists($absPath)) {
-            // Try without directory (just filename)
-            $absPath = $propDir . DIRECTORY_SEPARATOR . basename($ref);
+
+            $absPath = $propDir.DIRECTORY_SEPARATOR.basename($ref);
             if (! file_exists($absPath)) {
                 return null;
             }
             $absPath = realpath($absPath);
         }
 
-        // Make path relative to public/
         $publicDir = public_path();
         $relativePath = str_replace('\\', '/', substr($absPath, strlen($publicDir)));
 
-        // Ensure starts with /
         if (! str_starts_with($relativePath, '/')) {
-            $relativePath = '/' . $relativePath;
+            $relativePath = '/'.$relativePath;
         }
 
         return $relativePath;

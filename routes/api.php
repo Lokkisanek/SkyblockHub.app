@@ -1,9 +1,8 @@
 <?php
 
-use App\Http\Controllers\Api\HypixelProfileController;
-use App\Http\Controllers\Api\SocialProofMetricsController;
-use App\Http\Controllers\Api\BinSniperAnalysisController;
 use App\Http\Controllers\Api\BazaarController as ApiBazaarController;
+use App\Http\Controllers\Api\BinSniperAnalysisController;
+use App\Http\Controllers\Api\HypixelProfileController;
 use App\Http\Controllers\Api\LeaderboardController;
 use App\Http\Controllers\CraftingArbitrageController;
 use App\Http\Controllers\KarmaController;
@@ -61,15 +60,15 @@ Route::post('/bin-sniper/analyze', [BinSniperAnalysisController::class, 'analyze
     ->middleware('throttle:30,1')
     ->name('api.bin-sniper.analyze');
 
-Route::get('/social-proof-metrics', SocialProofMetricsController::class)
-    ->middleware('throttle:60,1')
-    ->name('api.social-proof.metrics');
-
 /*
 |--------------------------------------------------------------------------
 | Leaderboard API
 |--------------------------------------------------------------------------
 */
+Route::get('/v1/leaderboards/lookup', [LeaderboardController::class, 'lookup'])
+    ->middleware('throttle:30,1')
+    ->name('api.leaderboards.lookup');
+
 Route::get('/v1/leaderboards', [LeaderboardController::class, 'index'])
     ->middleware('throttle:60,1')
     ->name('api.leaderboards.index');

@@ -5,7 +5,7 @@ import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import { Head, useForm } from '@inertiajs/vue3';
-import { useI18n } from 'vue-i18n';
+import { useI18n } from '@/strings/useI18n';
 
 const { t } = useI18n();
 

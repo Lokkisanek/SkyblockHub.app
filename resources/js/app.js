@@ -6,7 +6,7 @@ import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { createApp, h } from 'vue';
 import * as Sentry from '@sentry/vue';
 import { ZiggyVue } from '../../vendor/tightenco/ziggy';
-import i18n from './i18n';
+import stringsPlugin from './strings/plugin.js';
 
 const appName = import.meta.env.VITE_APP_NAME || 'SkyblockHub';
 const appRelease = import.meta.env.VITE_APP_RELEASE || import.meta.env.VITE_SENTRY_RELEASE;
@@ -32,8 +32,8 @@ createInertiaApp({
             });
         }
 
-        // Defensive bindings: i18n may be a lightweight plugin with a minimal shape.
-        const safeGlobal = (i18n && i18n.global) ? i18n.global : i18n || {};
+        // Defensive bindings before plugins run (strings plugin sets these again on use()).
+        const safeGlobal = (stringsPlugin && stringsPlugin.global) ? stringsPlugin.global : stringsPlugin || {};
         const safeT = typeof safeGlobal.t === 'function' ? safeGlobal.t.bind(safeGlobal) : (k => (typeof safeGlobal.t === 'function' ? safeGlobal.t(k) : k));
         const safeTe = typeof safeGlobal.te === 'function' ? safeGlobal.te.bind(safeGlobal) : (k => (typeof safeGlobal.te === 'function' ? safeGlobal.te(k) : false));
         const safeD = typeof safeGlobal.d === 'function' ? safeGlobal.d.bind(safeGlobal) : (() => undefined);
@@ -47,7 +47,7 @@ createInertiaApp({
         return app
             .use(plugin)
             .use(ZiggyVue)
-            .use(i18n)
+            .use(stringsPlugin)
             .mount(el);
     },
     progress: {

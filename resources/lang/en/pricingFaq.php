@@ -3,8 +3,8 @@
 return [
     'free' => 'Free',
     'price' => 'Price',
-    'upgradeVip' => 'Full Bazaar access with premium tools',
-    'upgradeMvp' => 'Everything in VIP + AI-powered trading',
+    'upgradeVip' => 'Standard tier: faster refresh and more dashboard room',
+    'upgradeMvp' => 'Plus tier: extra signals and tooling for heavier workflows',
     
     // Features
     'bazaarFlipTable' => 'Bazaar Flip Table',
@@ -14,8 +14,8 @@ return [
     'mayorIntelPerks' => 'Mayor Intel & Perks',
     'priorityWidgetUpdates' => 'Priority Widget Updates',
     'top3Flips' => 'Top 3 Flips Per Hour',
-    'leaderboardTierTag' => 'Leaderboard Tier Tag',
-    'aiControlledFlips' => 'AI-Controlled Flips',
+    'leaderboardTierTag' => 'Community tags in leaderboards',
+    'aiControlledFlips' => 'Extra flip tooling',
     'aiTrustSignals' => 'AI Trust Signals',
     
     // FAQs
@@ -26,7 +26,7 @@ return [
         ],
         [
             'q' => 'Can I cancel anytime?',
-            'a' => 'Yes, you can cancel your subscription at any time. No questions asked.',
+            'a' => 'Yes, you can cancel or change billing from account settings when available.',
         ],
         [
             'q' => 'Is there a refund policy?',
@@ -38,11 +38,11 @@ return [
         ],
         [
             'q' => 'Can I use multiple accounts?',
-            'a' => 'One subscription per account. Contact support for enterprise options.',
+            'a' => 'One paid account per login. Contact support for team or enterprise options.',
         ],
         [
             'q' => 'Do you have an API?',
-            'a' => 'API access is available for MVP subscribers.',
+            'a' => 'API access may be offered on higher tiers when published.',
         ],
     ],
 ];

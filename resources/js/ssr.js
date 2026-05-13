@@ -4,7 +4,7 @@ import { renderToString } from '@vue/server-renderer';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { createSSRApp, h } from 'vue';
 import { ZiggyVue } from '../../vendor/tightenco/ziggy';
-import i18n from './i18n';
+import stringsPlugin from './strings/plugin.js';
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
@@ -21,13 +21,13 @@ createServer((page) =>
         setup({ App, props, plugin }) {
             const app = createSSRApp({ render: () => h(App, props) })
                 .use(plugin)
-                .use(i18n)
+                .use(stringsPlugin)
                 .use(ZiggyVue, {
                     ...page.props.ziggy,
                     location: new URL(page.props.ziggy.location),
                 });
 
-            const safeGlobal = (i18n && i18n.global) ? i18n.global : i18n || {};
+            const safeGlobal = (stringsPlugin && stringsPlugin.global) ? stringsPlugin.global : stringsPlugin || {};
             app.config.globalProperties.$t =
                 typeof safeGlobal.t === 'function' ? safeGlobal.t.bind(safeGlobal) : ((k) => k);
             app.config.globalProperties.$te =

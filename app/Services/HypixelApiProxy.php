@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use Illuminate\Contracts\Cache\Repository;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -19,6 +20,7 @@ use Illuminate\Support\Facades\Log;
 class HypixelApiProxy
 {
     private const BASE_URL = 'https://api.hypixel.net';
+
     private const RATE_LIMIT_CACHE_KEY = 'hypixel:proxy:rate_window';
 
     // ─── Public API ──────────────────────────────────────────────────
@@ -40,7 +42,7 @@ class HypixelApiProxy
     /**
      * GET /v2/player
      *
-     * @return array|null  The "player" object or null.
+     * @return array|null The "player" object or null.
      */
     public function getPlayer(string $uuid): ?array
     {
@@ -54,7 +56,7 @@ class HypixelApiProxy
     /**
      * GET /v2/skyblock/museum
      *
-     * @return array|null  The member's museum data or null.
+     * @return array|null The member's museum data or null.
      */
     public function getMuseum(string $profileId, string $uuid): ?array
     {
@@ -79,7 +81,7 @@ class HypixelApiProxy
     /**
      * GET /v2/skyblock/auctions  (no API key required)
      *
-     * @return array|null  Raw auction page response.
+     * @return array|null Raw auction page response.
      */
     public function getAuctions(int $page = 0): ?array
     {
@@ -90,8 +92,6 @@ class HypixelApiProxy
 
     /**
      * GET /v2/resources/skyblock/election  (no API key required)
-     *
-     * @return array|null
      */
     public function getElection(): ?array
     {
@@ -101,8 +101,6 @@ class HypixelApiProxy
 
     /**
      * GET /v2/resources/skyblock/collections  (no API key required)
-     *
-     * @return array|null
      */
     public function getCollections(): ?array
     {
@@ -112,13 +110,22 @@ class HypixelApiProxy
 
     /**
      * GET /v2/resources/skyblock/items  (no API key required)
-     *
-     * @return array|null
      */
     public function getItems(): ?array
     {
         return $this->cachedRequest('items', '/v2/resources/skyblock/items', [],
             needsKey: false);
+    }
+
+    /**
+     * GET /v2/leaderboards — current Hypixel leaderboards (requires API key).
+     *
+     * @return array{success?: bool, leaderboards?: array<string, mixed>}|null
+     */
+    public function getLeaderboards(): ?array
+    {
+        return $this->cachedRequest('leaderboards', '/v2/leaderboards', [],
+            needsKey: true, cacheKeySuffix: 'global');
     }
 
     // ─── Internals ───────────────────────────────────────────────────
@@ -173,6 +180,7 @@ class HypixelApiProxy
 
         if ($needsKey && empty($apiKey)) {
             Log::error('HypixelApiProxy: API key not configured');
+
             return $this->getStaleData($cacheKey, $staleGrace);
         }
 
@@ -190,7 +198,7 @@ class HypixelApiProxy
                     ->connectTimeout($connectTimeout)
                     ->acceptJson()
                     ->withHeaders(['User-Agent' => config('hypixel.user_agent', 'SkyblockHub/1.0')])
-                    ->get(self::BASE_URL . $path, $queryParams);
+                    ->get(self::BASE_URL.$path, $queryParams);
 
                 if ($response->status() === 429) {
                     $wait = min(5, max(1, (int) $response->header('Retry-After', pow(2, $attempt))));
@@ -205,6 +213,7 @@ class HypixelApiProxy
 
                     if ($attempt < $maxRetries) {
                         sleep($wait);
+
                         continue;
                     }
 
@@ -221,6 +230,7 @@ class HypixelApiProxy
 
                     if ($attempt < $maxRetries) {
                         sleep($wait);
+
                         continue;
                     }
 
@@ -261,6 +271,7 @@ class HypixelApiProxy
 
                 if ($attempt < $maxRetries) {
                     sleep((int) pow(2, $attempt));
+
                     continue;
                 }
             }
@@ -326,7 +337,7 @@ class HypixelApiProxy
     {
         $key = "hypixel:proxy:{$endpoint}";
         if ($suffix !== '') {
-            $key .= ':' . $suffix;
+            $key .= ':'.$suffix;
         }
 
         return $key;
@@ -340,6 +351,7 @@ class HypixelApiProxy
             return is_array($value) ? $value : null;
         } catch (\Throwable $e) {
             Log::warning('HypixelApiProxy: cache read failed', ['error' => $e->getMessage()]);
+
             return null;
         }
     }
@@ -401,7 +413,7 @@ class HypixelApiProxy
         return (int) config("hypixel.cache_ttl.{$endpoint}", 300);
     }
 
-    private function cacheStore(): \Illuminate\Contracts\Cache\Repository
+    private function cacheStore(): Repository
     {
         $store = config('cache.default', 'file');
 

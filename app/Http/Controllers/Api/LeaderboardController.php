@@ -3,48 +3,65 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\UserDashboard;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Carbon;
 
 /**
- * Leaderboard aggregates read `profiles_cache.raw_data` JSON. The previous profile-ingest
- * pipeline was removed; time-filtered periods may be empty when no matching rows exist.
+ * Leaderboard aggregates read `profiles_cache.raw_data` JSON (selected profile per player).
  */
 class LeaderboardController extends Controller
 {
     private const CACHE_TTL = 300;
+
     private const ITEMS_PER_PAGE = 50;
-    private const SORTS = [
-        'level',
-        'networth',
-        'non_cosmetic_networth',
-        'account_age',
-        'skill_average',
-        'weight',
-        'slayer_total',
+
+    /**
+     * Sort keys + display metadata for GET /api/v1/leaderboards (single source for UI chips).
+     *
+     * @var array<int, array{key: string, label: string, format: string, align: string}>
+     */
+    private const SORT_DEFINITIONS = [
+        ['key' => 'level', 'label' => 'Level', 'format' => 'integer', 'align' => 'right'],
+        ['key' => 'networth', 'label' => 'Networth', 'format' => 'compact', 'align' => 'right'],
+        ['key' => 'non_cosmetic_networth', 'label' => 'Pure Coins', 'format' => 'compact', 'align' => 'right'],
+        ['key' => 'account_age', 'label' => 'Account Age', 'format' => 'age', 'align' => 'right'],
+        ['key' => 'skill_average', 'label' => 'Skill Avg', 'format' => 'decimal', 'align' => 'right'],
+        ['key' => 'weight', 'label' => 'Weight', 'format' => 'integer', 'align' => 'right'],
+        ['key' => 'slayer_total', 'label' => 'Slayer XP', 'format' => 'compact', 'align' => 'right'],
     ];
+
     private const FILTERS = [
         'all',
         'app_users',
         'non_app_users',
     ];
-    private const PERIODS = [
-        'all' => null,
-        'daily' => 1,
-        'weekly' => 7,
-        'monthly' => 30,
-    ];
+
     private const RANK_MAP_LIMIT = 1000;
+
+    /**
+     * @return array<int, array{key: string, label: string, format: string, align: string}>
+     */
+    public static function sortColumnsForClient(): array
+    {
+        return self::SORT_DEFINITIONS;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private static function allowedSortKeys(): array
+    {
+        return array_column(self::SORT_DEFINITIONS, 'key');
+    }
 
     public function index(Request $request): JsonResponse
     {
         $sortType = (string) $request->query('sort', 'level');
-        if (! in_array($sortType, self::SORTS, true)) {
+        if (! in_array($sortType, self::allowedSortKeys(), true)) {
             $sortType = 'level';
         }
 
@@ -59,38 +76,35 @@ class LeaderboardController extends Controller
         }
 
         $page = max((int) $request->query('page', 1), 1);
-        $periodKey = $this->normalizePeriod((string) $request->query('period', 'all'));
-        [$currentFrom, $currentTo, $previousFrom, $previousTo] = $this->resolvePeriodRange($periodKey);
 
-        $cacheKey = "leaderboard:v4:{$sortType}:{$sortDirection}:{$filter}:{$periodKey}:{$page}";
+        $cacheKey = "leaderboard:v8:{$sortType}:{$sortDirection}:{$filter}:{$page}";
 
-        $data = Cache::remember($cacheKey, self::CACHE_TTL, function () use ($sortType, $sortDirection, $filter, $page, $periodKey, $currentFrom, $currentTo, $previousFrom, $previousTo, $request): array {
-            $query = $this->buildBaseQuery($filter, $currentFrom, $currentTo);
+        $data = Cache::remember($cacheKey, self::CACHE_TTL, function () use ($sortType, $sortDirection, $filter, $page): array {
+            $query = $this->buildBaseQuery($filter, null, null);
             $this->applyOrdering($query, $sortType, $sortDirection);
 
-            $previousRankMap = ($previousFrom && $previousTo)
-                ? $this->buildRankMap($sortType, $sortDirection, $filter, $previousFrom, $previousTo)
-                : [];
+            $previousRankMap = [];
 
             $paginator = $query->paginate(self::ITEMS_PER_PAGE, ['*'], 'page', $page);
             $firstRank = ($paginator->currentPage() - 1) * $paginator->perPage() + 1;
 
+            $profileVisitCounts = $this->profileSearchCountsByUsernameLower(
+                collect($paginator->items())
+                    ->pluck('profile_username')
+                    ->filter(static fn ($name): bool => $name !== null && $name !== '')
+                    ->map(static fn ($name): string => mb_strtolower((string) $name))
+                    ->unique()
+                    ->values()
+                    ->all()
+            );
+
             $rows = collect($paginator->items())
                 ->values()
-                ->map(function ($row, int $index) use ($firstRank, $previousRankMap): array {
+                ->map(function ($row, int $index) use ($firstRank, $previousRankMap, $profileVisitCounts): array {
                     $rank = $firstRank + $index;
-                    return $this->formatLeaderboardRow($row, $rank, $previousRankMap);
-                });
 
-            $personal = $this->buildPersonalCard(
-                $request,
-                $sortType,
-                $sortDirection,
-                $filter,
-                $currentFrom,
-                $currentTo,
-                $previousRankMap
-            );
+                    return $this->formatLeaderboardRow($row, $rank, $previousRankMap, $profileVisitCounts);
+                });
 
             return [
                 'rows' => $rows,
@@ -100,18 +114,191 @@ class LeaderboardController extends Controller
                     'total' => $paginator->total(),
                     'last_page' => $paginator->lastPage(),
                 ],
-                'period' => [
-                    'key' => $periodKey,
-                    'from' => $currentFrom?->toDateString(),
-                    'to' => $currentTo?->toDateString(),
-                ],
-                'personal' => $personal,
+                'cache_max_fetched_at' => $this->maxCacheFetchedAtForScope($filter, null, null),
+                // Internal: used after cache to build per-user `personal` (not exposed in JSON).
+                'previous_rank_map' => $previousRankMap,
             ];
         });
+
+        $previousRankMap = $data['previous_rank_map'] ?? [];
+        unset($data['previous_rank_map']);
+
+        $data['personal'] = $this->buildPersonalCard(
+            $request,
+            $sortType,
+            $sortDirection,
+            $filter,
+            $previousRankMap
+        );
 
         return response()->json([
             'data' => $data,
         ]);
+    }
+
+    /**
+     * Resolve global rank + pagination page for a player name / UUID (same sort and filter as the table; live data).
+     */
+    public function lookup(Request $request): JsonResponse
+    {
+        $sortType = (string) $request->query('sort', 'level');
+        if (! in_array($sortType, self::allowedSortKeys(), true)) {
+            $sortType = 'level';
+        }
+
+        $sortDirection = strtolower((string) $request->query('direction', 'desc'));
+        if (! in_array($sortDirection, ['asc', 'desc'], true)) {
+            $sortDirection = 'desc';
+        }
+
+        $filter = (string) $request->query('filter', 'all');
+        if (! in_array($filter, self::FILTERS, true)) {
+            $filter = 'all';
+        }
+
+        $rawQuery = trim((string) $request->query('q', ''));
+        if ($rawQuery === '') {
+            return response()->json([
+                'data' => [
+                    'found' => false,
+                    'error' => 'empty_query',
+                ],
+            ], 422);
+        }
+
+        if (mb_strlen($rawQuery) > 48) {
+            return response()->json([
+                'data' => [
+                    'found' => false,
+                    'error' => 'query_too_long',
+                ],
+            ], 422);
+        }
+
+        $needle = mb_strtolower($rawQuery);
+        if (mb_strlen($needle) < 2) {
+            return response()->json([
+                'data' => [
+                    'found' => false,
+                    'error' => 'query_too_short',
+                ],
+            ], 422);
+        }
+
+        $uuidNeedle = $this->normalizeUuid(str_replace('-', '', $rawQuery));
+
+        $cacheKey = 'leaderboard:lookup:v2:'
+            .hash('xxh128', implode("\0", [$sortType, $sortDirection, $filter, $needle, $uuidNeedle]));
+
+        $payload = Cache::remember($cacheKey, self::CACHE_TTL, function () use (
+            $sortType,
+            $sortDirection,
+            $filter,
+            $needle,
+            $uuidNeedle,
+        ): array {
+            $base = $this->buildBaseQuery($filter, null, null);
+            $this->applyOrdering($base, $sortType, $sortDirection);
+
+            $windowOrder = $this->leaderboardWindowOrderSql('lb', $sortType, $sortDirection);
+
+            $ranked = DB::query()
+                ->fromSub($base, 'lb')
+                ->select([
+                    'lb.minecraft_uuid',
+                    'lb.display_name',
+                    'lb.profile_username',
+                ])
+                ->selectRaw("ROW_NUMBER() OVER (ORDER BY {$windowOrder}) AS board_rank");
+
+            $match = $this->firstLeaderboardLookupMatch($ranked, $needle, $uuidNeedle, requireExact: true);
+            if (! $match) {
+                $match = $this->firstLeaderboardLookupMatch($ranked, $needle, $uuidNeedle, requireExact: false);
+            }
+
+            if (! $match) {
+                return [
+                    'found' => false,
+                ];
+            }
+
+            $rank = (int) $match->board_rank;
+            $page = (int) max(1, (int) ceil($rank / self::ITEMS_PER_PAGE));
+
+            return [
+                'found' => true,
+                'rank' => $rank,
+                'page' => $page,
+                'per_page' => self::ITEMS_PER_PAGE,
+                'display_name' => $match->display_name,
+                'profile_username' => $match->profile_username,
+                'minecraft_uuid' => $match->minecraft_uuid,
+            ];
+        });
+
+        return response()->json([
+            'data' => $payload,
+        ]);
+    }
+
+    private function firstLeaderboardLookupMatch(QueryBuilder $ranked, string $needle, string $uuidNeedle, bool $requireExact): ?object
+    {
+        $q = DB::query()->fromSub($ranked, 'r')->orderBy('r.board_rank');
+
+        if ($requireExact) {
+            $q->where(function ($inner) use ($needle, $uuidNeedle): void {
+                $inner->whereRaw('LOWER(r.profile_username) = ?', [$needle])
+                    ->orWhereRaw('LOWER(r.display_name) = ?', [$needle]);
+
+                if ($uuidNeedle !== '' && strlen($uuidNeedle) === 32 && ctype_xdigit($uuidNeedle)) {
+                    $inner->orWhereRaw('LOWER(REPLACE(r.minecraft_uuid, \'-\', \'\')) = ?', [$uuidNeedle]);
+                }
+            });
+        } else {
+            if (mb_strlen($needle) < 2) {
+                return null;
+            }
+
+            $like = $needle.'%';
+            $q->where(function ($inner) use ($like): void {
+                $inner->whereRaw('LOWER(r.profile_username) LIKE ?', [$like])
+                    ->orWhereRaw('LOWER(r.display_name) LIKE ?', [$like]);
+            });
+        }
+
+        return $q->first();
+    }
+
+    /**
+     * ORDER BY clause for ROW_NUMBER(), must stay in sync with {@see applyOrdering()}.
+     */
+    private function leaderboardWindowOrderSql(string $alias, string $sortType, string $sortDirection): string
+    {
+        $c = static fn (string $col): string => "{$alias}.{$col}";
+
+        return match ($sortType) {
+            'level' => $sortDirection === 'desc'
+                ? "{$c('skyblock_level')} DESC, {$c('networth')} DESC"
+                : "{$c('skyblock_level')} ASC, {$c('networth')} DESC",
+            'networth' => $sortDirection === 'desc'
+                ? "{$c('networth')} DESC, {$c('skyblock_level')} DESC"
+                : "{$c('networth')} ASC, {$c('skyblock_level')} DESC",
+            'non_cosmetic_networth' => $sortDirection === 'desc'
+                ? "{$c('non_cosmetic_networth')} DESC, {$c('skyblock_level')} DESC"
+                : "{$c('non_cosmetic_networth')} ASC, {$c('skyblock_level')} DESC",
+            'skill_average' => $sortDirection === 'desc'
+                ? "{$c('skill_average')} DESC, {$c('skyblock_level')} DESC"
+                : "{$c('skill_average')} ASC, {$c('skyblock_level')} DESC",
+            'weight' => $sortDirection === 'desc'
+                ? "{$c('weight')} DESC, {$c('skill_average')} DESC"
+                : "{$c('weight')} ASC, {$c('skill_average')} DESC",
+            'slayer_total' => $sortDirection === 'desc'
+                ? "{$c('slayer_total')} DESC, {$c('skyblock_level')} DESC"
+                : "{$c('slayer_total')} ASC, {$c('skyblock_level')} DESC",
+            default => $sortDirection === 'desc'
+                ? "{$c('account_age_days')} DESC, {$c('skyblock_level')} DESC"
+                : "{$c('account_age_days')} ASC, {$c('skyblock_level')} DESC",
+        };
     }
 
     private function buildBaseQuery(string $filter, ?Carbon $from = null, ?Carbon $to = null): QueryBuilder
@@ -213,6 +400,7 @@ class LeaderboardController extends Controller
             ->selectRaw("MAX({$hypixelRankExpr}) as hypixel_rank")
             ->selectRaw("COALESCE(MAX({$hypixelRankColorExpr}), '#AAAAAA') as hypixel_rank_color")
             ->selectRaw("CASE WHEN EXISTS({$publicDashboardExistsSubquery->toSql()}) THEN 1 ELSE 0 END as has_public_dashboard")
+            ->selectRaw('MAX(profile_data.fetched_at) as slice_max_fetched_at')
             ->groupBy([
                 'profile_data.minecraft_uuid',
             ]);
@@ -238,6 +426,24 @@ class LeaderboardController extends Controller
         }
 
         return $query;
+    }
+
+    /**
+     * Latest `profiles_cache.fetched_at` among rows that match the same scope as the leaderboard
+     * (selected profile, filter; optional date window on fetched_at for callers that still pass it).
+     */
+    private function maxCacheFetchedAtForScope(string $filter, ?Carbon $from, ?Carbon $to): ?string
+    {
+        $sub = $this->buildBaseQuery($filter, $from, $to);
+        $max = DB::query()
+            ->fromSub($sub, 'leaderboard_scope')
+            ->max('slice_max_fetched_at');
+
+        if ($max === null) {
+            return null;
+        }
+
+        return Carbon::parse($max)->toIso8601String();
     }
 
     /**
@@ -269,8 +475,6 @@ class LeaderboardController extends Controller
         string $sortType,
         string $direction,
         string $filter,
-        ?Carbon $from,
-        ?Carbon $to,
         array $previousRankMap
     ): ?array {
         $user = $request->user();
@@ -283,7 +487,7 @@ class LeaderboardController extends Controller
             return null;
         }
 
-        $query = $this->buildBaseQuery($filter, $from, $to);
+        $query = $this->buildBaseQuery($filter, null, null);
         $query->whereRaw("LOWER(REPLACE(profile_data.minecraft_uuid, '-', '')) = ?", [$normalizedUuid]);
 
         $row = $query->first();
@@ -291,35 +495,61 @@ class LeaderboardController extends Controller
             return null;
         }
 
-        $rankMap = $this->buildRankMap($sortType, $direction, $filter, $from, $to);
+        $rankMap = $this->buildRankMap($sortType, $direction, $filter, null, null);
         $rank = $rankMap[$normalizedUuid] ?? null;
 
         if (! $rank) {
             return null;
         }
 
-        return $this->formatLeaderboardRow($row, $rank, $previousRankMap);
+        $profileVisitCounts = $this->profileSearchCountsByUsernameLower(
+            ! empty($row->profile_username)
+                ? [mb_strtolower((string) $row->profile_username)]
+                : []
+        );
+
+        return $this->formatLeaderboardRow($row, $rank, $previousRankMap, $profileVisitCounts);
     }
 
     /**
-     * @return array<string, mixed>
+     * One query for all distinct profile usernames on the current leaderboard page.
+     *
+     * @param  array<int, string>  $usernameLowers
+     * @return array<string, int>
      */
-    private function formatLeaderboardRow(object $row, int $rank, array $previousRankMap): array
+    private function profileSearchCountsByUsernameLower(array $usernameLowers): array
     {
-        $hasPublicDashboard = false;
-        if ($row->user_id !== null) {
-            $hasPublicDashboard = UserDashboard::query()
-                ->where('user_id', (int) $row->user_id)
-                ->where('is_public', true)
-                ->exists();
+        $usernameLowers = array_values(array_unique(array_filter(
+            $usernameLowers,
+            static fn (string $u): bool => $u !== ''
+        )));
+
+        if ($usernameLowers === []) {
+            return [];
         }
 
-        $profileVisits = 0;
-        if (! empty($row->profile_username)) {
-            $profileVisits = DB::table('profile_searches')
-                ->whereRaw('LOWER(username) = ?', [mb_strtolower((string) $row->profile_username)])
-                ->count();
-        }
+        $counts = DB::table('profile_searches')
+            ->selectRaw('LOWER(username) AS username_key')
+            ->selectRaw('COUNT(*) AS visit_count')
+            ->whereIn(DB::raw('LOWER(username)'), $usernameLowers)
+            ->groupBy(DB::raw('LOWER(username)'))
+            ->pluck('visit_count', 'username_key');
+
+        return $counts->map(static fn ($c): int => (int) $c)->all();
+    }
+
+    /**
+     * @param  array<string, int>  $profileVisitCountsByUsernameLower
+     * @return array<string, mixed>
+     */
+    private function formatLeaderboardRow(object $row, int $rank, array $previousRankMap, array $profileVisitCountsByUsernameLower): array
+    {
+        $hasPublicDashboard = (bool) ((int) ($row->has_public_dashboard ?? 0) === 1);
+
+        $profileUsernameLower = mb_strtolower(trim((string) ($row->profile_username ?? '')));
+        $profileVisits = $profileUsernameLower !== ''
+            ? (int) ($profileVisitCountsByUsernameLower[$profileUsernameLower] ?? 0)
+            : 0;
 
         $uuid = $this->normalizeUuid((string) ($row->minecraft_uuid ?? ''));
         $previousRank = $uuid !== '' ? ($previousRankMap[$uuid] ?? null) : null;
@@ -353,36 +583,6 @@ class LeaderboardController extends Controller
         ];
     }
 
-    private function normalizePeriod(string $period): string
-    {
-        $period = strtolower(trim($period));
-
-        if (! array_key_exists($period, self::PERIODS)) {
-            return 'all';
-        }
-
-        return $period;
-    }
-
-    /**
-     * @return array{0:?Carbon,1:?Carbon,2:?Carbon,3:?Carbon}
-     */
-    private function resolvePeriodRange(string $period): array
-    {
-        $days = self::PERIODS[$period] ?? null;
-        if (! $days) {
-            return [null, null, null, null];
-        }
-
-        $now = Carbon::now();
-        $currentFrom = $now->copy()->startOfDay()->subDays($days - 1);
-        $currentTo = $now->copy()->endOfDay();
-        $previousTo = $currentFrom->copy()->subSecond();
-        $previousFrom = $previousTo->copy()->startOfDay()->subDays($days - 1);
-
-        return [$currentFrom, $currentTo, $previousFrom, $previousTo];
-    }
-
     private function normalizeUuid(string $uuid): string
     {
         return strtolower(str_replace('-', '', $uuid));
@@ -394,31 +594,37 @@ class LeaderboardController extends Controller
 
         if ($sortType === 'level') {
             $query->{$primaryOrder}('skyblock_level')->orderByDesc('networth');
+
             return;
         }
 
         if ($sortType === 'networth') {
             $query->{$primaryOrder}('networth')->orderByDesc('skyblock_level');
+
             return;
         }
 
         if ($sortType === 'non_cosmetic_networth') {
             $query->{$primaryOrder}('non_cosmetic_networth')->orderByDesc('skyblock_level');
+
             return;
         }
 
         if ($sortType === 'skill_average') {
             $query->{$primaryOrder}('skill_average')->orderByDesc('skyblock_level');
+
             return;
         }
 
         if ($sortType === 'weight') {
             $query->{$primaryOrder}('weight')->orderByDesc('skill_average');
+
             return;
         }
 
         if ($sortType === 'slayer_total') {
             $query->{$primaryOrder}('slayer_total')->orderByDesc('skyblock_level');
+
             return;
         }
 
@@ -435,6 +641,7 @@ class LeaderboardController extends Controller
 
         if ($driver === 'pgsql') {
             $textExpr = $this->jsonTextExpr($column, $path);
+
             return "COALESCE(NULLIF({$textExpr}, '')::numeric, 0)";
         }
 
@@ -442,7 +649,7 @@ class LeaderboardController extends Controller
     }
 
     /**
-     * @param array<int, string> $paths
+     * @param  array<int, string>  $paths
      */
     private function jsonDecimalExpr(string $column, array $paths): string
     {
@@ -456,6 +663,7 @@ class LeaderboardController extends Controller
 
             if ($driver === 'pgsql') {
                 $textExpr = $this->jsonTextExpr($column, $path);
+
                 return "COALESCE(NULLIF({$textExpr}, '')::numeric, 0)";
             }
 
@@ -468,7 +676,7 @@ class LeaderboardController extends Controller
     }
 
     /**
-     * @param array<int, string> $paths
+     * @param  array<int, string>  $paths
      */
     private function jsonNumberCoalesceExpr(string $column, array $paths): string
     {
@@ -502,7 +710,7 @@ class LeaderboardController extends Controller
     }
 
     /**
-     * @param array<int, string> $paths
+     * @param  array<int, string>  $paths
      */
     private function jsonStringCoalesceExpr(string $column, array $paths): string
     {
@@ -515,6 +723,7 @@ class LeaderboardController extends Controller
 
             if ($driver === 'pgsql') {
                 $textExpr = $this->jsonTextExpr($column, $path);
+
                 return "NULLIF({$textExpr}, '')";
             }
 
@@ -525,7 +734,7 @@ class LeaderboardController extends Controller
     }
 
     /**
-     * @param array<int, string> $paths
+     * @param  array<int, string>  $paths
      */
     private function jsonBoolExpr(string $column, array $paths): string
     {
@@ -540,6 +749,7 @@ class LeaderboardController extends Controller
 
             if ($driver === 'pgsql') {
                 $textExpr = $this->jsonTextExpr($column, $path);
+
                 return "CASE WHEN LOWER(COALESCE({$textExpr}, '')) IN ('1', 'true', 't', 'yes') THEN 1 ELSE 0 END";
             }
 
@@ -569,7 +779,7 @@ class LeaderboardController extends Controller
         if ($driver === 'pgsql') {
             $segments = $this->jsonPathSegments($path);
             $quoted = implode(', ', array_map(
-                static fn (string $segment): string => "'" . str_replace("'", "''", $segment) . "'",
+                static fn (string $segment): string => "'".str_replace("'", "''", $segment)."'",
                 $segments
             ));
 

@@ -1,13 +1,5 @@
 <script setup>
-/**
- * PlayerModel — Interactive 3D Minecraft player model (SkyCrypt-style).
- * Uses skinview3d (Three.js-based) with mouse/touch drag to rotate.
- *
- * Props:
- *   uuid  — Minecraft player UUID (used to fetch skin texture)
- *   skinName — Optional username/skin name fallback when UUID is unavailable
- *   width / height — canvas dimensions
- */
+
 import { ref, watch, onMounted, onBeforeUnmount, nextTick } from 'vue';
 
 const props = defineProps({

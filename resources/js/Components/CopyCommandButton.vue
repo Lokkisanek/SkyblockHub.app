@@ -1,6 +1,6 @@
 <script setup>
 import { ref } from 'vue';
-import { useI18n } from 'vue-i18n';
+import { useI18n } from '@/strings/useI18n';
 
 const { t } = useI18n();
 

@@ -4,13 +4,12 @@ namespace App\Services;
 
 class PerkService
 {
-    public function __construct(private readonly MayorService $mayorService)
-    {
-    }
+    public function __construct(private readonly MayorService $mayorService) {}
 
     public function isPerkActive(string $perkName, ?array $mayorPayload = null): bool
     {
         $state = $this->buildState($mayorPayload);
+
         return (bool) ($state['active_perks'][$perkName] ?? false);
     }
 
@@ -24,7 +23,7 @@ class PerkService
         foreach ($perks as $perk) {
             $name = strtolower((string) ($perk['name'] ?? ''));
             $description = strtolower((string) ($perk['description'] ?? ''));
-            $textBlob .= ' ' . $name . ' ' . $description;
+            $textBlob .= ' '.$name.' '.$description;
         }
 
         $activePerks = [
@@ -60,6 +59,27 @@ class PerkService
         }
 
         return $baseTaxRate;
+    }
+
+    /**
+     * Tax fraction withheld when you instant-sell into buy orders (Hypixel quick_status.buyPrice leg).
+     * Base 1.25%; Diaz-style mayor lowers it; Aura (minister) raises sell fee to 2.25% (best-effort text match).
+     */
+    public function getInstantSellBazaarTaxRate(?array $mayorPayload = null): float
+    {
+        $payload = $mayorPayload ?? $this->mayorService->getCurrentMayorData();
+        $mayor = strtolower((string) ($payload['name'] ?? ''));
+        $perks = (array) ($payload['perks'] ?? []);
+        $blob = $mayor;
+        foreach ($perks as $perk) {
+            $blob .= ' '.strtolower((string) ($perk['name'] ?? '')).' '.strtolower((string) ($perk['description'] ?? ''));
+        }
+
+        if (str_contains($blob, 'aura')) {
+            return 0.0225;
+        }
+
+        return $this->getBazaarTaxRate(0.0125);
     }
 
     public function getForgeTimeMultiplier(float $defaultMultiplier = 1.0): float

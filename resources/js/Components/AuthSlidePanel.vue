@@ -2,7 +2,7 @@
 import ApplicationLogo from '@/Components/ApplicationLogo.vue';
 import { computed, watch, onMounted, onUnmounted } from 'vue';
 import { usePage } from '@inertiajs/vue3';
-import { useI18n } from 'vue-i18n';
+import { useI18n } from '@/strings/useI18n';
 
 const { t } = useI18n();
 const page = usePage();

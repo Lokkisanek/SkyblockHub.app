@@ -1,7 +1,7 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, Link } from '@inertiajs/vue3';
-import { useI18n } from 'vue-i18n';
+import { useI18n } from '@/strings/useI18n';
 
 const { t } = useI18n();
 </script>
@@ -14,7 +14,7 @@ const { t } = useI18n();
             <div class="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
                 <header class="mb-8 flex flex-wrap items-end justify-between gap-4">
                     <div>
-                        <p class="text-[11px] font-semibold uppercase tracking-[0.24em] text-amber-200/70">Leaderboards Beta</p>
+                        <p class="text-[11px] font-semibold uppercase tracking-[0.24em] text-amber-200/70">{{ t('leaderboardsInfo.titleKicker') }}</p>
                         <h1 class="mt-2 text-3xl font-semibold tracking-tight text-white sm:text-4xl">{{ t('leaderboardsInfo.title') }}</h1>
                         <p class="mt-2 max-w-3xl text-sm text-white/55 sm:text-base">{{ t('leaderboardsInfo.subtitle') }}</p>
                     </div>
@@ -35,9 +35,9 @@ const { t } = useI18n();
                     </article>
 
                     <article class="info-card" style="border-left: 2px solid rgba(99, 102, 241, 0.35);">
-                        <p class="info-kicker text-indigo-300/85">{{ t('leaderboardsInfo.tierKicker') }}</p>
-                        <h2 class="info-title">{{ t('leaderboardsInfo.tierTitle') }}</h2>
-                        <p class="info-body">{{ t('leaderboardsInfo.tierBody') }}</p>
+                        <p class="info-kicker text-indigo-300/85">{{ t('leaderboardsInfo.dataKicker') }}</p>
+                        <h2 class="info-title">{{ t('leaderboardsInfo.dataTitle') }}</h2>
+                        <p class="info-body">{{ t('leaderboardsInfo.dataBody') }}</p>
                     </article>
                 </section>
 

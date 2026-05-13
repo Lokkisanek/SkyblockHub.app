@@ -12,12 +12,8 @@ class MarketManipulationDetected implements ShouldBroadcastNow
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
-    /** @var array<int, array<string, mixed>> */
     public array $alerts;
 
-    /**
-     * @param array<int, array<string, mixed>> $alerts
-     */
     public function __construct(array $alerts)
     {
         $this->alerts = $alerts;

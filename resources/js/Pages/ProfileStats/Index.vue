@@ -2,7 +2,7 @@
 import { ref, computed, onMounted, provide } from 'vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head } from '@inertiajs/vue3';
-import { useI18n } from 'vue-i18n';
+import { useI18n } from '@/strings/useI18n';
 import { preloadAllTextures, setEnabledPacks, getSkinUrl, getHeadUrl, getRarityColor, getItemTextureUrl, RARITY_COLORS, SKILL_ICONS, SLAYER_ICONS, CLASS_ICONS } from '@/utils/textures';
 import ItemSlot from '@/Components/SkyBlock/ItemSlot.vue';
 import InventoryGrid from '@/Components/SkyBlock/InventoryGrid.vue';
@@ -20,6 +20,12 @@ const profileData = ref(null);
 const loading = ref(false);
 const error = ref('');
 const selectedProfile = ref(null);
+
+const hasLoadedProfile = computed(
+    () => !!(profileData.value && selectedProfile.value && currentProfile.value && !loading.value)
+);
+
+const showHeroLoading = computed(() => loading.value && !profileData.value);
 const activeTab = ref('gear');
 let activeFetchController = null;
 let fetchSequence = 0;
@@ -124,11 +130,19 @@ async function fetchProfile() {
             return;
         }
 
-        profileData.value = json.data;
-
         const profiles = json.data?.profiles ?? {};
         const keys = Object.keys(profiles);
-        const sel = keys.find(k => profiles[k].selected) || keys[0];
+
+        if (keys.length === 0) {
+            error.value = json.error || t('profileStats.fetchFailed');
+            profileData.value = null;
+            selectedProfile.value = null;
+            return;
+        }
+
+        profileData.value = json.data;
+
+        const sel = keys.find((k) => profiles[k].selected) || keys[0];
         if (sel) selectedProfile.value = sel;
     } catch (e) {
         if (requestId !== fetchSequence) {
@@ -463,51 +477,80 @@ onMounted(async () => {
     <Head :title="t('profileStats.title')" />
 
     <AuthenticatedLayout>
-        <div class="py-4">
+        <div :class="hasLoadedProfile ? 'py-4' : ''">
             <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                <div class="flex w-full flex-col">
+                    <!-- Top spacer: height animates (flex-grow does not interpolate in browsers). -->
+                    <div
+                        aria-hidden="true"
+                        class="shrink-0 overflow-hidden transition-[height,opacity] duration-1000 ease-out motion-reduce:transition-none"
+                        :class="
+                            hasLoadedProfile
+                                ? 'pointer-events-none h-0 opacity-0'
+                                : 'h-[min(36vh,300px)] opacity-100'
+                        "
+                    />
 
-                <!-- ═══ SEARCH BAR ═══ -->
-                <div class="mb-8 flex justify-center">
-                    <div class="w-full max-w-2xl rounded-2xl border border-border/80 bg-surface-900/75 p-3 shadow-[0_16px_40px_rgba(0,0,0,0.35)] backdrop-blur-sm">
-                        <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
-                            <div class="relative flex-1">
-                                <svg class="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                                    <path fill-rule="evenodd" d="M8.5 3a5.5 5.5 0 104.35 8.87l2.64 2.64a1 1 0 001.42-1.42l-2.64-2.64A5.5 5.5 0 008.5 3zm-3.5 5.5a3.5 3.5 0 117 0 3.5 3.5 0 01-7 0z" clip-rule="evenodd" />
-                                </svg>
-                                <input
-                                    v-model="username"
-                                    type="text"
-                                    :placeholder="t('profileStats.searchPlaceholder')"
-                                    class="w-full rounded-xl border border-border/80 bg-surface-800/80 py-3 pl-11 pr-4 text-sm text-white placeholder:text-neutral/80 transition focus:border-profit/70 focus:outline-none focus:ring-2 focus:ring-profit/25"
-                                    @keyup.enter="fetchProfile"
-                                />
+                    <div class="z-10 flex w-full shrink-0 justify-center" :class="hasLoadedProfile ? 'mb-8' : ''">
+                        <div class="w-full max-w-2xl rounded-2xl border border-border/80 bg-surface-900/75 p-3 shadow-[0_16px_40px_rgba(0,0,0,0.35)] backdrop-blur-sm">
+                            <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+                                <div class="relative flex-1">
+                                    <svg class="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                        <path fill-rule="evenodd" d="M8.5 3a5.5 5.5 0 104.35 8.87l2.64 2.64a1 1 0 001.42-1.42l-2.64-2.64A5.5 5.5 0 008.5 3zm-3.5 5.5a3.5 3.5 0 117 0 3.5 3.5 0 01-7 0z" clip-rule="evenodd" />
+                                    </svg>
+                                    <input
+                                        v-model="username"
+                                        type="text"
+                                        :placeholder="t('profileStats.searchPlaceholder')"
+                                        class="w-full rounded-xl border border-border/80 bg-surface-800/80 py-3 pl-11 pr-4 text-sm text-white placeholder:text-neutral/80 transition focus:border-profit/70 focus:outline-none focus:ring-2 focus:ring-profit/25"
+                                        @keyup.enter="fetchProfile"
+                                    />
+                                </div>
+                                <button
+                                    type="button"
+                                    @click="fetchProfile"
+                                    :disabled="loading"
+                                    class="inline-flex h-[46px] items-center justify-center rounded-xl border border-profit/35 bg-profit/20 px-6 text-sm font-semibold text-profit transition hover:bg-profit/30 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                    {{ loading ? t('profileStats.loading') : t('profileStats.search') }}
+                                </button>
                             </div>
-                            <button
-                                @click="fetchProfile"
-                                :disabled="loading"
-                                class="inline-flex h-[46px] items-center justify-center rounded-xl border border-profit/35 bg-profit/20 px-6 text-sm font-semibold text-profit transition hover:bg-profit/30 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
-                            >
-                                {{ loading ? t('profileStats.loading') : t('profileStats.search') }}
-                            </button>
                         </div>
                     </div>
-                </div>
 
-                <!-- Error -->
-                <div v-if="error" class="mb-4 border border-loss/50 bg-loss/10 text-loss text-sm px-4 py-3 rounded">
-                    {{ error }}
-                </div>
+                    <div
+                        v-if="error"
+                        class="mx-auto mb-4 w-full max-w-2xl shrink-0 rounded-lg border border-loss/50 bg-loss/10 px-4 py-3 text-center text-sm text-loss"
+                        :class="hasLoadedProfile ? '' : 'mt-3'"
+                    >
+                        {{ error }}
+                    </div>
 
-                <!-- Loading spinner -->
-                <div v-if="loading" class="flex items-center gap-3 text-neutral">
-                    <div class="animate-spin h-5 w-5 border-2 border-neutral border-t-profit rounded-full"></div>
-                    <span class="text-sm">{{ t('profileStats.fetchingProfile') }}</span>
-                </div>
+                    <div
+                        v-if="!hasLoadedProfile"
+                        class="flex shrink-0 flex-col items-center justify-center gap-4 py-6"
+                        :class="showHeroLoading ? 'min-h-[4.5rem]' : 'min-h-0'"
+                    >
+                        <div v-if="showHeroLoading" class="flex items-center gap-3 text-neutral" role="status" aria-live="polite">
+                            <span class="h-5 w-5 shrink-0 animate-spin rounded-full border-2 border-neutral/40 border-t-profit" />
+                            <span class="text-sm text-neutral">{{ t('profileStats.fetchingProfile') }}</span>
+                        </div>
+                    </div>
 
-                <!-- ════════════════════════════════════════════════════════ -->
-                <!--  PROFILE CONTENT                                        -->
-                <!-- ════════════════════════════════════════════════════════ -->
-                <div v-if="profileData && !loading && currentProfile">
+                    <div
+                        aria-hidden="true"
+                        class="shrink-0 overflow-hidden transition-[height,opacity] duration-1000 ease-out motion-reduce:transition-none"
+                        :class="
+                            hasLoadedProfile
+                                ? 'pointer-events-none h-0 opacity-0'
+                                : 'h-[min(36vh,300px)] opacity-100'
+                        "
+                    />
+
+                    <!-- ════════════════════════════════════════════════════════ -->
+                    <!--  PROFILE CONTENT                                        -->
+                    <!-- ════════════════════════════════════════════════════════ -->
+                    <div v-if="hasLoadedProfile" class="w-full">
 
                     <!-- ═══ STATS SUMMARY BAR ═══ -->
                     <div v-if="currentData" class="border border-profit/30 bg-profit/5 rounded px-4 py-2 mb-4">
@@ -1358,6 +1401,7 @@ onMounted(async () => {
                          class="border border-border bg-surface-800 rounded p-8 text-center">
                         <p class="text-neutral text-sm">{{ capitalize(activeTab) }} - {{ t('profileStats.comingSoon') }}</p>
                         <p class="text-neutral/50 text-xs mt-1">{{ t('profileStats.comingSoonDesc') }}</p>
+                    </div>
                     </div>
                 </div>
 

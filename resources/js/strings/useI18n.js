@@ -1,6 +1,5 @@
 import { getCurrentInstance, inject, ref } from 'vue';
-
-export const I18nInjectionKey = Symbol('SkyblockHubI18n');
+import { I18nInjectionKey } from './core';
 
 function fallbackTranslate(key, params = {}) {
     if (typeof key !== 'string' || key.length === 0) {
@@ -32,11 +31,11 @@ export function useI18n() {
     const tmSource =
         (injected && typeof injected.tm === 'function' && injected.tm.bind(injected)) ||
         (typeof globals.$tm === 'function' && globals.$tm.bind(globals)) ||
-        ((key) => key);  // Return raw key as fallback
+        ((key) => key);
     const rtSource =
         (injected && typeof injected.rt === 'function' && injected.rt.bind(injected)) ||
         (typeof globals.$rt === 'function' && globals.$rt.bind(globals)) ||
-        ((msg) => msg);  // Return message as-is
+        ((msg) => msg);
 
     return {
         t: (key, params) => tSource(key, params),

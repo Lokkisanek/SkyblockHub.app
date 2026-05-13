@@ -28,8 +28,7 @@ class HypixelProfileController extends Controller
 
     public function __construct(
         private readonly HypixelApiProxy $hypixelApi,
-    ) {
-    }
+    ) {}
 
     /** Cumulative XP thresholds per skill level (Hypixel curve). */
     private const SKILL_XP_TABLE = [
@@ -51,12 +50,12 @@ class HypixelProfileController extends Controller
     ];
 
     private const SLAYER_XP_TABLE = [
-        'zombie'    => [0, 5, 15, 200, 1000, 5000, 20000, 100000, 400000, 1000000],
-        'spider'    => [0, 5, 25, 200, 1000, 5000, 20000, 100000, 400000, 1000000],
-        'wolf'      => [0, 10, 30, 250, 1500, 5000, 20000, 100000, 400000, 1000000],
-        'enderman'  => [0, 10, 30, 250, 1500, 5000, 20000, 100000, 400000, 1000000],
-        'blaze'     => [0, 10, 30, 250, 1500, 5000, 20000, 100000, 400000, 1000000],
-        'vampire'   => [0, 20, 75, 240, 840, 2400],
+        'zombie' => [0, 5, 15, 200, 1000, 5000, 20000, 100000, 400000, 1000000],
+        'spider' => [0, 5, 25, 200, 1000, 5000, 20000, 100000, 400000, 1000000],
+        'wolf' => [0, 10, 30, 250, 1500, 5000, 20000, 100000, 400000, 1000000],
+        'enderman' => [0, 10, 30, 250, 1500, 5000, 20000, 100000, 400000, 1000000],
+        'blaze' => [0, 10, 30, 250, 1500, 5000, 20000, 100000, 400000, 1000000],
+        'vampire' => [0, 20, 75, 240, 840, 2400],
     ];
 
     /** Coin cost to unlock each slayer boss tier. */
@@ -70,32 +69,32 @@ class HypixelProfileController extends Controller
 
     /** Slayer boss display names. */
     private const SLAYER_INFO = [
-        'zombie'   => 'Revenant Horror',
-        'spider'   => 'Tarantula Broodfather',
-        'wolf'     => 'Sven Packmaster',
+        'zombie' => 'Revenant Horror',
+        'spider' => 'Tarantula Broodfather',
+        'wolf' => 'Sven Packmaster',
         'enderman' => 'Voidgloom Seraph',
-        'blaze'    => 'Inferno Demonlord',
-        'vampire'  => 'Riftstalker Bloodfiend',
+        'blaze' => 'Inferno Demonlord',
+        'vampire' => 'Riftstalker Bloodfiend',
     ];
 
     /** Minecraft color code name → hex color (for rank colors). */
     private const MC_COLOR_MAP = [
-        'BLACK'        => '#000000',
-        'DARK_BLUE'    => '#0000AA',
-        'DARK_GREEN'   => '#00AA00',
-        'DARK_AQUA'    => '#00AAAA',
-        'DARK_RED'     => '#AA0000',
-        'DARK_PURPLE'  => '#AA00AA',
-        'GOLD'         => '#FFAA00',
-        'GRAY'         => '#AAAAAA',
-        'DARK_GRAY'    => '#555555',
-        'BLUE'         => '#5555FF',
-        'GREEN'        => '#55FF55',
-        'AQUA'         => '#55FFFF',
-        'RED'          => '#FF5555',
+        'BLACK' => '#000000',
+        'DARK_BLUE' => '#0000AA',
+        'DARK_GREEN' => '#00AA00',
+        'DARK_AQUA' => '#00AAAA',
+        'DARK_RED' => '#AA0000',
+        'DARK_PURPLE' => '#AA00AA',
+        'GOLD' => '#FFAA00',
+        'GRAY' => '#AAAAAA',
+        'DARK_GRAY' => '#555555',
+        'BLUE' => '#5555FF',
+        'GREEN' => '#55FF55',
+        'AQUA' => '#55FFFF',
+        'RED' => '#FF5555',
         'LIGHT_PURPLE' => '#FF55FF',
-        'YELLOW'       => '#FFFF55',
-        'WHITE'        => '#FFFFFF',
+        'YELLOW' => '#FFFF55',
+        'WHITE' => '#FFFFFF',
     ];
 
     /** Pet XP required between levels (indexed by pet level). */
@@ -124,12 +123,12 @@ class HypixelProfileController extends Controller
 
     /** Rarity → starting level offset in PET_LEVELS array. */
     private const PET_RARITY_OFFSET = [
-        'COMMON'    => 0,
-        'UNCOMMON'  => 6,
-        'RARE'      => 11,
-        'EPIC'      => 16,
+        'COMMON' => 0,
+        'UNCOMMON' => 6,
+        'RARE' => 11,
+        'EPIC' => 16,
         'LEGENDARY' => 20,
-        'MYTHIC'    => 20,
+        'MYTHIC' => 20,
     ];
 
     /** Pet mob type → skull texture hash for 3D heads. */
@@ -444,9 +443,9 @@ class HypixelProfileController extends Controller
             'searched_at' => now(),
         ]);
 
-        Cache::forget('landing_social_proof_metrics_v1');
+        Cache::forget('landing_social_proof_metrics_v2');
 
-        $cacheKey = 'hypixel:profile:' . strtolower($username);
+        $cacheKey = 'hypixel:profile:'.strtolower($username);
 
         // ── Try cache ────────────────────────────────────────────────
         $cached = $this->cacheGet($cacheKey);
@@ -494,7 +493,7 @@ class HypixelProfileController extends Controller
 
         // ── Fetch player data for rank info ──────────────────────────
         $playerData = $this->hypixelApi->getPlayer($uuid);
-        $rankData   = $this->parseRank($playerData);
+        $rankData = $this->parseRank($playerData);
 
         // ── Transform into front-end format ──────────────────────────
         $data = $this->transformProfiles($rawProfiles, $uuid, $username, $museumDataByProfile);
@@ -508,6 +507,57 @@ class HypixelProfileController extends Controller
         $this->persistProfilesCache($data, $playerData);
 
         return response()->json(['source' => 'api', 'data' => $data]);
+    }
+
+    /**
+     * Fetch SkyBlock profiles from Hypixel, transform, and upsert profiles_cache.
+     * Intended for scheduled ingest — does not write ProfileSearch or the per-username HTTP profile cache.
+     */
+    public function ingestProfilesCacheForUuid(string $uuid): bool
+    {
+        $uuid = strtolower(preg_replace('/[^0-9a-fA-F]/', '', $uuid));
+        if (strlen($uuid) !== 32 || ! ctype_xdigit($uuid)) {
+            return false;
+        }
+
+        $profilesResponse = $this->hypixelApi->getProfiles($uuid);
+        if ($profilesResponse === null) {
+            return false;
+        }
+
+        $rawProfiles = $profilesResponse['profiles'] ?? [];
+        if (! is_array($rawProfiles) || $rawProfiles === []) {
+            return false;
+        }
+
+        $playerData = $this->hypixelApi->getPlayer($uuid);
+        $username = $this->resolveUsernameForIngest($playerData, $uuid);
+        $rankData = $this->parseRank($playerData);
+        $museumDataByProfile = [];
+
+        $data = $this->transformProfiles($rawProfiles, $uuid, $username, $museumDataByProfile);
+        $data['rank'] = $rankData;
+        $data = $this->sanitizeForJson($data);
+        $this->persistProfilesCache($data, $playerData);
+
+        return true;
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $playerData
+     */
+    private function resolveUsernameForIngest(?array $playerData, string $uuidFallback): string
+    {
+        if (! is_array($playerData)) {
+            return $uuidFallback;
+        }
+
+        $name = $playerData['displayname'] ?? $playerData['displayName'] ?? null;
+        if (is_string($name) && trim($name) !== '') {
+            return trim($name);
+        }
+
+        return $uuidFallback;
     }
 
     /**
@@ -534,9 +584,11 @@ class HypixelProfileController extends Controller
             $profileData['username'] = $username;
             $profileData['player'] = [
                 'rank' => $rank,
-                'online' => (bool) ($playerData['lastLogin'] ?? false) && (($playerData['lastLogin'] ?? 0) > ($playerData['lastLogout'] ?? 0)),
-                'lastLogin' => isset($playerData['lastLogin']) ? (int) $playerData['lastLogin'] : null,
-                'lastLogout' => isset($playerData['lastLogout']) ? (int) $playerData['lastLogout'] : null,
+                'online' => is_array($playerData)
+                    && (bool) ($playerData['lastLogin'] ?? false)
+                    && (($playerData['lastLogin'] ?? 0) > ($playerData['lastLogout'] ?? 0)),
+                'lastLogin' => is_array($playerData) && isset($playerData['lastLogin']) ? (int) $playerData['lastLogin'] : null,
+                'lastLogout' => is_array($playerData) && isset($playerData['lastLogout']) ? (int) $playerData['lastLogout'] : null,
             ];
 
             ProfileCache::query()->updateOrCreate(
@@ -604,32 +656,46 @@ class HypixelProfileController extends Controller
      */
     private function parseRank(?array $player): array
     {
-        if (! $player) return ['prefix' => null, 'color' => '#AAAAAA'];
+        if (! $player) {
+            return ['prefix' => null, 'color' => '#AAAAAA'];
+        }
 
-        $rank            = $player['rank'] ?? null;
-        $monthlyRank     = $player['monthlyPackageRank'] ?? null;
-        $newPackageRank  = $player['newPackageRank'] ?? null;
-        $packageRank     = $player['packageRank'] ?? null;
-        $rankPlusColor   = $player['rankPlusColor'] ?? null;
+        $rank = $player['rank'] ?? null;
+        $monthlyRank = $player['monthlyPackageRank'] ?? null;
+        $newPackageRank = $player['newPackageRank'] ?? null;
+        $packageRank = $player['packageRank'] ?? null;
+        $rankPlusColor = $player['rankPlusColor'] ?? null;
         $monthlyRankColor = $player['monthlyRankColor'] ?? null;
 
         // Special staff/content creator ranks
-        if ($rank === 'ADMIN')      return ['prefix' => '[ADMIN]', 'color' => '#FF5555'];
-        if ($rank === 'MODERATOR')  return ['prefix' => '[MOD]', 'color' => '#00AA00'];
-        if ($rank === 'GAME_MASTER') return ['prefix' => '[GM]', 'color' => '#00AA00'];
-        if ($rank === 'HELPER')     return ['prefix' => '[HELPER]', 'color' => '#5555FF'];
-        if ($rank === 'YOUTUBER')   return ['prefix' => '[YOUTUBE]', 'color' => '#FF5555'];
+        if ($rank === 'ADMIN') {
+            return ['prefix' => '[ADMIN]', 'color' => '#FF5555'];
+        }
+        if ($rank === 'MODERATOR') {
+            return ['prefix' => '[MOD]', 'color' => '#00AA00'];
+        }
+        if ($rank === 'GAME_MASTER') {
+            return ['prefix' => '[GM]', 'color' => '#00AA00'];
+        }
+        if ($rank === 'HELPER') {
+            return ['prefix' => '[HELPER]', 'color' => '#5555FF'];
+        }
+        if ($rank === 'YOUTUBER') {
+            return ['prefix' => '[YOUTUBE]', 'color' => '#FF5555'];
+        }
 
         // MVP++
         if ($monthlyRank === 'SUPERSTAR') {
             $nameColor = self::MC_COLOR_MAP[$monthlyRankColor ?? 'GOLD'] ?? '#FFAA00';
-            $plusColor  = self::MC_COLOR_MAP[$rankPlusColor ?? 'RED'] ?? '#FF5555';
+            $plusColor = self::MC_COLOR_MAP[$rankPlusColor ?? 'RED'] ?? '#FF5555';
+
             return ['prefix' => '[MVP++]', 'color' => $nameColor, 'plusColor' => $plusColor];
         }
 
         // MVP+
         if (($newPackageRank ?? $packageRank) === 'MVP_PLUS') {
             $plusColor = self::MC_COLOR_MAP[$rankPlusColor ?? 'RED'] ?? '#FF5555';
+
             return ['prefix' => '[MVP+]', 'color' => '#55FFFF', 'plusColor' => $plusColor];
         }
 
@@ -651,7 +717,6 @@ class HypixelProfileController extends Controller
         // No rank
         return ['prefix' => null, 'color' => '#AAAAAA'];
     }
-
 
     /**
      * Transform raw Hypixel profiles response into the structure expected
@@ -691,14 +756,18 @@ class HypixelProfileController extends Controller
 
         foreach ($rawProfiles as $profile) {
             $profileId = $profile['profile_id'] ?? null;
-            if (! $profileId) continue;
+            if (! $profileId) {
+                continue;
+            }
 
             $member = $profile['members'][$uuid] ?? null;
-            if (! $member) continue;
+            if (! $member) {
+                continue;
+            }
 
             $skills = $this->parseSkills($member);
 
-            $countable = array_filter($skills, fn($v, $k) => !in_array($k, ['runecrafting', 'social']), ARRAY_FILTER_USE_BOTH);
+            $countable = array_filter($skills, fn ($v, $k) => ! in_array($k, ['runecrafting', 'social']), ARRAY_FILTER_USE_BOTH);
             $avgSkillLevel = count($countable) > 0
                 ? round(array_sum(array_column($countable, 'level')) / count($countable), 2)
                 : 0;
@@ -719,81 +788,81 @@ class HypixelProfileController extends Controller
 
             // Extract price maps for injecting into parsed items
             $pricesByUuid = $networthData['itemPricesByUuid'] ?? [];
-            $pricesById   = $networthData['itemPricesById'] ?? [];
+            $pricesById = $networthData['itemPricesById'] ?? [];
 
             // Remove raw price maps from the networth response sent to frontend
             unset($networthData['itemPricesByUuid'], $networthData['itemPricesById']);
 
             // Parse all inventory sections first
-            $armor      = $this->parseArmor($member);
-            $equipment  = $this->parseEquipment($member);
-            $wardrobe   = $this->parseWardrobe($member);
-            $weapons    = $this->parseWeapons($member);
-            $accessories= $this->parseAccessories($member);
-            $inventory  = $this->parsePlayerInventory($member);
+            $armor = $this->parseArmor($member);
+            $equipment = $this->parseEquipment($member);
+            $wardrobe = $this->parseWardrobe($member);
+            $weapons = $this->parseWeapons($member);
+            $accessories = $this->parseAccessories($member);
+            $inventory = $this->parsePlayerInventory($member);
             $enderchest = $this->parseEnderChest($member);
             $personalVault = $this->parsePersonalVault($member);
             $fishingBag = $this->parseBagContents($member, 'fishing_bag');
-            $potionBag  = $this->parseBagContents($member, 'potion_bag');
-            $quiver     = $this->parseBagContents($member, 'quiver');
-            $storage    = $this->parseBackpackStorage($member);
+            $potionBag = $this->parseBagContents($member, 'potion_bag');
+            $quiver = $this->parseBagContents($member, 'quiver');
+            $storage = $this->parseBackpackStorage($member);
 
             // Inject item values into all flat item arrays
-            $armor      = $this->injectItemValues($armor, $pricesByUuid, $pricesById);
-            $equipment  = $this->injectItemValues($equipment, $pricesByUuid, $pricesById);
-            $weapons    = $this->injectItemValues($weapons, $pricesByUuid, $pricesById);
-            $accessories= $this->injectItemValues($accessories, $pricesByUuid, $pricesById);
-            $inventory  = $this->injectItemValues($inventory, $pricesByUuid, $pricesById);
+            $armor = $this->injectItemValues($armor, $pricesByUuid, $pricesById);
+            $equipment = $this->injectItemValues($equipment, $pricesByUuid, $pricesById);
+            $weapons = $this->injectItemValues($weapons, $pricesByUuid, $pricesById);
+            $accessories = $this->injectItemValues($accessories, $pricesByUuid, $pricesById);
+            $inventory = $this->injectItemValues($inventory, $pricesByUuid, $pricesById);
             $enderchest = $this->injectItemValuesNested($enderchest, $pricesByUuid, $pricesById);
             $personalVault = $this->injectItemValues($personalVault, $pricesByUuid, $pricesById);
             $fishingBag = $this->injectItemValues($fishingBag, $pricesByUuid, $pricesById);
-            $potionBag  = $this->injectItemValues($potionBag, $pricesByUuid, $pricesById);
-            $quiver     = $this->injectItemValues($quiver, $pricesByUuid, $pricesById);
-            $wardrobe   = $this->injectItemValuesWardrobe($wardrobe, $pricesByUuid, $pricesById);
-            $storage    = $this->injectItemValuesStorage($storage, $pricesByUuid, $pricesById);
+            $potionBag = $this->injectItemValues($potionBag, $pricesByUuid, $pricesById);
+            $quiver = $this->injectItemValues($quiver, $pricesByUuid, $pricesById);
+            $wardrobe = $this->injectItemValuesWardrobe($wardrobe, $pricesByUuid, $pricesById);
+            $storage = $this->injectItemValuesStorage($storage, $pricesByUuid, $pricesById);
 
             $profiles[$profileId] = [
                 'cute_name' => $profile['cute_name'] ?? 'Unknown',
-                'selected'  => $profile['selected'] ?? false,
+                'selected' => $profile['selected'] ?? false,
                 'game_mode' => $profile['game_mode'] ?? 'normal',
-                'data'      => [
-                    'skyblock_level'      => $this->parseSkyblockLevel($member),
-                    'fairy_souls'         => $member['fairy_soul']['total_collected'] ?? $member['fairy_exchanges'] ?? 0,
-                    'first_join'          => $member['profile']['first_join'] ?? null,
+                'data' => [
+                    'skyblock_level' => $this->parseSkyblockLevel($member),
+                    'fairy_souls' => $member['fairy_soul']['total_collected'] ?? $member['fairy_exchanges'] ?? 0,
+                    'first_join' => $member['profile']['first_join'] ?? null,
                     'average_skill_level' => $avgSkillLevel,
-                    'skills'     => $skills,
-                    'slayers'    => $this->parseSlayers($member),
-                    'collections'=> $this->parseCollections($member),
-                    'dungeons'   => $this->parseDungeons($member),
-                    'networth'   => $networthData,
-                    'pets'       => $this->parsePets($member),
-                    'armor'      => $armor,
-                    'equipment'  => $equipment,
-                    'wardrobe'   => $wardrobe,
-                    'weapons'    => $weapons,
-                    'accessories'=> $accessories,
-                    'talisman_bag'   => $this->parseBagContents($member, 'talisman_bag'),
-                    'inventory'  => $inventory,
+                    'skills' => $skills,
+                    'slayers' => $this->parseSlayers($member),
+                    'collections' => $this->parseCollections($member),
+                    'dungeons' => $this->parseDungeons($member),
+                    'networth' => $networthData,
+                    'pets' => $this->parsePets($member),
+                    'armor' => $armor,
+                    'equipment' => $equipment,
+                    'wardrobe' => $wardrobe,
+                    'weapons' => $weapons,
+                    'accessories' => $accessories,
+                    'talisman_bag' => $this->parseBagContents($member, 'talisman_bag'),
+                    'inventory' => $inventory,
                     'enderchest' => $enderchest,
                     'personal_vault' => $personalVault,
-                    'fishing_bag'    => $fishingBag,
-                    'potion_bag'     => $potionBag,
-                    'quiver'         => $quiver,
-                    'candy_bag'      => $this->parseCandyBag($member, $profile),
-                    'storage'        => $storage,
-                    'museum'         => $this->parseMuseum($member, $profile),
+                    'fishing_bag' => $fishingBag,
+                    'potion_bag' => $potionBag,
+                    'quiver' => $quiver,
+                    'candy_bag' => $this->parseCandyBag($member, $profile),
+                    'storage' => $storage,
+                    'museum' => $this->parseMuseum($member, $profile),
                     'rift_inventory' => $this->parseRiftInventory($member),
-                    'rift_enderchest'=> $this->parseRiftEnderchest($member),
+                    'rift_enderchest' => $this->parseRiftEnderchest($member),
                     'accessory_bag_storage' => $this->parseAccessoryBagStorage($member),
                     'wardrobe_slot' => $member['inventory']['wardrobe_equipped_slot'] ?? null,
-                    'inv_disabled'  => empty($member['inventory']['inv_contents']['data'] ?? null),
-                    'player_stats'  => $this->calculatePlayerStats($member, $skills, $armor, $equipment, $accessories),
+                    'inv_disabled' => empty($member['inventory']['inv_contents']['data'] ?? null),
+                    'player_stats' => $this->calculatePlayerStats($member, $skills, $armor, $equipment, $accessories),
                 ],
             ];
         }
 
         return [
-            'uuid'     => $uuid,
+            'uuid' => $uuid,
             'username' => $username,
             'profiles' => $profiles,
         ];
@@ -813,19 +882,19 @@ class HypixelProfileController extends Controller
         ];
 
         foreach ($skillNames as $name) {
-            $key = 'SKILL_' . strtoupper($name);
-            $xp  = $experience[$key] ?? 0;
+            $key = 'SKILL_'.strtoupper($name);
+            $xp = $experience[$key] ?? 0;
 
             $maxLevel = in_array($name, ['runecrafting', 'social', 'hunting']) ? 25 : 60;
-            $detail   = $this->xpToLevelDetailed($xp, self::SKILL_XP_TABLE, $maxLevel);
+            $detail = $this->xpToLevelDetailed($xp, self::SKILL_XP_TABLE, $maxLevel);
 
             $skills[$name] = [
-                'level'     => $detail['level'],
-                'maxLevel'  => $maxLevel,
-                'xp'        => $xp,
+                'level' => $detail['level'],
+                'maxLevel' => $maxLevel,
+                'xp' => $xp,
                 'xpCurrent' => $detail['xpCurrent'],
                 'xpForNext' => $detail['xpForNext'],
-                'progress'  => $detail['progress'],
+                'progress' => $detail['progress'],
             ];
         }
 
@@ -841,13 +910,15 @@ class HypixelProfileController extends Controller
         $slayerBosses = $member['slayer']['slayer_bosses'] ?? $member['slayer_bosses'] ?? [];
 
         foreach ($slayerBosses as $name => $data) {
-            if (! is_array($data)) continue;
+            if (! is_array($data)) {
+                continue;
+            }
 
             $xp = $data['xp'] ?? 0;
 
-            $table    = self::SLAYER_XP_TABLE[$name] ?? self::SLAYER_XP_TABLE['zombie'];
+            $table = self::SLAYER_XP_TABLE[$name] ?? self::SLAYER_XP_TABLE['zombie'];
             $maxLevel = count($table) - 1;
-            $level    = 0;
+            $level = 0;
 
             for ($i = $maxLevel; $i >= 0; $i--) {
                 if ($xp >= $table[$i]) {
@@ -857,7 +928,7 @@ class HypixelProfileController extends Controller
             }
 
             // XP progress towards next level
-            $progress  = 0;
+            $progress = 0;
             $xpForNext = 0;
             $xpCurrent = 0;
             if ($level < $maxLevel) {
@@ -865,7 +936,7 @@ class HypixelProfileController extends Controller
                 $currentThreshold = $table[$level];
                 $xpCurrent = $xp - $currentThreshold;
                 $xpForNext = $nextThreshold - $currentThreshold;
-                $progress  = $xpForNext > 0 ? $xpCurrent / $xpForNext : 0;
+                $progress = $xpForNext > 0 ? $xpCurrent / $xpForNext : 0;
             } else {
                 $progress = 1;
                 $xpCurrent = $xp - $table[$maxLevel];
@@ -885,23 +956,23 @@ class HypixelProfileController extends Controller
             }
 
             $output['slayers'][$name] = [
-                'name'        => self::SLAYER_INFO[$name] ?? ucfirst($name),
-                'level'       => [
+                'name' => self::SLAYER_INFO[$name] ?? ucfirst($name),
+                'level' => [
                     'currentLevel' => $level,
-                    'maxLevel'     => $maxLevel,
-                    'xp'           => $xp,
-                    'xpCurrent'    => $xpCurrent,
-                    'xpForNext'    => $xpForNext,
-                    'progress'     => $progress,
+                    'maxLevel' => $maxLevel,
+                    'xp' => $xp,
+                    'xpCurrent' => $xpCurrent,
+                    'xpForNext' => $xpForNext,
+                    'progress' => $progress,
                 ],
-                'xp'          => $xp,
-                'kills'       => $kills,
+                'xp' => $xp,
+                'kills' => $kills,
                 'total_kills' => $totalKills,
                 'coins_spent' => $coinsSpent,
             ];
         }
 
-        $output['total_slayer_xp']   = array_sum(array_column($output['slayers'], 'xp'));
+        $output['total_slayer_xp'] = array_sum(array_column($output['slayers'], 'xp'));
         $output['total_coins_spent'] = array_sum(array_column(array_values($output['slayers']), 'coins_spent'));
 
         return $output;
@@ -945,10 +1016,10 @@ class HypixelProfileController extends Controller
             $categoryMaxed = 0;
 
             foreach ($items as $itemId => $itemDef) {
-                $name     = $itemDef['name'] ?? $itemId;
-                $maxTier  = $itemDef['maxTiers'] ?? 0;
-                $tiers    = $itemDef['tiers'] ?? [];
-                $amount   = $playerCollections[$itemId] ?? 0;
+                $name = $itemDef['name'] ?? $itemId;
+                $maxTier = $itemDef['maxTiers'] ?? 0;
+                $tiers = $itemDef['tiers'] ?? [];
+                $amount = $playerCollections[$itemId] ?? 0;
 
                 // Calculate current tier
                 $currentTier = 0;
@@ -978,14 +1049,14 @@ class HypixelProfileController extends Controller
                 $isMaxed = $currentTier >= $maxTier && $maxTier > 0;
 
                 $categoryCollections[] = [
-                    'id'        => $itemId,
-                    'name'      => $name,
-                    'amount'    => $amount,
-                    'tier'      => $currentTier,
-                    'maxTier'   => $maxTier,
-                    'maxed'     => $isMaxed,
-                    'unlocked'  => $amount > 0,
-                    'progress'  => $progress,
+                    'id' => $itemId,
+                    'name' => $name,
+                    'amount' => $amount,
+                    'tier' => $currentTier,
+                    'maxTier' => $maxTier,
+                    'maxed' => $isMaxed,
+                    'unlocked' => $amount > 0,
+                    'progress' => $progress,
                     'nextTierAmount' => $nextTierAmount,
                 ];
 
@@ -999,21 +1070,26 @@ class HypixelProfileController extends Controller
 
             // Sort: maxed first, then by tier desc, then by name
             usort($categoryCollections, function ($a, $b) {
-                if ($a['maxed'] !== $b['maxed']) return $b['maxed'] <=> $a['maxed'];
-                if ($a['tier'] !== $b['tier']) return $b['tier'] <=> $a['tier'];
+                if ($a['maxed'] !== $b['maxed']) {
+                    return $b['maxed'] <=> $a['maxed'];
+                }
+                if ($a['tier'] !== $b['tier']) {
+                    return $b['tier'] <=> $a['tier'];
+                }
+
                 return strcmp($a['name'], $b['name']);
             });
 
             $categories[$categoryId] = [
-                'name'        => $categoryName,
+                'name' => $categoryName,
                 'collections' => $categoryCollections,
-                'totalTiers'  => $categoryTotal,
-                'maxedTiers'  => $categoryMaxed,
+                'totalTiers' => $categoryTotal,
+                'maxedTiers' => $categoryMaxed,
             ];
         }
 
         return [
-            'categories'       => $categories,
+            'categories' => $categories,
             'totalCollections' => $totalCollections,
             'maxedCollections' => $maxedCollections,
         ];
@@ -1047,22 +1123,22 @@ class HypixelProfileController extends Controller
         }
 
         $catacombs = $dungeons['dungeon_types']['catacombs'] ?? [];
-        $xp        = $catacombs['experience'] ?? 0;
-        $detail    = $this->xpToLevelDetailed($xp, self::DUNGEON_XP_TABLE, 50);
+        $xp = $catacombs['experience'] ?? 0;
+        $detail = $this->xpToLevelDetailed($xp, self::DUNGEON_XP_TABLE, 50);
 
         // Class levels
-        $classes     = [];
-        $classNames  = ['healer', 'mage', 'berserk', 'archer', 'tank'];
+        $classes = [];
+        $classNames = ['healer', 'mage', 'berserk', 'archer', 'tank'];
         $playerClass = $dungeons['player_classes'] ?? [];
 
         foreach ($classNames as $cn) {
-            $classXp     = $playerClass[$cn]['experience'] ?? 0;
+            $classXp = $playerClass[$cn]['experience'] ?? 0;
             $classDetail = $this->xpToLevelDetailed($classXp, self::DUNGEON_XP_TABLE, 50);
             $classes[$cn] = [
-                'level'    => $classDetail['level'],
-                'xp'       => $classXp,
-                'xpCurrent'=> $classDetail['xpCurrent'],
-                'xpForNext'=> $classDetail['xpForNext'],
+                'level' => $classDetail['level'],
+                'xp' => $classXp,
+                'xpCurrent' => $classDetail['xpCurrent'],
+                'xpForNext' => $classDetail['xpForNext'],
                 'progress' => $classDetail['progress'],
                 'maxLevel' => 50,
             ];
@@ -1076,7 +1152,7 @@ class HypixelProfileController extends Controller
         $normalFloors = $this->parseDungeonFloors($catacombs, 'catacombs');
 
         // Parse master catacombs
-        $masterCata   = $dungeons['dungeon_types']['master_catacombs'] ?? [];
+        $masterCata = $dungeons['dungeon_types']['master_catacombs'] ?? [];
         $masterFloors = $this->parseDungeonFloors($masterCata, 'master_catacombs');
 
         // Highest floor beaten
@@ -1085,8 +1161,12 @@ class HypixelProfileController extends Controller
 
         // Total completions for S/R calculation
         $totalCompletions = 0;
-        foreach ($normalFloors as $f) { $totalCompletions += $f['stats']['tier_completions'] ?? 0; }
-        foreach ($masterFloors as $f) { $totalCompletions += $f['stats']['tier_completions'] ?? 0; }
+        foreach ($normalFloors as $f) {
+            $totalCompletions += $f['stats']['tier_completions'] ?? 0;
+        }
+        foreach ($masterFloors as $f) {
+            $totalCompletions += $f['stats']['tier_completions'] ?? 0;
+        }
 
         $secretsFound = $dungeons['secrets'] ?? 0;
         $secretsPerRun = $totalCompletions > 0 ? round($secretsFound / $totalCompletions, 2) : 0;
@@ -1094,23 +1174,23 @@ class HypixelProfileController extends Controller
         return [
             'catacombs' => [
                 'level' => [
-                    'level'     => $detail['level'],
-                    'xp'        => $xp,
+                    'level' => $detail['level'],
+                    'xp' => $xp,
                     'xpCurrent' => $detail['xpCurrent'],
                     'xpForNext' => $detail['xpForNext'],
-                    'progress'  => $detail['progress'],
-                    'maxLevel'  => 50,
+                    'progress' => $detail['progress'],
+                    'maxLevel' => 50,
                 ],
             ],
-            'secrets_found'     => $secretsFound,
-            'secrets_per_run'   => $secretsPerRun,
-            'classes'           => $classes,
-            'class_average'     => round($classAvg, 2),
-            'selected_class'    => $dungeons['selected_dungeon_class'] ?? null,
-            'highest_floor'     => $highestNormal,
-            'highest_master'    => $highestMaster,
-            'floors'            => $normalFloors,
-            'master_floors'     => $masterFloors,
+            'secrets_found' => $secretsFound,
+            'secrets_per_run' => $secretsPerRun,
+            'classes' => $classes,
+            'class_average' => round($classAvg, 2),
+            'selected_class' => $dungeons['selected_dungeon_class'] ?? null,
+            'highest_floor' => $highestNormal,
+            'highest_master' => $highestMaster,
+            'floors' => $normalFloors,
+            'master_floors' => $masterFloors,
         ];
     }
 
@@ -1123,21 +1203,27 @@ class HypixelProfileController extends Controller
         foreach (self::DUNGEON_STAT_KEYS as $statKey) {
             if (isset($dungeonType[$statKey]) && is_array($dungeonType[$statKey])) {
                 foreach (array_keys($dungeonType[$statKey]) as $idx) {
-                    if (is_numeric($idx)) $floorIndices[(int)$idx] = true;
+                    if (is_numeric($idx)) {
+                        $floorIndices[(int) $idx] = true;
+                    }
                 }
             }
         }
         // Also check best_runs
         if (isset($dungeonType['best_runs']) && is_array($dungeonType['best_runs'])) {
             foreach (array_keys($dungeonType['best_runs']) as $idx) {
-                if (is_numeric($idx)) $floorIndices[(int)$idx] = true;
+                if (is_numeric($idx)) {
+                    $floorIndices[(int) $idx] = true;
+                }
             }
         }
         // Also check most_damage_* keys
         foreach ($dungeonType as $key => $val) {
             if (str_starts_with($key, 'most_damage_') && is_array($val)) {
                 foreach (array_keys($val) as $idx) {
-                    if (is_numeric($idx)) $floorIndices[(int)$idx] = true;
+                    if (is_numeric($idx)) {
+                        $floorIndices[(int) $idx] = true;
+                    }
                 }
             }
         }
@@ -1146,7 +1232,7 @@ class HypixelProfileController extends Controller
 
         foreach (array_keys($floorIndices) as $floorIdx) {
             $floorId = "{$prefix}_{$floorIdx}";
-            $name    = self::FLOOR_NAMES[$floorId] ?? "Floor $floorIdx";
+            $name = self::FLOOR_NAMES[$floorId] ?? "Floor $floorIdx";
 
             // Gather stats
             $stats = [];
@@ -1175,17 +1261,17 @@ class HypixelProfileController extends Controller
                 $run = end($runs);
                 if ($run) {
                     $bestRun = [
-                        'timestamp'       => $run['timestamp'] ?? null,
-                        'score_exploration'=> $run['score_exploration'] ?? 0,
-                        'score_speed'      => $run['score_speed'] ?? 0,
-                        'score_skill'      => $run['score_skill'] ?? 0,
-                        'score_bonus'      => $run['score_bonus'] ?? 0,
-                        'dungeon_class'    => $run['dungeon_class'] ?? null,
-                        'elapsed_time'     => $run['elapsed_time'] ?? null,
-                        'damage_dealt'     => $run['damage_dealt'] ?? 0,
-                        'deaths'           => $run['deaths'] ?? 0,
-                        'mobs_killed'      => $run['mobs_killed'] ?? 0,
-                        'secrets_found'    => $run['secrets_found'] ?? 0,
+                        'timestamp' => $run['timestamp'] ?? null,
+                        'score_exploration' => $run['score_exploration'] ?? 0,
+                        'score_speed' => $run['score_speed'] ?? 0,
+                        'score_skill' => $run['score_skill'] ?? 0,
+                        'score_bonus' => $run['score_bonus'] ?? 0,
+                        'dungeon_class' => $run['dungeon_class'] ?? null,
+                        'elapsed_time' => $run['elapsed_time'] ?? null,
+                        'damage_dealt' => $run['damage_dealt'] ?? 0,
+                        'deaths' => $run['deaths'] ?? 0,
+                        'mobs_killed' => $run['mobs_killed'] ?? 0,
+                        'secrets_found' => $run['secrets_found'] ?? 0,
                         'damage_mitigated' => $run['damage_mitigated'] ?? 0,
                     ];
                     // Calculate grade
@@ -1195,11 +1281,11 @@ class HypixelProfileController extends Controller
             }
 
             $floors[] = [
-                'index'       => $floorIdx,
-                'name'        => $name,
-                'stats'       => $stats,
+                'index' => $floorIdx,
+                'name' => $name,
+                'stats' => $stats,
                 'most_damage' => $mostDamage,
-                'best_run'    => $bestRun,
+                'best_run' => $bestRun,
             ];
         }
 
@@ -1208,12 +1294,25 @@ class HypixelProfileController extends Controller
 
     private function calcDungeonGrade(int $score): string
     {
-        if ($score >= 300) return 'S+';
-        if ($score >= 270) return 'S';
-        if ($score >= 240) return 'A';
-        if ($score >= 175) return 'B';
-        if ($score >= 110) return 'C';
-        if ($score >= 60)  return 'D';
+        if ($score >= 300) {
+            return 'S+';
+        }
+        if ($score >= 270) {
+            return 'S';
+        }
+        if ($score >= 240) {
+            return 'A';
+        }
+        if ($score >= 175) {
+            return 'B';
+        }
+        if ($score >= 110) {
+            return 'C';
+        }
+        if ($score >= 60) {
+            return 'D';
+        }
+
         return 'F';
     }
 
@@ -1236,25 +1335,27 @@ class HypixelProfileController extends Controller
         // Prepare input for Node.js script
         $input = json_encode([
             'profileData' => $member,
-            'museumData'  => $museumData,
+            'museumData' => $museumData,
             'bankBalance' => $bankBalance,
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
         if ($input === false) {
             Log::warning('Networth: failed to encode input JSON');
+
             return $this->fallbackNetworth($purse, $bankBalance, $member);
         }
 
         $scriptPath = base_path('scripts/networth.cjs');
-        $nodePath   = 'node';
+        $nodePath = 'node';
         $tmpOutFile = tempnam(sys_get_temp_dir(), 'sbh_nw_out_');
-        $tmpInFile  = tempnam(sys_get_temp_dir(), 'sbh_nw_in_');
+        $tmpInFile = tempnam(sys_get_temp_dir(), 'sbh_nw_in_');
 
         // Write input to a temp file to avoid pipe deadlocks on Windows.
         if (! @file_put_contents($tmpInFile, $input)) {
             Log::warning('Networth: failed to write input temp file');
             @unlink($tmpInFile);
             @unlink($tmpOutFile);
+
             return $this->fallbackNetworth($purse, $bankBalance, $member);
         }
 
@@ -1282,6 +1383,7 @@ class HypixelProfileController extends Controller
             Log::warning('Networth: failed to start Node.js process');
             @unlink($tmpInFile);
             @unlink($tmpOutFile);
+
             return $this->fallbackNetworth($purse, $bankBalance, $member);
         }
 
@@ -1341,9 +1443,10 @@ class HypixelProfileController extends Controller
         if ($exitCode !== 0) {
             Log::warning('Networth: Node.js script failed', [
                 'exitCode' => $exitCode,
-                'stderr'   => mb_substr($stderr, 0, 500),
+                'stderr' => mb_substr($stderr, 0, 500),
             ]);
             @unlink($tmpOutFile);
+
             return $this->fallbackNetworth($purse, $bankBalance, $member);
         }
 
@@ -1363,19 +1466,20 @@ class HypixelProfileController extends Controller
 
         if (! $result || ! isset($result['networth'])) {
             Log::warning('Networth: invalid output from Node.js');
+
             return $this->fallbackNetworth($purse, $bankBalance, $member);
         }
 
         return [
-            'networth'             => $result['networth'] ?? 0,
-            'unsoulboundNetworth'  => $result['unsoulboundNetworth'] ?? 0,
-            'purse'                => $result['purse'] ?? $purse,
-            'bank'                 => $result['bank'] ?? $bankBalance,
-            'personalBank'         => $result['personalBank'] ?? 0,
-            'noInventory'          => $result['noInventory'] ?? false,
-            'categories'           => $result['categories'] ?? [],
-            'itemPricesByUuid'     => $result['itemPricesByUuid'] ?? [],
-            'itemPricesById'       => $result['itemPricesById'] ?? [],
+            'networth' => $result['networth'] ?? 0,
+            'unsoulboundNetworth' => $result['unsoulboundNetworth'] ?? 0,
+            'purse' => $result['purse'] ?? $purse,
+            'bank' => $result['bank'] ?? $bankBalance,
+            'personalBank' => $result['personalBank'] ?? 0,
+            'noInventory' => $result['noInventory'] ?? false,
+            'categories' => $result['categories'] ?? [],
+            'itemPricesByUuid' => $result['itemPricesByUuid'] ?? [],
+            'itemPricesById' => $result['itemPricesById'] ?? [],
         ];
     }
 
@@ -1386,7 +1490,7 @@ class HypixelProfileController extends Controller
     {
         $fallbackMaps = $member ? $this->buildFallbackItemPriceMaps($member) : [
             'itemPricesByUuid' => [],
-            'itemPricesById'   => [],
+            'itemPricesById' => [],
         ];
 
         // Sum all item values from pricesById (contains every priced item)
@@ -1403,15 +1507,15 @@ class HypixelProfileController extends Controller
         }
 
         return [
-            'networth'             => $purse + $bank + $itemTotal,
-            'unsoulboundNetworth'  => $purse + $bank + $unsoulboundItemTotal,
-            'purse'                => $purse,
-            'bank'                 => $bank,
-            'personalBank'         => 0,
-            'noInventory'          => false,
-            'categories'           => [],
-            'itemPricesByUuid'     => $fallbackMaps['itemPricesByUuid'],
-            'itemPricesById'       => $fallbackMaps['itemPricesById'],
+            'networth' => $purse + $bank + $itemTotal,
+            'unsoulboundNetworth' => $purse + $bank + $unsoulboundItemTotal,
+            'purse' => $purse,
+            'bank' => $bank,
+            'personalBank' => 0,
+            'noInventory' => false,
+            'categories' => [],
+            'itemPricesByUuid' => $fallbackMaps['itemPricesByUuid'],
+            'itemPricesById' => $fallbackMaps['itemPricesById'],
         ];
     }
 
@@ -1426,7 +1530,7 @@ class HypixelProfileController extends Controller
         if ($items === []) {
             return [
                 'itemPricesByUuid' => [],
-                'itemPricesById'   => [],
+                'itemPricesById' => [],
             ];
         }
 
@@ -1438,7 +1542,7 @@ class HypixelProfileController extends Controller
         if ($ids === []) {
             return [
                 'itemPricesByUuid' => [],
-                'itemPricesById'   => [],
+                'itemPricesById' => [],
             ];
         }
 
@@ -1531,7 +1635,7 @@ class HypixelProfileController extends Controller
 
         return [
             'itemPricesByUuid' => $pricesByUuid,
-            'itemPricesById'   => $pricesById,
+            'itemPricesById' => $pricesById,
         ];
     }
 
@@ -1556,7 +1660,7 @@ class HypixelProfileController extends Controller
 
         $reforge = strtolower(trim((string) ($item['reforge'] ?? '')));
         if ($reforge !== '' && $displayName !== '') {
-            $prefix = strtolower($reforge) . ' ';
+            $prefix = strtolower($reforge).' ';
             if (str_starts_with(strtolower($displayName), $prefix)) {
                 $withoutReforge = trim(substr($displayName, strlen($prefix)));
                 if ($withoutReforge !== '') {
@@ -1648,17 +1752,17 @@ class HypixelProfileController extends Controller
     private function parseSkyblockLevel(array $member): array
     {
         $xp = $member['leveling']['experience'] ?? 0;
-        $level     = (int) floor($xp / 100);
+        $level = (int) floor($xp / 100);
         $xpCurrent = fmod($xp, 100);
         $xpForNext = 100;
-        $progress  = $xpCurrent / $xpForNext;
+        $progress = $xpCurrent / $xpForNext;
 
         return [
-            'level'     => $level,
+            'level' => $level,
             'xpCurrent' => round($xpCurrent, 2),
             'xpForNext' => $xpForNext,
-            'progress'  => round($progress, 4),
-            'totalXp'   => $xp,
+            'progress' => round($progress, 4),
+            'totalXp' => $xp,
         ];
     }
 
@@ -1670,9 +1774,11 @@ class HypixelProfileController extends Controller
     private function injectItemValues(array $items, array &$pricesByUuid, array &$pricesById): array
     {
         foreach ($items as &$item) {
-            if ($item === null) continue;
+            if ($item === null) {
+                continue;
+            }
 
-            $uuid       = $item['uuid'] ?? null;
+            $uuid = $item['uuid'] ?? null;
             $skyblockId = $item['skyblock_id'] ?? null;
             $priceEntry = null;
 
@@ -1682,20 +1788,20 @@ class HypixelProfileController extends Controller
                 unset($pricesByUuid[$uuid]); // consumed
             }
             // Fallback: match by skyblock_id
-            elseif ($skyblockId !== null && isset($pricesById[$skyblockId]) && !empty($pricesById[$skyblockId])) {
+            elseif ($skyblockId !== null && isset($pricesById[$skyblockId]) && ! empty($pricesById[$skyblockId])) {
                 $priceEntry = array_shift($pricesById[$skyblockId]);
             }
 
             if ($priceEntry !== null) {
-                $price     = $priceEntry['price'] ?? 0;
+                $price = $priceEntry['price'] ?? 0;
                 $soulbound = $priceEntry['soulbound'] ?? false;
 
-                $item['item_value']     = $price;
+                $item['item_value'] = $price;
                 $item['item_soulbound'] = $soulbound;
 
                 if ($price > 0 && isset($item['lore_html']) && is_array($item['lore_html'])) {
                     $item['lore_html'][] = ''; // empty separator line
-                    $formattedFull  = number_format($price);
+                    $formattedFull = number_format($price);
                     $formattedShort = ItemParser::formatNumberPublic($price);
 
                     if ($soulbound) {
@@ -1703,7 +1809,7 @@ class HypixelProfileController extends Controller
                             "§7Item Value: §6{$formattedFull} Coins §7(§6{$formattedShort}§7)"
                         );
                         $item['lore_html'][] = ItemParser::colorCodeToHtml(
-                            "§8(Soulbound)"
+                            '§8(Soulbound)'
                         );
                     } else {
                         $item['lore_html'][] = ItemParser::colorCodeToHtml(
@@ -1729,6 +1835,7 @@ class HypixelProfileController extends Controller
             }
         }
         unset($page);
+
         return $pages;
     }
 
@@ -1743,6 +1850,7 @@ class HypixelProfileController extends Controller
             }
         }
         unset($set);
+
         return $sets;
     }
 
@@ -1762,15 +1870,19 @@ class HypixelProfileController extends Controller
             }
         }
         unset($slot);
+
         return $storage;
     }
 
     private function parseArmor(array $member): array
     {
         $data = $member['inventory']['inv_armor']['data'] ?? null;
-        if (! $data) return [];
+        if (! $data) {
+            return [];
+        }
 
         $items = ItemParser::parseInventoryKeepSlots($data);
+
         // Minecraft stores armor boots-first, reverse to helm→boots
         return array_values(array_reverse($items));
     }
@@ -1778,7 +1890,9 @@ class HypixelProfileController extends Controller
     private function parseEquipment(array $member): array
     {
         $data = $member['inventory']['equipment_contents']['data'] ?? null;
-        if (! $data) return [];
+        if (! $data) {
+            return [];
+        }
 
         return ItemParser::parseInventory($data);
     }
@@ -1786,19 +1900,23 @@ class HypixelProfileController extends Controller
     private function parseWardrobe(array $member): array
     {
         $data = $member['inventory']['wardrobe_contents']['data'] ?? null;
-        if (! $data) return [];
+        if (! $data) {
+            return [];
+        }
 
         $allItems = ItemParser::parseInventoryKeepSlots($data);
-        $total    = count($allItems);
-        if ($total === 0) return [];
+        $total = count($allItems);
+        if ($total === 0) {
+            return [];
+        }
 
         // Wardrobe layout: each page has 9 columns × 4 rows.
         // Row 0 (slots 0-8) = helmets, Row 1 (9-17) = chests,
         // Row 2 (18-26) = legs, Row 3 (27-35) = boots.
         // Page 2 starts at slot 36, etc.
         $slotsPerPage = 36;
-        $cols         = 9;
-        $sets         = [];
+        $cols = 9;
+        $sets = [];
 
         $pages = (int) ceil($total / $slotsPerPage);
 
@@ -1807,11 +1925,11 @@ class HypixelProfileController extends Controller
             for ($col = 0; $col < $cols; $col++) {
                 $set = [];
                 for ($row = 0; $row < 4; $row++) {
-                    $idx   = $base + ($row * $cols) + $col;
+                    $idx = $base + ($row * $cols) + $col;
                     $set[] = $allItems[$idx] ?? null;
                 }
                 // Only include sets that have at least one item
-                if (array_filter($set, fn($i) => $i !== null)) {
+                if (array_filter($set, fn ($i) => $i !== null)) {
                     $sets[] = $set;
                 }
             }
@@ -1823,14 +1941,15 @@ class HypixelProfileController extends Controller
     private function parseWeapons(array $member): array
     {
         $data = $member['inventory']['inv_contents']['data'] ?? null;
-        if (! $data) return [];
+        if (! $data) {
+            return [];
+        }
 
-        $items   = ItemParser::parseInventory($data);
-        $weapons = array_filter($items, fn($item) => self::isWeapon($item));
+        $items = ItemParser::parseInventory($data);
+        $weapons = array_filter($items, fn ($item) => self::isWeapon($item));
 
         // Sort by rarity descending
-        usort($weapons, fn($a, $b) =>
-            ItemParser::rarityOrder($b['rarity']) <=> ItemParser::rarityOrder($a['rarity'])
+        usort($weapons, fn ($a, $b) => ItemParser::rarityOrder($b['rarity']) <=> ItemParser::rarityOrder($a['rarity'])
         );
 
         return array_values($weapons);
@@ -1839,7 +1958,9 @@ class HypixelProfileController extends Controller
     private function parseAccessories(array $member): array
     {
         $data = $member['inventory']['bag_contents']['talisman_bag']['data'] ?? null;
-        if (! $data) return [];
+        if (! $data) {
+            return [];
+        }
 
         return ItemParser::parseInventory($data);
     }
@@ -1847,7 +1968,9 @@ class HypixelProfileController extends Controller
     private function parsePlayerInventory(array $member): array
     {
         $data = $member['inventory']['inv_contents']['data'] ?? null;
-        if (! $data) return [];
+        if (! $data) {
+            return [];
+        }
 
         return ItemParser::parseInventoryKeepSlots($data);
     }
@@ -1855,10 +1978,11 @@ class HypixelProfileController extends Controller
     private function parseAccessoryBagStorage(array $member): array
     {
         $abs = $member['accessory_bag_storage'] ?? [];
+
         return [
-            'selected_power'      => $abs['selected_power'] ?? null,
-            'highest_magical_power'=> $abs['highest_magical_power'] ?? null,
-            'tuning'              => $abs['tuning'] ?? null,
+            'selected_power' => $abs['selected_power'] ?? null,
+            'highest_magical_power' => $abs['highest_magical_power'] ?? null,
+            'tuning' => $abs['tuning'] ?? null,
         ];
     }
 
@@ -1867,10 +1991,14 @@ class HypixelProfileController extends Controller
     private function parseEnderChest(array $member): array
     {
         $data = $member['inventory']['ender_chest_contents']['data'] ?? null;
-        if (! $data) return [];
+        if (! $data) {
+            return [];
+        }
 
         $allSlots = ItemParser::parseInventoryKeepSlots($data);
-        if (empty($allSlots)) return [];
+        if (empty($allSlots)) {
+            return [];
+        }
 
         // Split into pages of 45 slots (5 rows × 9 cols, like a double chest)
         $slotsPerPage = 45;
@@ -1879,9 +2007,9 @@ class HypixelProfileController extends Controller
 
         foreach ($pages as $i => $pageSlots) {
             $result[] = [
-                'page'  => $i,
+                'page' => $i,
                 'items' => $pageSlots,
-                'count' => count(array_filter($pageSlots, fn($s) => $s !== null)),
+                'count' => count(array_filter($pageSlots, fn ($s) => $s !== null)),
             ];
         }
 
@@ -1893,7 +2021,9 @@ class HypixelProfileController extends Controller
     private function parsePersonalVault(array $member): array
     {
         $data = $member['inventory']['personal_vault_contents']['data'] ?? null;
-        if (! $data) return [];
+        if (! $data) {
+            return [];
+        }
 
         return ItemParser::parseInventoryKeepSlots($data);
     }
@@ -1903,7 +2033,9 @@ class HypixelProfileController extends Controller
     private function parseBagContents(array $member, string $bagName): array
     {
         $data = $member['inventory']['bag_contents'][$bagName]['data'] ?? null;
-        if (! $data) return [];
+        if (! $data) {
+            return [];
+        }
 
         return ItemParser::parseInventoryKeepSlots($data);
     }
@@ -1913,23 +2045,24 @@ class HypixelProfileController extends Controller
     private function parseCandyBag(array $member, array $profile): array
     {
         $data = $profile['shared_inventory']['candy_inventory_contents']['data'] ?? null;
-        if (! $data) return [];
+        if (! $data) {
+            return [];
+        }
 
         return ItemParser::parseInventory($data);
     }
 
-
     private function parseBackpackStorage(array $member): array
     {
         $backpackContents = $member['inventory']['backpack_contents'] ?? null;
-        $backpackIcons    = $member['inventory']['backpack_icons'] ?? null;
+        $backpackIcons = $member['inventory']['backpack_icons'] ?? null;
 
         if (! $backpackContents || ! is_array($backpackContents)) {
             return [];
         }
 
         $storageSize = max(18, count($backpackContents));
-        $storage     = [];
+        $storage = [];
 
         for ($slot = 0; $slot < $storageSize; $slot++) {
             $slotKey = (string) $slot;
@@ -1938,7 +2071,7 @@ class HypixelProfileController extends Controller
                 continue;
             }
 
-            $icon  = null;
+            $icon = null;
             $items = [];
 
             // Parse the backpack icon (the backpack item itself)
@@ -1953,10 +2086,10 @@ class HypixelProfileController extends Controller
             }
 
             $storage[] = [
-                'slot'  => $slot,
-                'icon'  => $icon,
+                'slot' => $slot,
+                'icon' => $icon,
                 'items' => $items,
-                'count' => count(array_filter($items, fn($i) => $i !== null)),
+                'count' => count(array_filter($items, fn ($i) => $i !== null)),
             ];
         }
 
@@ -1968,22 +2101,24 @@ class HypixelProfileController extends Controller
     private function parseMuseum(array $member, array $profile): array
     {
         $museum = $profile['museum'] ?? $member['museum'] ?? null;
-        if (! $museum) return [];
+        if (! $museum) {
+            return [];
+        }
 
         $result = [
-            'value'     => $museum['value'] ?? 0,
+            'value' => $museum['value'] ?? 0,
             'appraisal' => $museum['appraisal'] ?? false,
-            'items'     => [],
-            'special'   => [],
+            'items' => [],
+            'special' => [],
         ];
 
         // Parse donated items
         if (isset($museum['items']) && is_array($museum['items'])) {
             foreach ($museum['items'] as $id => $data) {
                 $item = [
-                    'id'           => $id,
+                    'id' => $id,
                     'donated_time' => $data['donated_time'] ?? null,
-                    'borrowing'    => $data['borrowing'] ?? false,
+                    'borrowing' => $data['borrowing'] ?? false,
                 ];
 
                 if (isset($data['items']['data'])) {
@@ -1999,9 +2134,9 @@ class HypixelProfileController extends Controller
         if (isset($museum['special']) && is_array($museum['special'])) {
             foreach ($museum['special'] as $id => $data) {
                 $item = [
-                    'id'           => $id,
+                    'id' => $id,
                     'donated_time' => $data['donated_time'] ?? null,
-                    'borrowing'    => $data['borrowing'] ?? false,
+                    'borrowing' => $data['borrowing'] ?? false,
                 ];
 
                 if (isset($data['items']['data'])) {
@@ -2021,7 +2156,9 @@ class HypixelProfileController extends Controller
     private function parseRiftInventory(array $member): array
     {
         $data = $member['rift']['inventory']['inv_contents']['data'] ?? null;
-        if (! $data) return [];
+        if (! $data) {
+            return [];
+        }
 
         return ItemParser::parseInventoryKeepSlots($data);
     }
@@ -2031,7 +2168,9 @@ class HypixelProfileController extends Controller
     private function parseRiftEnderchest(array $member): array
     {
         $data = $member['rift']['inventory']['ender_chest_contents']['data'] ?? null;
-        if (! $data) return [];
+        if (! $data) {
+            return [];
+        }
 
         return ItemParser::parseInventoryKeepSlots($data);
     }
@@ -2046,7 +2185,9 @@ class HypixelProfileController extends Controller
         // Fallback: check SkyBlock ID for weapon keywords
         $id = strtolower($item['skyblock_id'] ?? '');
         foreach (['sword', 'bow', 'katana', 'blade', 'scythe', 'staff', 'wand', 'aurora'] as $kw) {
-            if (str_contains($id, $kw)) return true;
+            if (str_contains($id, $kw)) {
+                return true;
+            }
         }
 
         return false;
@@ -2056,10 +2197,10 @@ class HypixelProfileController extends Controller
 
     private function getPetLevel(float $xp, string $rarity, int $maxLevel = 100): array
     {
-        $offset    = self::PET_RARITY_OFFSET[strtoupper($rarity)] ?? 0;
-        $levels    = array_slice(self::PET_LEVELS, $offset, $maxLevel - 1);
-        $xpTotal   = 0;
-        $level     = 1;
+        $offset = self::PET_RARITY_OFFSET[strtoupper($rarity)] ?? 0;
+        $levels = array_slice(self::PET_LEVELS, $offset, $maxLevel - 1);
+        $xpTotal = 0;
+        $level = 1;
 
         foreach ($levels as $levelXp) {
             $xpTotal += $levelXp;
@@ -2070,25 +2211,27 @@ class HypixelProfileController extends Controller
             $level++;
         }
 
-        if ($level > $maxLevel) $level = $maxLevel;
+        if ($level > $maxLevel) {
+            $level = $maxLevel;
+        }
 
         $xpCurrent = $xp - $xpTotal;
         $xpForNext = ($level < $maxLevel && isset($levels[$level - 1]))
             ? $levels[$level - 1]
             : 0;
-        $progress  = $xpForNext > 0 ? min($xpCurrent / $xpForNext, 1) : 1;
+        $progress = $xpForNext > 0 ? min($xpCurrent / $xpForNext, 1) : 1;
 
         return [
-            'level'     => $level,
+            'level' => $level,
             'xpCurrent' => round($xpCurrent, 2),
             'xpForNext' => round($xpForNext, 2),
-            'progress'  => round($progress, 4),
+            'progress' => round($progress, 4),
         ];
     }
 
     private const PET_REWARDS = [
-        0   => 0,   10  => 1,  25  => 2,  50  => 3,
-        75  => 4,   100 => 5,  130 => 6,  175 => 7,
+        0 => 0,   10 => 1,  25 => 2,  50 => 3,
+        75 => 4,   100 => 5,  130 => 6,  175 => 7,
         225 => 8,   275 => 9,  325 => 10, 375 => 11,
         450 => 12,  500 => 13,
     ];
@@ -2139,27 +2282,27 @@ class HypixelProfileController extends Controller
 
     private function parsePets(array $member): array
     {
-        $pets   = $member['pets_data']['pets'] ?? [];
+        $pets = $member['pets_data']['pets'] ?? [];
         $result = [];
 
         $tierOrder = ['COMMON', 'UNCOMMON', 'RARE', 'EPIC', 'LEGENDARY', 'MYTHIC'];
-        $mcColors  = [
-            'COMMON'    => '§f',
-            'UNCOMMON'  => '§a',
-            'RARE'      => '§9',
-            'EPIC'      => '§5',
+        $mcColors = [
+            'COMMON' => '§f',
+            'UNCOMMON' => '§a',
+            'RARE' => '§9',
+            'EPIC' => '§5',
             'LEGENDARY' => '§6',
-            'MYTHIC'    => '§d',
+            'MYTHIC' => '§d',
         ];
 
         foreach ($pets as $pet) {
-            $type   = $pet['type'] ?? 'UNKNOWN';
-            $tier   = $pet['tier'] ?? 'COMMON';
-            $xp     = $pet['exp'] ?? 0;
-            $skin   = $pet['skin'] ?? null;
+            $type = $pet['type'] ?? 'UNKNOWN';
+            $tier = $pet['tier'] ?? 'COMMON';
+            $xp = $pet['exp'] ?? 0;
+            $skin = $pet['skin'] ?? null;
             $active = $pet['active'] ?? false;
             $heldItemId = $pet['heldItem'] ?? null;
-            $candyUsed  = $pet['candyUsed'] ?? 0;
+            $candyUsed = $pet['candyUsed'] ?? 0;
 
             $maxLevel = ($type === 'GOLDEN_DRAGON') ? 200 : 100;
             $levelData = $this->getPetLevel($xp, $tier, $maxLevel);
@@ -2175,7 +2318,7 @@ class HypixelProfileController extends Controller
 
             // Override with cosmetic pet skin texture if equipped
             if ($skin && isset(self::PET_SKINS[$skin])) {
-                $texturePath = '/head/' . self::PET_SKINS[$skin];
+                $texturePath = '/head/'.self::PET_SKINS[$skin];
             }
 
             // Build lore (MC color-coded)
@@ -2185,8 +2328,8 @@ class HypixelProfileController extends Controller
             // XP progress
             if ($level < $maxLevel) {
                 $xpBar = $this->buildProgressBar($levelData['progress']);
-                $lore[] = "§7Progress to Level {$level} §8→ §7" . ($level + 1) . ": §e" . round($levelData['progress'] * 100, 1) . '%';
-                $lore[] = $xpBar . " §e" . number_format($levelData['xpCurrent']) . '§6/§e' . number_format($levelData['xpForNext']);
+                $lore[] = "§7Progress to Level {$level} §8→ §7".($level + 1).': §e'.round($levelData['progress'] * 100, 1).'%';
+                $lore[] = $xpBar.' §e'.number_format($levelData['xpCurrent']).'§6/§e'.number_format($levelData['xpForNext']);
             } else {
                 $lore[] = '§bMAX LEVEL';
             }
@@ -2221,37 +2364,44 @@ class HypixelProfileController extends Controller
             $loreHtml = array_map([ItemParser::class, 'colorCodeToHtml'], $lore);
 
             $result[] = [
-                'type'         => $type,
-                'tier'         => $tier,
-                'rarity'       => strtolower($tier),
-                'xp'           => $xp,
-                'level'        => $levelData,
-                'active'       => $active,
-                'heldItem'     => $heldItemId,
+                'type' => $type,
+                'tier' => $tier,
+                'rarity' => strtolower($tier),
+                'xp' => $xp,
+                'level' => $levelData,
+                'active' => $active,
+                'heldItem' => $heldItemId,
                 'heldItemName' => $heldItemName,
-                'skin'         => $skin,
-                'candyUsed'    => $candyUsed,
-                'name'         => "[Lvl {$level}] {$displayName}",
+                'skin' => $skin,
+                'candyUsed' => $candyUsed,
+                'name' => "[Lvl {$level}] {$displayName}",
                 'texture_path' => $texturePath,
-                'lore_html'    => $loreHtml,
+                'lore_html' => $loreHtml,
             ];
         }
 
         // Sort: active first, then by rarity desc, then by XP desc
         usort($result, function ($a, $b) use ($tierOrder) {
-            if ($a['active'] && ! $b['active']) return -1;
-            if (! $a['active'] && $b['active']) return 1;
+            if ($a['active'] && ! $b['active']) {
+                return -1;
+            }
+            if (! $a['active'] && $b['active']) {
+                return 1;
+            }
             $ra = array_search($a['tier'], $tierOrder);
             $rb = array_search($b['tier'], $tierOrder);
-            if ($ra !== $rb) return $rb <=> $ra;
+            if ($ra !== $rb) {
+                return $rb <=> $ra;
+            }
+
             return $b['xp'] <=> $a['xp'];
         });
 
         // ── Build structured output ────────────────────────────────
         // Unique pets (one per type, highest rarity first)
         $uniqueTypes = [];
-        $uniquePets  = [];
-        $otherPets   = [];
+        $uniquePets = [];
+        $otherPets = [];
         foreach ($result as $pet) {
             if (! isset($uniqueTypes[$pet['type']])) {
                 $uniqueTypes[$pet['type']] = true;
@@ -2270,7 +2420,9 @@ class HypixelProfileController extends Controller
         // Unique pet skins count (non-null skins)
         $skinSet = [];
         foreach ($result as $p) {
-            if ($p['skin']) $skinSet[$p['skin']] = true;
+            if ($p['skin']) {
+                $skinSet[$p['skin']] = true;
+            }
         }
 
         // Total candy used
@@ -2280,27 +2432,29 @@ class HypixelProfileController extends Controller
         $totalXp = array_sum(array_column($result, 'xp'));
 
         return [
-            'pets'          => $result,
-            'uniquePets'    => $uniquePets,
-            'otherPets'     => $otherPets,
-            'missing'       => $missingPets,
-            'amount'        => count($uniqueTypes),
-            'total'         => count(self::PET_MAX_TIER),
-            'amountSkins'   => count($skinSet),
-            'petScore'      => $petScore,
-            'totalCandy'    => $totalCandy,
-            'totalPetXp'    => $totalXp,
+            'pets' => $result,
+            'uniquePets' => $uniquePets,
+            'otherPets' => $otherPets,
+            'missing' => $missingPets,
+            'amount' => count($uniqueTypes),
+            'total' => count(self::PET_MAX_TIER),
+            'amountSkins' => count($skinSet),
+            'petScore' => $petScore,
+            'totalCandy' => $totalCandy,
+            'totalPetXp' => $totalXp,
         ];
     }
 
     private function calculatePetScore(array $pets, array $tierOrder): array
     {
         $highestRarity = [];
-        $highestLevel  = [];
+        $highestLevel = [];
 
         foreach ($pets as $pet) {
             $type = $pet['type'];
-            if (in_array($type, self::PET_SCORE_EXCLUDED, true)) continue;
+            if (in_array($type, self::PET_SCORE_EXCLUDED, true)) {
+                continue;
+            }
 
             $group = self::PET_TYPE_GROUP[$type] ?? $type;
             $rarity = strtolower($pet['tier']);
@@ -2328,7 +2482,7 @@ class HypixelProfileController extends Controller
         }
 
         return [
-            'total'     => $total,
+            'total' => $total,
             'magicFind' => $magicFind,
         ];
     }
@@ -2346,24 +2500,30 @@ class HypixelProfileController extends Controller
 
         $missing = [];
         foreach (self::PET_MAX_TIER as $type => $maxTier) {
-            if (in_array($type, self::BINGO_EXCLUSIVE_PETS, true)) continue;
+            if (in_array($type, self::BINGO_EXCLUSIVE_PETS, true)) {
+                continue;
+            }
 
             $group = self::PET_TYPE_GROUP[$type] ?? $type;
-            if (isset($ownedGroups[$group])) continue;
+            if (isset($ownedGroups[$group])) {
+                continue;
+            }
             // Only add one representative per group
-            if (isset($missing[$group])) continue;
+            if (isset($missing[$group])) {
+                continue;
+            }
 
             $displayName = ucwords(strtolower(str_replace('_', ' ', $type)));
             $headHash = self::PET_HEAD_TEXTURES[$type] ?? null;
             $colorCode = $mcColors[$maxTier] ?? '§f';
 
             $missing[$group] = [
-                'type'         => $type,
-                'tier'         => $maxTier,
-                'rarity'       => strtolower($maxTier),
-                'name'         => $displayName,
+                'type' => $type,
+                'tier' => $maxTier,
+                'rarity' => strtolower($maxTier),
+                'name' => $displayName,
                 'texture_path' => $headHash ? "/head/{$headHash}" : null,
-                'lore_html'    => [ItemParser::colorCodeToHtml("{$colorCode}§l{$maxTier} PET")],
+                'lore_html' => [ItemParser::colorCodeToHtml("{$colorCode}§l{$maxTier} PET")],
             ];
         }
 
@@ -2372,7 +2532,10 @@ class HypixelProfileController extends Controller
         usort($missingArr, function ($a, $b) use ($tierOrder) {
             $ra = array_search($a['tier'], $tierOrder);
             $rb = array_search($b['tier'], $tierOrder);
-            if ($ra !== $rb) return $rb <=> $ra;
+            if ($ra !== $rb) {
+                return $rb <=> $ra;
+            }
+
             return strcmp($a['name'], $b['name']);
         });
 
@@ -2383,8 +2546,9 @@ class HypixelProfileController extends Controller
     {
         $total = 20;
         $filled = (int) round($progress * $total);
-        $empty  = $total - $filled;
-        return '§2' . str_repeat('-', $filled) . '§f' . str_repeat('-', $empty);
+        $empty = $total - $filled;
+
+        return '§2'.str_repeat('-', $filled).'§f'.str_repeat('-', $empty);
     }
 
     // ═══════════════════════════════════════════════════════════════════
@@ -2397,7 +2561,7 @@ class HypixelProfileController extends Controller
     private function xpToLevelDetailed(float $xp, array $table, int $maxLevel): array
     {
         $level = 0;
-        $cap   = min($maxLevel, count($table) - 1);
+        $cap = min($maxLevel, count($table) - 1);
 
         for ($i = $cap; $i >= 0; $i--) {
             if ($xp >= $table[$i]) {
@@ -2408,22 +2572,22 @@ class HypixelProfileController extends Controller
 
         if ($level >= $cap) {
             return [
-                'level'     => $level,
+                'level' => $level,
                 'xpCurrent' => round($xp - ($table[$level] ?? 0), 2),
                 'xpForNext' => 0,
-                'progress'  => 1,
+                'progress' => 1,
             ];
         }
 
         $xpCurrent = $xp - $table[$level];
         $xpForNext = ($table[$level + 1] ?? $table[$level]) - $table[$level];
-        $progress  = $xpForNext > 0 ? min($xpCurrent / $xpForNext, 1) : 1;
+        $progress = $xpForNext > 0 ? min($xpCurrent / $xpForNext, 1) : 1;
 
         return [
-            'level'     => $level,
+            'level' => $level,
             'xpCurrent' => round($xpCurrent, 2),
             'xpForNext' => round($xpForNext, 2),
-            'progress'  => round($progress, 4),
+            'progress' => round($progress, 4),
         ];
     }
 
@@ -2433,7 +2597,7 @@ class HypixelProfileController extends Controller
     private function xpToLevel(float $xp, array $table, int $maxLevel): int
     {
         $level = 0;
-        $cap   = min($maxLevel, count($table) - 1);
+        $cap = min($maxLevel, count($table) - 1);
 
         for ($i = $cap; $i >= 0; $i--) {
             if ($xp >= $table[$i]) {
@@ -2452,7 +2616,7 @@ class HypixelProfileController extends Controller
     {
         try {
             $resp = Http::timeout(4)->get(
-                'https://api.mojang.com/users/profiles/minecraft/' . urlencode($username)
+                'https://api.mojang.com/users/profiles/minecraft/'.urlencode($username)
             );
 
             if (! $resp->successful()) {
@@ -2462,9 +2626,10 @@ class HypixelProfileController extends Controller
             return $resp->json('id') ?: null;
         } catch (\Exception $e) {
             Log::warning('Mojang API exception', [
-                'username'  => $username,
+                'username' => $username,
                 'exception' => $e->getMessage(),
             ]);
+
             return null;
         }
     }
@@ -2511,6 +2676,7 @@ class HypixelProfileController extends Controller
             if (mb_check_encoding($data, 'UTF-8')) {
                 return $data;
             }
+
             return mb_convert_encoding($data, 'UTF-8', 'UTF-8');
         }
 
@@ -2520,56 +2686,60 @@ class HypixelProfileController extends Controller
                 $safeKey = is_string($key) ? $this->sanitizeForJson($key) : $key;
                 $result[$safeKey] = $this->sanitizeForJson($value);
             }
+
             return $result;
         }
 
         return $data;
     }
+
     private function calculatePlayerStats(array $member, array $skills, array $armor, array $equipment, array $accessories): array
     {
         // Base stats every player starts with
         $stats = [
-            'Health'            => 100,
-            'Defense'           => 0,
-            'Strength'          => 0,
-            'Speed'             => 100,
-            'Critical Chance'   => 30,
-            'Critical Damage'   => 50,
-            'Intelligence'      => 0,
-            'Attack Speed'      => 0,
-            'Ability Damage'    => 0,
-            'Magic Find'        => 0,
-            'Pet Luck'          => 0,
-            'True Defense'      => 0,
-            'Ferocity'          => 0,
-            'Sea Creature Chance'=> 20,
-            'Health Regen'      => 100,
-            'Vitality'          => 0,
-            'Mending'           => 0,
-            'Fishing Speed'     => 0,
-            'Mining Speed'      => 0,
-            'Mining Fortune'    => 0,
-            'Farming Fortune'   => 0,
-            'Foraging Fortune'  => 0,
+            'Health' => 100,
+            'Defense' => 0,
+            'Strength' => 0,
+            'Speed' => 100,
+            'Critical Chance' => 30,
+            'Critical Damage' => 50,
+            'Intelligence' => 0,
+            'Attack Speed' => 0,
+            'Ability Damage' => 0,
+            'Magic Find' => 0,
+            'Pet Luck' => 0,
+            'True Defense' => 0,
+            'Ferocity' => 0,
+            'Sea Creature Chance' => 20,
+            'Health Regen' => 100,
+            'Vitality' => 0,
+            'Mending' => 0,
+            'Fishing Speed' => 0,
+            'Mining Speed' => 0,
+            'Mining Fortune' => 0,
+            'Farming Fortune' => 0,
+            'Foraging Fortune' => 0,
         ];
 
         $skillStatBonuses = [
-            'farming'     => ['Health' => 2, 'Farming Fortune' => 4],
-            'mining'      => ['Defense' => 1, 'Mining Fortune' => 4, 'Mining Speed' => 20],
-            'combat'      => ['Critical Chance' => 0.5, 'Critical Damage' => 0],  // CD comes from separate table
-            'foraging'    => ['Strength' => 1, 'Foraging Fortune' => 4],
-            'fishing'     => ['Health' => 2, 'Sea Creature Chance' => 0.2],
-            'enchanting'  => ['Intelligence' => 1],
-            'alchemy'     => ['Intelligence' => 1],
-            'taming'      => ['Pet Luck' => 1],
-            'carpentry'   => [],
+            'farming' => ['Health' => 2, 'Farming Fortune' => 4],
+            'mining' => ['Defense' => 1, 'Mining Fortune' => 4, 'Mining Speed' => 20],
+            'combat' => ['Critical Chance' => 0.5, 'Critical Damage' => 0],  // CD comes from separate table
+            'foraging' => ['Strength' => 1, 'Foraging Fortune' => 4],
+            'fishing' => ['Health' => 2, 'Sea Creature Chance' => 0.2],
+            'enchanting' => ['Intelligence' => 1],
+            'alchemy' => ['Intelligence' => 1],
+            'taming' => ['Pet Luck' => 1],
+            'carpentry' => [],
             'runecrafting' => [],
-            'social'      => [],
+            'social' => [],
         ];
 
         foreach ($skills as $name => $skillData) {
             $level = $skillData['level'] ?? 0;
-            if (!isset($skillStatBonuses[$name])) continue;
+            if (! isset($skillStatBonuses[$name])) {
+                continue;
+            }
 
             foreach ($skillStatBonuses[$name] as $statName => $perLevel) {
                 $stats[$statName] = ($stats[$statName] ?? 0) + ($perLevel * $level);
@@ -2582,13 +2752,13 @@ class HypixelProfileController extends Controller
 
         // ── Fairy soul bonuses (exchanges) ──
         $fairySouls = $member['fairy_soul']['total_collected'] ?? $member['fairy_exchanges'] ?? 0;
-        $exchanges  = (int) floor($fairySouls / 5);
+        $exchanges = (int) floor($fairySouls / 5);
 
         // Each exchange gives: +3 HP, +1 Def, +1 Str, +1 Spd (approximately, simplified)
-        $stats['Health']   += $exchanges * 3;
-        $stats['Defense']  += $exchanges * 1;
+        $stats['Health'] += $exchanges * 3;
+        $stats['Defense'] += $exchanges * 1;
         $stats['Strength'] += $exchanges * 1;
-        $stats['Speed']    += (int) floor($exchanges * 0.5);
+        $stats['Speed'] += (int) floor($exchanges * 0.5);
 
         // ── Item stats from armor, equipment, accessories ──
         $this->addItemStatsToTotal($stats, $armor);
@@ -2606,37 +2776,43 @@ class HypixelProfileController extends Controller
     {
         // Mapping from abbreviation back to full stat name
         $abbrevToFull = [
-            'HP'    => 'Health',
-            'Def'   => 'Defense',
-            'Str'   => 'Strength',
-            'Spd'   => 'Speed',
-            'CC'    => 'Critical Chance',
-            'CD'    => 'Critical Damage',
-            'Int'   => 'Intelligence',
-            'AS'    => 'Attack Speed',
-            'AD'    => 'Ability Damage',
-            'MF'    => 'Magic Find',
-            'PL'    => 'Pet Luck',
-            'TD'    => 'True Defense',
-            'FS'    => 'Ferocity',
-            'SCC'   => 'Sea Creature Chance',
-            'HPR'   => 'Health Regen',
-            'Vit'   => 'Vitality',
-            'Mnd'   => 'Mending',
-            'FshSpd'=> 'Fishing Speed',
+            'HP' => 'Health',
+            'Def' => 'Defense',
+            'Str' => 'Strength',
+            'Spd' => 'Speed',
+            'CC' => 'Critical Chance',
+            'CD' => 'Critical Damage',
+            'Int' => 'Intelligence',
+            'AS' => 'Attack Speed',
+            'AD' => 'Ability Damage',
+            'MF' => 'Magic Find',
+            'PL' => 'Pet Luck',
+            'TD' => 'True Defense',
+            'FS' => 'Ferocity',
+            'SCC' => 'Sea Creature Chance',
+            'HPR' => 'Health Regen',
+            'Vit' => 'Vitality',
+            'Mnd' => 'Mending',
+            'FshSpd' => 'Fishing Speed',
             'MnSpd' => 'Mining Speed',
             'MnFrt' => 'Mining Fortune',
             'FmFrt' => 'Farming Fortune',
             'FgFrt' => 'Foraging Fortune',
-            'Dmg'   => 'Damage',
+            'Dmg' => 'Damage',
         ];
 
         foreach ($items as $item) {
-            if (!$item || !isset($item['stats'])) continue;
+            if (! $item || ! isset($item['stats'])) {
+                continue;
+            }
             foreach ($item['stats'] as $abbrev => $stat) {
                 $fullName = $abbrevToFull[$abbrev] ?? null;
-                if (!$fullName) continue;
-                if (!isset($totals[$fullName])) $totals[$fullName] = 0;
+                if (! $fullName) {
+                    continue;
+                }
+                if (! isset($totals[$fullName])) {
+                    $totals[$fullName] = 0;
+                }
                 $totals[$fullName] += $stat['value'] ?? 0;
             }
         }
@@ -2645,45 +2821,46 @@ class HypixelProfileController extends Controller
     private function formatPlayerStats(array $stats): array
     {
         $statConfig = [
-            'Health'             => ['icon' => '❤', 'color' => '#FF5555'],
-            'Defense'            => ['icon' => '🛡', 'color' => '#55FF55'],
-            'Strength'           => ['icon' => '💪', 'color' => '#FF5555'],
-            'Speed'              => ['icon' => '✈', 'color' => '#FFFFFF'],
-            'Critical Chance'    => ['icon' => '☠', 'color' => '#FF5555', 'suffix' => '%'],
-            'Critical Damage'    => ['icon' => '☠', 'color' => '#FF5555', 'suffix' => '%'],
-            'Intelligence'       => ['icon' => '✨', 'color' => '#55FFFF'],
-            'Attack Speed'       => ['icon' => '⚡', 'color' => '#FFFF55', 'suffix' => '%'],
-            'Ability Damage'     => ['icon' => '🔥', 'color' => '#FF5555', 'suffix' => '%'],
-            'Magic Find'         => ['icon' => '⭐', 'color' => '#55FFFF'],
-            'Pet Luck'           => ['icon' => '♣', 'color' => '#FF55FF'],
-            'True Defense'       => ['icon' => '◎', 'color' => '#FFFFFF'],
-            'Ferocity'           => ['icon' => '⚔', 'color' => '#FF5555'],
-            'Sea Creature Chance'=> ['icon' => '🌊', 'color' => '#55FFFF', 'suffix' => '%'],
-            'Health Regen'       => ['icon' => '❤', 'color' => '#FF5555'],
-            'Vitality'           => ['icon' => '🍀', 'color' => '#FF55FF'],
-            'Mending'            => ['icon' => '❤', 'color' => '#55FF55'],
-            'Fishing Speed'      => ['icon' => '🎣', 'color' => '#55FFFF'],
-            'Mining Speed'       => ['icon' => '⛏', 'color' => '#FFFF55'],
-            'Mining Fortune'     => ['icon' => '⛏', 'color' => '#FFAA00'],
-            'Farming Fortune'    => ['icon' => '🌾', 'color' => '#FFAA00'],
-            'Foraging Fortune'   => ['icon' => '🌲', 'color' => '#FFAA00'],
+            'Health' => ['icon' => '❤', 'color' => '#FF5555'],
+            'Defense' => ['icon' => '🛡', 'color' => '#55FF55'],
+            'Strength' => ['icon' => '💪', 'color' => '#FF5555'],
+            'Speed' => ['icon' => '✈', 'color' => '#FFFFFF'],
+            'Critical Chance' => ['icon' => '☠', 'color' => '#FF5555', 'suffix' => '%'],
+            'Critical Damage' => ['icon' => '☠', 'color' => '#FF5555', 'suffix' => '%'],
+            'Intelligence' => ['icon' => '✨', 'color' => '#55FFFF'],
+            'Attack Speed' => ['icon' => '⚡', 'color' => '#FFFF55', 'suffix' => '%'],
+            'Ability Damage' => ['icon' => '🔥', 'color' => '#FF5555', 'suffix' => '%'],
+            'Magic Find' => ['icon' => '⭐', 'color' => '#55FFFF'],
+            'Pet Luck' => ['icon' => '♣', 'color' => '#FF55FF'],
+            'True Defense' => ['icon' => '◎', 'color' => '#FFFFFF'],
+            'Ferocity' => ['icon' => '⚔', 'color' => '#FF5555'],
+            'Sea Creature Chance' => ['icon' => '🌊', 'color' => '#55FFFF', 'suffix' => '%'],
+            'Health Regen' => ['icon' => '❤', 'color' => '#FF5555'],
+            'Vitality' => ['icon' => '🍀', 'color' => '#FF55FF'],
+            'Mending' => ['icon' => '❤', 'color' => '#55FF55'],
+            'Fishing Speed' => ['icon' => '🎣', 'color' => '#55FFFF'],
+            'Mining Speed' => ['icon' => '⛏', 'color' => '#FFFF55'],
+            'Mining Fortune' => ['icon' => '⛏', 'color' => '#FFAA00'],
+            'Farming Fortune' => ['icon' => '🌾', 'color' => '#FFAA00'],
+            'Foraging Fortune' => ['icon' => '🌲', 'color' => '#FFAA00'],
         ];
 
         $result = [];
         foreach ($stats as $name => $value) {
             $value = (int) round($value);
-            if ($value === 0 && !in_array($name, ['Health', 'Defense', 'Speed', 'Critical Chance', 'Critical Damage'])) {
+            if ($value === 0 && ! in_array($name, ['Health', 'Defense', 'Speed', 'Critical Chance', 'Critical Damage'])) {
                 continue;  // Skip zero-value non-essential stats
             }
             $cfg = $statConfig[$name] ?? ['icon' => '•', 'color' => '#AAAAAA'];
             $result[] = [
-                'name'   => $name,
-                'value'  => $value,
-                'icon'   => $cfg['icon'],
-                'color'  => $cfg['color'],
+                'name' => $name,
+                'value' => $value,
+                'icon' => $cfg['icon'],
+                'color' => $cfg['color'],
                 'suffix' => $cfg['suffix'] ?? '',
             ];
         }
+
         return $result;
     }
 }

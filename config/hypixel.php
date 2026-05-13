@@ -30,14 +30,48 @@ return [
     |
     */
     'cache_ttl' => [
-        'profiles'    => (int) env('HYPIXEL_CACHE_PROFILES', 300),      // 5 min
-        'player'      => (int) env('HYPIXEL_CACHE_PLAYER', 600),        // 10 min
-        'museum'      => (int) env('HYPIXEL_CACHE_MUSEUM', 300),        // 5 min
-        'bazaar'      => (int) env('HYPIXEL_CACHE_BAZAAR', 60),         // 1 min (fetched every 5 anyway)
-        'auctions'    => (int) env('HYPIXEL_CACHE_AUCTIONS', 120),      // 2 min
-        'election'    => (int) env('HYPIXEL_CACHE_ELECTION', 120),      // 2 min
+        'profiles' => (int) env('HYPIXEL_CACHE_PROFILES', 300),      // 5 min
+        'player' => (int) env('HYPIXEL_CACHE_PLAYER', 600),        // 10 min
+        'museum' => (int) env('HYPIXEL_CACHE_MUSEUM', 300),        // 5 min
+        'bazaar' => (int) env('HYPIXEL_CACHE_BAZAAR', 60),         // 1 min (fetched every 5 anyway)
+        'auctions' => (int) env('HYPIXEL_CACHE_AUCTIONS', 120),      // 2 min
+        'election' => (int) env('HYPIXEL_CACHE_ELECTION', 120),      // 2 min
         'collections' => (int) env('HYPIXEL_CACHE_COLLECTIONS', 86400), // 24h
-        'items'       => (int) env('HYPIXEL_CACHE_ITEMS', 86400),       // 24h
+        'items' => (int) env('HYPIXEL_CACHE_ITEMS', 86400),       // 24h
+        'leaderboards' => (int) env('HYPIXEL_CACHE_LEADERBOARDS', 900), // 15 min (ingest uses snapshot)
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Scheduled profiles_cache ingest (leaderboard coverage)
+    |--------------------------------------------------------------------------
+    |
+    | Periodically pulls SkyBlock profiles from Hypixel. Queue is built in priority order:
+    | (1) top rows from our site leaderboard (profiles_cache), (2) Hypixel /v2/leaderboards SKYBLOCK
+    | UUIDs, (3) linked app accounts, (4) stale cache rows, (5) PROFILE_INGEST_EXTRA_UUIDS.
+    | Use `php artisan profiles:ingest-bulk` for large one-off backfills (see bulk_safe_cap).
+    |
+    */
+    'profile_ingest' => [
+        'enabled' => (bool) env('PROFILE_INGEST_ENABLED', false),
+        // UUIDs refreshed per `profiles:ingest-scheduled` run (each does ~2 Hypixel calls: profiles + player).
+        'max_per_run' => (int) env('PROFILE_INGEST_MAX_PER_RUN', 100),
+        'delay_ms' => (int) env('PROFILE_INGEST_DELAY_MS', 500),
+        'stale_after_days' => (int) env('PROFILE_INGEST_STALE_DAYS', 7),
+        'include_hypixel_leaderboards' => (bool) env('PROFILE_INGEST_HYPIXEL_LEADERBOARDS', true),
+        'include_linked_users' => (bool) env('PROFILE_INGEST_LINKED_USERS', true),
+        'include_stale_cache' => (bool) env('PROFILE_INGEST_STALE_CACHE', true),
+        // Our DB leaderboard (profiles_cache, selected row) — prioritized first so top players refresh every run.
+        'include_site_leaderboard_top' => (bool) env('PROFILE_INGEST_SITE_TOP', true),
+        'site_leaderboard_top_sort' => (string) env('PROFILE_INGEST_SITE_TOP_SORT', 'level'),
+        'site_leaderboard_top_direction' => (string) env('PROFILE_INGEST_SITE_TOP_DIRECTION', 'desc'),
+        'site_leaderboard_top_limit' => (int) env('PROFILE_INGEST_SITE_TOP_LIMIT', 8000),
+        // Hard cap for `profiles:ingest-bulk --limit=` (safety).
+        'bulk_safe_cap' => (int) env('PROFILE_INGEST_BULK_SAFE_CAP', 25000),
+        'extra_uuids' => array_values(array_filter(array_map(
+            static fn (string $s): string => strtolower(preg_replace('/[^0-9a-fA-F]/', '', $s)),
+            array_map('trim', explode(',', (string) env('PROFILE_INGEST_EXTRA_UUIDS', '')))
+        ), static fn (string $s): bool => strlen($s) === 32 && ctype_xdigit($s))),
     ],
 
     /*
@@ -56,9 +90,27 @@ return [
     | HTTP Settings
     |--------------------------------------------------------------------------
     */
-    'timeout'         => (int) env('HYPIXEL_TIMEOUT', 8),
+    'timeout' => (int) env('HYPIXEL_TIMEOUT', 8),
     'connect_timeout' => (int) env('HYPIXEL_CONNECT_TIMEOUT', 3),
-    'max_retries'     => (int) env('HYPIXEL_MAX_RETRIES', 2),
-    'user_agent'      => env('HYPIXEL_USER_AGENT', 'SkyblockHub/1.0'),
+    'max_retries' => (int) env('HYPIXEL_MAX_RETRIES', 2),
+    'user_agent' => env('HYPIXEL_USER_AGENT', 'SkyblockHub/1.0'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Developer dashboard — site ownership verification
+    |--------------------------------------------------------------------------
+    |
+    | When Hypixel gives you a verification token, set HYPIXEL_SITE_VERIFICATION.
+    | It is exposed as:
+    |   - <meta name="..."> on every Inertia page (see resources/views/app.blade.php)
+    |   - Plain text at GET /hypixel-verification.txt (if non-empty)
+    |
+    | If Hypixel uses a different meta name, set HYPIXEL_VERIFICATION_META_NAME.
+    |
+    */
+    'site_verification' => [
+        'meta_name' => env('HYPIXEL_VERIFICATION_META_NAME', 'hypixel-site-verification'),
+        'meta_content' => trim((string) env('HYPIXEL_SITE_VERIFICATION', '')),
+    ],
 
 ];

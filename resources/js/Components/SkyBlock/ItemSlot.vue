@@ -1,13 +1,5 @@
 <script setup>
-/**
- * ItemSlot — renders a single SkyBlock item as a SkyCrypt-style "piece":
- *   - Rarity-colored background
- *   - Centered pixelated item texture with drop-shadow
- *   - Animated shine overlay for common→legendary
- *   - White hover overlay
- *   - MC-style lore tooltip (SkyCrypt rendering with CSS variables)
- *   - Click-to-pin tooltip for text selection / copying
- */
+
 import { computed, ref, watch, inject, nextTick, onBeforeUnmount } from 'vue';
 import { getItemTextureUrl, getColoredLeatherUrl } from '@/utils/textures';
 
@@ -26,7 +18,6 @@ const textureUrl = computed(() => {
     return getItemTextureUrl(props.item);
 });
 
-/* Leather armor: canvas-colored texture (SkyCrypt approach) */
 const coloredLeatherUrl = ref(null);
 
 watch(() => [props.item?.texture_path, props.item?.color], () => {
@@ -62,7 +53,6 @@ const rarityFgClass = computed(() => {
     return 'piece-fg-' + props.item.rarity.toLowerCase().replace(/ /g, '_');
 });
 
-/* Shine animation for common → legendary (index 0–4, matching SkyCrypt) */
 const RARITY_ORDER = ['common','uncommon','rare','epic','legendary','mythic','divine','special','very_special'];
 const showShine = computed(() => {
     if (!props.item?.rarity) return false;
@@ -211,7 +201,7 @@ onBeforeUnmount(() => {
             {{ '✪'.repeat(Math.min(item.stars, 5)) }}{{ item.stars > 5 ? '+' : '' }}
         </span>
 
-        <!-- MC-style lore tooltip (SkyCrypt-style, teleported to body) -->
+
         <Teleport to="body">
             <div v-if="showTooltip"
                  ref="tooltipRef"

@@ -1,7 +1,7 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, Link } from '@inertiajs/vue3';
-import { useI18n } from 'vue-i18n';
+import { useI18n } from '@/strings/useI18n';
 
 const { t } = useI18n();
 </script>
@@ -14,7 +14,7 @@ const { t } = useI18n();
             <div class="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
                 <header class="mb-8 flex flex-wrap items-end justify-between gap-4">
                     <div>
-                        <p class="text-[11px] font-semibold uppercase tracking-[0.24em] text-amber-200/70">Dashboard Beta</p>
+                        <p class="text-[11px] font-semibold uppercase tracking-[0.24em] text-amber-200/70">{{ t('dashboardInfo.titleKicker') }}</p>
                         <h1 class="mt-2 text-3xl font-semibold tracking-tight text-white sm:text-4xl">{{ t('dashboardInfo.title') }}</h1>
                         <p class="mt-2 max-w-3xl text-sm text-white/55 sm:text-base">{{ t('dashboardInfo.subtitle') }}</p>
                     </div>

@@ -8,13 +8,13 @@ use Illuminate\Support\Facades\Cache;
 class PlayerBazaarTaxService
 {
     private const DEFAULT_TAX_RATE = 0.01;
+
     private const MIN_TAX_RATE = 0.005;
 
     public function __construct(
         private readonly PerkService $perkService,
         private readonly HypixelApiProxy $hypixelApi,
-    ) {
-    }
+    ) {}
 
     /**
      * Resolve current tax rate for a user.
@@ -49,9 +49,38 @@ class PlayerBazaarTaxService
         ];
     }
 
+    /**
+     * Combined rates for instant-buy → instant-sell bazaar flips (Hypixel quick_status).
+     *
+     * @return array{
+     *     instant_buy_tax_rate: float,
+     *     instant_sell_tax_rate: float,
+     *     sell_keep_multiplier: float,
+     *     buy_cost_multiplier: float,
+     *     buy_tax_meta: array
+     * }
+     */
+    public function getBazaarFlipTaxForUser(?User $user): array
+    {
+        $buyMeta = $this->getTaxMetaForUser($user);
+        $buyRate = (float) ($buyMeta['rate'] ?? self::DEFAULT_TAX_RATE);
+        $sellRate = $this->perkService->getInstantSellBazaarTaxRate();
+
+        $buyRate = max(0.0, min(0.2, $buyRate));
+        $sellRate = max(0.0, min(0.3, $sellRate));
+
+        return [
+            'instant_buy_tax_rate' => $buyRate,
+            'instant_sell_tax_rate' => $sellRate,
+            'sell_keep_multiplier' => max(0.0, 1.0 - $sellRate),
+            'buy_cost_multiplier' => 1.0 + $buyRate,
+            'buy_tax_meta' => $buyMeta,
+        ];
+    }
+
     private function fetchTradingLevel(string $uuid): ?int
     {
-        $cacheKey = 'hypixel:trading_level:' . $uuid;
+        $cacheKey = 'hypixel:trading_level:'.$uuid;
 
         return Cache::remember($cacheKey, 300, function () use ($uuid) {
             $data = $this->hypixelApi->getProfiles($uuid);

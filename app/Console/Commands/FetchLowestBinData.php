@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\BinSnapshot;
 use App\Services\HypixelApiProxy;
+use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 
@@ -22,6 +23,7 @@ class FetchLowestBinData extends Command
 
             if ($data === null) {
                 $this->error('API returned no data');
+
                 return self::FAILURE;
             }
 
@@ -32,27 +34,28 @@ class FetchLowestBinData extends Command
 
             $inserted += $this->processAuctionsPage($data['auctions'] ?? [], $now);
 
-            // Fetch all pages so BIN sniper sees the full market.
             for ($page = 1; $page < $totalPages; $page++) {
                 $pageData = $proxy->getAuctions($page);
                 if ($pageData === null) {
                     usleep(200_000);
+
                     continue;
                 }
 
                 $inserted += $this->processAuctionsPage($pageData['auctions'] ?? [], $now);
-                usleep(200_000); // 200ms between pages
+                usleep(200_000);
             }
 
-            // Prune old snapshots (keep ~24h history for sniper avg price checks)
             BinSnapshot::where('recorded_at', '<', now()->subHours(30))->delete();
 
             $this->info("Processed {$inserted} BIN auctions across {$totalPages} pages.");
+
             return self::SUCCESS;
 
         } catch (\Exception $e) {
             Log::error('bin:fetch failed', ['error' => $e->getMessage()]);
             $this->error('Failed: '.$e->getMessage());
+
             return self::FAILURE;
         }
     }
@@ -70,27 +73,27 @@ class FetchLowestBinData extends Command
                 continue;
             }
 
-                $itemName = $this->normalizeItemName((string) ($auction['item_name'] ?? 'Unknown Item'));
-                $internalName = $this->deriveInternalName($auction, $itemName);
-                $itemId = (string) ($auction['item_uuid'] ?? $internalName);
-                $itemKey = $itemId . '|' . $internalName;
+            $itemName = $this->normalizeItemName((string) ($auction['item_name'] ?? 'Unknown Item'));
+            $internalName = $this->deriveInternalName($auction, $itemName);
+            $itemId = (string) ($auction['item_uuid'] ?? $internalName);
+            $itemKey = $itemId.'|'.$internalName;
 
-                BinSnapshot::updateOrCreate(
-                    ['auction_uuid' => $auction['uuid']],
-                    [
-                        'item_name'       => $itemName,
-                        'item_id'         => $itemId,
-                        'internal_name'   => $internalName,
-                        'item_key'        => $itemKey,
-                        'price'           => $auction['starting_bid'],
-                        'tier'            => $auction['tier'] ?? null,
-                        'seller_username' => null, // UUID only in API
-                        'ends_at'         => isset($auction['end']) ? \Carbon\Carbon::createFromTimestampMs($auction['end']) : null,
-                        'recorded_at'     => $recordedAt,
-                    ]
-                );
-                $inserted++;
-            }
+            BinSnapshot::updateOrCreate(
+                ['auction_uuid' => $auction['uuid']],
+                [
+                    'item_name' => $itemName,
+                    'item_id' => $itemId,
+                    'internal_name' => $internalName,
+                    'item_key' => $itemKey,
+                    'price' => $auction['starting_bid'],
+                    'tier' => $auction['tier'] ?? null,
+                    'seller_username' => null,
+                    'ends_at' => isset($auction['end']) ? Carbon::createFromTimestampMs($auction['end']) : null,
+                    'recorded_at' => $recordedAt,
+                ]
+            );
+            $inserted++;
+        }
 
         return $inserted;
     }

@@ -30,11 +30,11 @@ return [
             ],
         ],
         [
-            'title' => 'Upgrade (Optional)',
-            'description' => 'Unlock premium features with VIP or MVP',
+            'title' => 'Account (Optional)',
+            'description' => 'Review account options and billing when available',
             'upgrade' => [
-                'title' => 'View Plans',
-                'description' => 'See what premium offers',
+                'title' => 'View plans',
+                'description' => 'See optional tiers and refresh limits',
             ],
         ],
     ],

@@ -6,7 +6,7 @@ import { fileURLToPath, URL } from 'node:url';
 export default defineConfig({
     resolve: {
         alias: {
-            'vue-i18n': fileURLToPath(new URL('./resources/js/i18n/shim.js', import.meta.url)),
+            '@': fileURLToPath(new URL('./resources/js', import.meta.url)),
         },
     },
     plugins: [

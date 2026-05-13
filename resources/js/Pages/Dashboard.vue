@@ -4,7 +4,7 @@ import PlayerModel from '@/Components/SkyBlock/PlayerModel.vue';
 import InventoryGrid from '@/Components/SkyBlock/InventoryGrid.vue';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { Head, Link, router } from '@inertiajs/vue3';
-import { useI18n } from 'vue-i18n';
+import { useI18n } from '@/strings/useI18n';
 
 const { t } = useI18n();
 
@@ -720,9 +720,6 @@ onBeforeUnmount(() => {
                         <p class="text-[11px] font-semibold uppercase tracking-[0.24em] text-white/40">{{ t('dashboard.kicker') }}</p>
                         <div class="mt-2 flex flex-wrap items-center gap-2.5">
                             <h1 class="text-2xl font-semibold tracking-tight text-white sm:text-3xl">{{ t('dashboard.heading') }}</h1>
-                            <span class="inline-flex items-center rounded-full border border-amber-300/35 bg-amber-300/12 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-amber-100">
-                                {{ t('dashboard.betaTag') }}
-                            </span>
                             <Link
                                 :href="route('dashboard.info')"
                                 class="inline-flex items-center rounded-full border border-white/15 bg-white/5 px-2.5 py-1 text-[11px] font-medium text-white/75 transition hover:border-white/30 hover:bg-white/10 hover:text-white"

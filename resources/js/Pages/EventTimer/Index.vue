@@ -4,7 +4,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head } from '@inertiajs/vue3';
 import { preloadAllTextures } from '@/utils/textures';
 import ItemSlot from '@/Components/SkyBlock/ItemSlot.vue';
-import { useI18n } from 'vue-i18n';
+import { useI18n } from '@/strings/useI18n';
 
 const { t } = useI18n();
 
@@ -998,16 +998,19 @@ onBeforeUnmount(() => {
                 <section
                     v-for="event in timerCards"
                     :key="event.key"
-                    class="w-full max-w-md self-start overflow-hidden rounded-2xl border bg-surface-800 sm:max-w-none"
+                    class="lb-surface w-full max-w-md self-start overflow-hidden border bg-surface-900/75 backdrop-blur-sm transition sm:max-w-none"
                     :class="[
-                        event.isActive ? 'border-green-500/70 shadow-[0_8px_30px_rgba(34,197,94,0.12)]' : 'border-border shadow-[0_6px_22px_rgba(0,0,0,0.18)]',
-                        event.boosted ? 'event-card-boosted' : '',
+                        event.boosted
+                            ? 'border-cyan-500/40 event-card-boosted'
+                            : event.isActive
+                              ? 'border-green-500/60 shadow-[0_16px_40px_rgba(0,0,0,0.35),0_0_24px_rgba(34,197,94,0.16)]'
+                              : 'border-border/80 shadow-[0_16px_40px_rgba(0,0,0,0.35)]',
                         isTimerExpanded(event.key) ? 'timer-card-expanded' : 'timer-card-collapsed',
                     ]"
                 >
                     <button
                         type="button"
-                        class="w-full px-2.5 py-2.5 text-left transition hover:bg-white/[0.03]"
+                        class="w-full px-2.5 py-2.5 text-left transition hover:bg-surface-800/45"
                         @click="toggleTimerExpanded(event.key)"
                     >
                         <div class="timer-card-inline">
@@ -1077,7 +1080,7 @@ onBeforeUnmount(() => {
                         @before-leave="onDetailBeforeLeave"
                         @leave="onDetailLeave"
                     >
-                        <div v-if="isTimerExpanded(event.key)" class="timer-detail-panel border-t border-border bg-surface-900/45 px-4 py-3">
+                        <div v-if="isTimerExpanded(event.key)" class="timer-detail-panel border-t border-border/70 bg-surface-900/40 px-4 py-3 backdrop-blur-sm">
                             <div class="grid grid-cols-1 gap-3">
                                 <div>
                                     <p class="text-xs text-neutral">
@@ -1086,7 +1089,7 @@ onBeforeUnmount(() => {
                                         {{ t('eventTimer.nextEnd') }} <span class="text-white">{{ formatClock(event.nextEnd) }}</span>
                                     </p>
 
-                                    <div class="mt-2 rounded-lg border border-border bg-surface-900/65 px-3 py-2">
+                                    <div class="mt-2 lb-surface border border-border/80 bg-surface-800/40 px-3 py-2 backdrop-blur-sm">
                                         <div class="mb-1 text-[10px] font-semibold uppercase tracking-wide text-neutral">{{ t('eventTimer.nextOccurrences') }}</div>
                                         <div class="space-y-1 text-xs text-neutral">
                                             <div
@@ -1180,7 +1183,10 @@ onBeforeUnmount(() => {
 }
 
 .event-card-boosted {
-    box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.45), 0 10px 28px rgba(34, 211, 238, 0.14);
+    box-shadow:
+        0 16px 40px rgba(0, 0, 0, 0.35),
+        0 0 0 1px rgba(34, 211, 238, 0.38),
+        0 0 28px rgba(34, 211, 238, 0.14);
 }
 
 .timer-card-collapsed,
@@ -1319,6 +1325,17 @@ onBeforeUnmount(() => {
 .calendar-side-arrow:focus-visible {
     outline: 2px solid rgba(255, 255, 255, 0.75);
     outline-offset: 2px;
+}
+
+/* Match Leaderboards row / search panel surface (squircle where supported). */
+.lb-surface {
+    border-radius: 1.125rem;
+}
+
+@supports (corner-shape: squircle) {
+    .lb-surface {
+        corner-shape: squircle;
+    }
 }
 
 </style>

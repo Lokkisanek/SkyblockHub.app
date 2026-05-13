@@ -15,13 +15,7 @@ const props = defineProps({
     columns:    { type: Number, default: 9 },
 });
 
-/*
- * MC inventory layout:
- *   Slots 0-8   = hotbar (bottom row)
- *   Slots 9-35  = main inventory (3 rows)
- *
- * SkyCrypt renders main inventory first, then a separator, then hotbar.
- */
+
 </script>
 
 <template>

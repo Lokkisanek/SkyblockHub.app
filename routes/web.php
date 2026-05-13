@@ -15,6 +15,7 @@ use App\Http\Controllers\NpcFlipsController;
 use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\PortfolioController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\Api\SocialProofMetricsController;
 use App\Http\Controllers\ProfileStatsController;
 use App\Services\SocialProofMetricsService;
 use Illuminate\Foundation\Application;
@@ -32,6 +33,24 @@ Route::get('/', function () {
         'phpVersion' => PHP_VERSION,
     ]);
 });
+
+/** Hypixel developer dashboard: human-readable ownership + operator Minecraft name. */
+Route::view('/hypixel-developer-verification', 'hypixel-developer-verification')->name('hypixel.developer-verification');
+
+/** If Hypixel asks for a token file, set HYPIXEL_SITE_VERIFICATION in .env (same value as meta tag). */
+Route::get('/hypixel-verification.txt', function () {
+    $token = config('hypixel.site_verification.meta_content');
+
+    if ($token === '') {
+        abort(404);
+    }
+
+    return response($token, 200)->header('Content-Type', 'text/plain; charset=UTF-8');
+})->name('hypixel.verification-file');
+
+Route::get('/api/social-proof-metrics', SocialProofMetricsController::class)
+    ->middleware('throttle:60,1')
+    ->name('api.social-proof.metrics');
 
 Route::post('/cookie-consent', [CookieConsentController::class, 'store'])->name('cookie-consent.store');
 Route::post('/analytics/funnel-event', [FunnelAnalyticsController::class, 'store'])

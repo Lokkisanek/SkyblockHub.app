@@ -1,7 +1,7 @@
 <script setup>
 import { Link, router, usePage } from '@inertiajs/vue3';
 import { computed, onMounted, ref, watch } from 'vue';
-import { useI18n } from 'vue-i18n';
+import { useI18n } from '@/strings/useI18n';
 import { trackFunnelEvent } from '@/lib/funnelAnalytics';
 
 const { t, te } = useI18n();

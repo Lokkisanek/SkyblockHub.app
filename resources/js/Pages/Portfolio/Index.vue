@@ -3,7 +3,7 @@ import { ref, computed } from 'vue';
 import { Head, useForm, router } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Line } from 'vue-chartjs';
-import { useI18n } from 'vue-i18n';
+import { useI18n } from '@/strings/useI18n';
 import {
     Chart as ChartJS,
     CategoryScale,

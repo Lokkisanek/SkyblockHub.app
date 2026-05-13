@@ -2,83 +2,169 @@
   <AuthenticatedLayout>
     <Head :title="t('bazaar.title')" />
 
-    <div class="mx-auto max-w-7xl space-y-6 px-4 py-6 sm:px-6 lg:px-8">
-      <!-- Header -->
-      <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 class="text-3xl font-bold text-white">{{ t('bazaar.title') }}</h1>
-          <p class="text-sm text-text-secondary">{{ t('bazaar.subtitle') }}</p>
+    <div class="mx-auto max-w-7xl space-y-5 px-4 py-6 sm:px-6 lg:px-8">
+      <div class="flex flex-col gap-4 border-b border-white/[0.06] pb-5 sm:flex-row sm:items-start sm:justify-between">
+        <div class="min-w-0 space-y-1.5">
+          <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-text-tertiary">{{ t('nav.bazaar') }}</p>
+          <h1 class="text-2xl font-bold tracking-tight text-white sm:text-3xl">{{ t('bazaar.title') }}</h1>
+          <p v-if="t('bazaar.subtitle')" class="text-sm leading-relaxed text-text-secondary">{{ t('bazaar.subtitle') }}</p>
+          <p class="text-xs leading-relaxed text-text-tertiary">
+            {{ t('bazaar.taxSummary', {
+              buy: (Number(flipTax.instant_buy_tax_rate) * 100).toFixed(2),
+              sell: (Number(flipTax.instant_sell_tax_rate) * 100).toFixed(2),
+              source: buy_tax_meta?.source || 'default',
+            }) }}
+          </p>
         </div>
 
-        <div class="flex flex-col items-end gap-1">
-          <span class="text-[11px] text-text-tertiary">
-            {{ t('common.autoRefreshIn') }} {{ formatCountdown(autoRefreshRemainingSeconds) }}
+        <div class="flex shrink-0 flex-col gap-2 sm:items-end">
+          <button
+            type="button"
+            class="rounded-xl border border-border/80 bg-surface-800/80 px-4 py-2 text-sm font-semibold text-text-primary transition hover:border-profit/35 hover:bg-profit/10 hover:text-white"
+            @click="refreshMarket"
+          >
+            {{ t('bazaar.refreshPrices') }}
+          </button>
+          <span class="text-center text-[11px] text-text-tertiary sm:text-right">
+            {{ t('bazaar.autoRefreshHint', { time: formatCountdown(autoRefreshRemainingSeconds) }) }}
           </span>
         </div>
       </div>
 
-      <!-- Filters -->
-      <div class="grid grid-cols-1 gap-4 sm:grid-cols-4">
-        <div>
-          <label class="block text-sm font-medium text-text-primary">{{ t('common.search') }}</label>
-          <input
-            v-model="search"
-            type="text"
-            :placeholder="t('bazaar.itemPlaceholder')"
-            class="mt-1 w-full rounded border border-border bg-surface-700 px-3 py-2 text-text-primary placeholder-text-tertiary focus:border-primary focus:outline-none"
-            @input="debouncedApplyFilters"
-          />
-        </div>
+      <div :class="bazaarSurface" class="p-4 sm:p-5">
+        <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:gap-4">
+          <div class="min-w-0 flex-1">
+            <label class="block text-xs font-medium text-text-secondary">{{ t('common.search') }}</label>
+            <input
+              v-model="search"
+              type="text"
+              :placeholder="t('bazaar.itemPlaceholder')"
+              :class="fieldInputClass"
+              @input="debouncedApplyFilters"
+            />
+          </div>
 
-        <div>
-          <label class="block text-sm font-medium text-text-primary">{{ t('common.sortBy') }}</label>
-          <select
-            v-model="sortBy"
-            class="mt-1 w-full rounded border border-border bg-surface-700 px-3 py-2 text-text-primary focus:border-primary focus:outline-none"
-            @change="applyFilters"
-          >
-            <option value="coins_per_hour">{{ t('common.coinsPerHour') }}</option>
-            <option value="margin">{{ t('common.margin') }}</option>
-            <option value="margin_percent">{{ t('bazaar.marginPercent') }}</option>
-            <option value="buy_price">{{ t('bazaar.buyPrice') }}</option>
-            <option value="sell_price">{{ t('bazaar.sellPrice') }}</option>
-            <option value="hourly_instabuys">{{ t('common.volume1h') }}</option>
-            <option value="name">{{ t('common.name') }}</option>
-          </select>
-        </div>
+          <div class="w-full shrink-0 lg:w-52">
+            <label class="block text-xs font-medium text-text-secondary">{{ t('bazaar.category') }}</label>
+            <select
+              v-model="category"
+              :class="fieldInputClass"
+              @change="applyFilters"
+            >
+              <option value="">{{ t('bazaar.allCategories') }}</option>
+              <option v-for="c in categories" :key="c" :value="c">{{ c }}</option>
+            </select>
+          </div>
 
-        <div>
-          <label class="block text-sm font-medium text-text-primary">{{ t('common.direction') }}</label>
-          <select
-            v-model="sortDir"
-            class="mt-1 w-full rounded border border-border bg-surface-700 px-3 py-2 text-text-primary focus:border-primary focus:outline-none"
-            @change="applyFilters"
-          >
-            <option value="desc">{{ t('common.descending') }}</option>
-            <option value="asc">{{ t('common.ascending') }}</option>
-          </select>
-        </div>
+          <details class="w-full list-none rounded-xl border border-border/60 bg-surface-800/50 p-3 lg:max-w-lg [&::-webkit-details-marker]:hidden">
+            <summary class="cursor-pointer select-none text-sm font-semibold text-text-primary transition hover:text-white">
+              {{ t('bazaar.sortAndFilters') }}
+            </summary>
+            <div class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div>
+                <label class="block text-xs font-medium text-text-secondary">{{ t('common.sortBy') }}</label>
+                <select
+                  v-model="sortBy"
+                  :class="fieldInputClass"
+                  @change="applyFilters"
+                >
+                  <option value="coins_per_hour">{{ t('common.coinsPerHour') }}</option>
+                  <option value="margin">{{ t('common.margin') }}</option>
+                  <option value="margin_percent">{{ t('bazaar.marginPercent') }}</option>
+                  <option value="buy_price">{{ t('bazaar.instaSellRevenue') }}</option>
+                  <option value="sell_price">{{ t('bazaar.instaBuyCost') }}</option>
+                  <option value="hourly_instabuys">{{ t('common.volume1h') }}</option>
+                  <option value="name">{{ t('common.name') }}</option>
+                </select>
+              </div>
 
-        <div class="flex items-end">
-          <button
-            @click="resetFilters"
-            class="w-full rounded border border-border bg-surface-700 px-3 py-2 text-text-primary hover:bg-surface-600"
-          >
-            {{ t('common.reset') }}
-          </button>
+              <div>
+                <label class="block text-xs font-medium text-text-secondary">{{ t('common.direction') }}</label>
+                <select
+                  v-model="sortDir"
+                  :class="fieldInputClass"
+                  @change="applyFilters"
+                >
+                  <option value="desc">{{ t('common.descending') }}</option>
+                  <option value="asc">{{ t('common.ascending') }}</option>
+                </select>
+              </div>
+
+              <div class="sm:col-span-2">
+                <label class="block text-xs font-medium text-text-secondary">{{ t('bazaar.minDailyVolume') }}</label>
+                <input
+                  v-model.number="minDailyVolume"
+                  type="number"
+                  min="0"
+                  step="10"
+                  :class="fieldInputClass"
+                  @change="applyFilters"
+                />
+                <p class="mt-1 text-[10px] text-text-tertiary">{{ t('bazaar.minDailyVolumeHint') }}</p>
+              </div>
+
+              <div>
+                <label class="block text-xs font-medium text-text-secondary">{{ t('bazaar.maxEntryCost') }}</label>
+                <input
+                  v-model.number="maxEntryCost"
+                  type="number"
+                  min="0"
+                  step="1"
+                  :class="fieldInputClass"
+                  :placeholder="t('bazaar.optional')"
+                  @change="applyFilters"
+                />
+                <p class="mt-1 text-[10px] text-text-tertiary">{{ t('bazaar.maxEntryCostHint') }}</p>
+              </div>
+
+              <div>
+                <label class="block text-xs font-medium text-text-secondary">{{ t('bazaar.minMarginCoins') }}</label>
+                <input
+                  v-model.number="minMargin"
+                  type="number"
+                  min="0"
+                  step="1"
+                  :class="fieldInputClass"
+                  :placeholder="t('bazaar.optional')"
+                  @change="applyFilters"
+                />
+              </div>
+
+              <div class="sm:col-span-2">
+                <label class="block text-xs font-medium text-text-secondary">{{ t('bazaar.minMarginPercent') }}</label>
+                <input
+                  v-model.number="minMarginPercent"
+                  type="number"
+                  min="0"
+                  step="0.1"
+                  :class="fieldInputClass"
+                  :placeholder="t('bazaar.optional')"
+                  @change="applyFilters"
+                />
+                <p class="mt-1 text-[10px] text-text-tertiary">{{ t('bazaar.minMarginPercentHint') }}</p>
+              </div>
+
+              <div class="flex items-end sm:col-span-2">
+                <button
+                  type="button"
+                  class="rounded-xl border border-border/80 bg-surface-800/80 px-4 py-2 text-sm font-medium text-text-primary transition hover:bg-white/[0.06]"
+                  @click="resetFilters"
+                >
+                  {{ t('common.reset') }}
+                </button>
+              </div>
+            </div>
+          </details>
         </div>
       </div>
 
-      <!-- Top flips (tier gated) -->
       <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <div
           v-for="index in 3"
           :key="`top-flip-${index}`"
-          class="top-flip-card rounded-xl border bg-surface-800 p-4 text-center"
-          :data-locked="isRestrictedTopFlip(index) ? '1' : '0'"
-          :class="index === 1 ? 'border-yellow-400/70 bg-[radial-gradient(circle_at_top,rgba(250,204,21,0.14),rgba(15,23,42,0.8))]' : 'border-border'"
+          :class="[bazaarSurface, 'p-4 text-center']"
         >
-          <h3 class="text-xs font-semibold uppercase tracking-wide" :class="index === 1 ? 'text-yellow-200' : 'text-cyan-200'">{{ t('bazaar.topFlip', { n: index }) }}</h3>
+          <h3 class="text-[11px] font-semibold uppercase tracking-[0.2em] text-text-tertiary">{{ t('bazaar.topFlip', { n: index }) }}</h3>
           <template v-if="top_flips?.[index - 1]">
             <div class="top-flip-content mt-3 flex flex-col items-center">
               <img
@@ -89,81 +175,37 @@
                 loading="lazy"
                 @error="handleTextureError"
               />
-              <div class="mt-2 font-semibold text-white">{{ top_flips[index - 1].name }}</div>
+              <div class="mt-2 line-clamp-2 font-semibold text-white">{{ top_flips[index - 1].name }}</div>
               <div class="text-sm text-positive">{{ formatCompact(top_flips[index - 1].coins_per_hour) }}{{ t('bazaar.perHour') }}</div>
+              <div class="text-[11px] text-text-tertiary">{{ t('bazaar.topFlipMargin', { m: formatCoins(top_flips[index - 1].margin) }) }}</div>
             </div>
           </template>
           <template v-else>
-            <div class="mt-3 text-sm text-text-secondary">
-              <span v-if="index > 1">{{ t('bazaar.lockedFree') }}</span>
-              <span v-else>{{ t('common.noData') }}</span>
-            </div>
+            <div class="mt-3 text-sm text-text-secondary">{{ t('common.noData') }}</div>
           </template>
         </div>
       </div>
 
-      <div v-if="ai_insights?.length" class="rounded-xl border border-cyan-400/30 bg-cyan-400/10 p-4">
-        <h3 class="text-sm font-semibold text-cyan-100">{{ t('bazaar.aiTitle') }}</h3>
-        <p class="mt-1 text-xs text-cyan-100/70">{{ t('bazaar.aiDesc') }}</p>
-        <div class="mt-3 grid gap-2 sm:grid-cols-2">
-          <div v-for="insight in ai_insights" :key="`ai-${insight.product_id}`" class="rounded-lg border border-cyan-300/30 bg-surface-800/70 p-3">
-            <p class="text-sm font-semibold text-white">{{ insight.name }}</p>
-            <p class="text-xs text-cyan-100/80">{{ t('bazaar.trustScore', { score: insight.trust_score }) }}</p>
-            <p class="text-xs text-cyan-100/70">{{ insight.risk }}</p>
-          </div>
-        </div>
-      </div>
-      <div v-else class="rounded-xl border border-cyan-400/30 bg-cyan-400/10 p-4 text-sm text-cyan-100/80">
-        {{ t('bazaar.aiDesc') }}
-      </div>
-
-      <!-- Table -->
-      <div class="rounded border border-border bg-surface-800">
+      <div :class="[bazaarSurface, 'overflow-hidden']">
         <div class="overflow-x-auto">
           <table class="w-full text-sm">
-            <thead class="border-b border-border bg-surface-700">
+            <thead class="sr-only">
               <tr>
-                <th class="px-4 py-3 text-left font-semibold text-text-primary">
-                  <button type="button" class="inline-flex items-center gap-1 hover:text-white" @click="toggleSort('name')">
-                    {{ t('common.item') }} <span class="text-xs text-text-tertiary">{{ sortIndicator('name') }}</span>
-                  </button>
-                </th>
-                <th class="px-4 py-3 text-right font-semibold text-text-primary">
-                  <button type="button" class="inline-flex items-center gap-1 hover:text-white" @click="toggleSort('buy_price')">
-                    {{ t('bazaar.buyPrice') }} <span class="text-xs text-text-tertiary">{{ sortIndicator('buy_price') }}</span>
-                  </button>
-                </th>
-                <th class="px-4 py-3 text-right font-semibold text-text-primary">
-                  <button type="button" class="inline-flex items-center gap-1 hover:text-white" @click="toggleSort('sell_price')">
-                    {{ t('bazaar.sellPrice') }} <span class="text-xs text-text-tertiary">{{ sortIndicator('sell_price') }}</span>
-                  </button>
-                </th>
-                <th class="px-4 py-3 text-right font-semibold text-text-primary">
-                  <button type="button" class="inline-flex items-center gap-1 hover:text-white" @click="toggleSort('margin')">
-                    {{ t('common.margin') }} <span class="text-xs text-text-tertiary">{{ sortIndicator('margin') }}</span>
-                  </button>
-                </th>
-                <th class="px-4 py-3 text-right font-semibold text-text-primary">
-                  <button type="button" class="inline-flex items-center gap-1 hover:text-white" @click="toggleSort('hourly_instabuys')">
-                    {{ t('common.volume1h') }} <span class="text-xs text-text-tertiary">{{ sortIndicator('hourly_instabuys') }}</span>
-                  </button>
-                </th>
-                <th class="px-4 py-3 text-right font-semibold text-text-primary">
-                  <button type="button" class="inline-flex items-center gap-1 hover:text-white" @click="toggleSort('coins_per_hour')">
-                    {{ t('common.coinsPerHour') }} <span class="text-xs text-text-tertiary">{{ sortIndicator('coins_per_hour') }}</span>
-                  </button>
-                </th>
-                <th class="px-4 py-3 text-center font-semibold text-text-primary">
-                  {{ t('common.action') }}
-                </th>
+                <th scope="col">{{ t('common.item') }}</th>
+                <th scope="col">{{ t('bazaar.instaSellRevenue') }}</th>
+                <th scope="col">{{ t('bazaar.instaBuyCost') }}</th>
+                <th scope="col">{{ t('common.margin') }}</th>
+                <th scope="col">{{ t('common.volume1h') }}</th>
+                <th scope="col">{{ t('common.coinsPerHour') }}</th>
+                <th scope="col">{{ t('common.action') }}</th>
               </tr>
             </thead>
-            <tbody class="divide-y divide-border">
+            <tbody class="divide-y divide-border/50">
               <tr
                 v-for="(item, index) in liveItems"
                 :key="item.product_id"
-                class="hover:bg-surface-700/50 relative"
-                :class="[rowClass(item), isRestrictedFlip(index) ? 'vip-restricted' : '']"
+                class="transition hover:bg-white/[0.03]"
+                :class="[rowClass(item), isRestrictedFlip(index) ? 'flip-row-restricted' : '']"
               >
                 <td class="px-4 py-3 font-semibold text-white">
                   <div class="flex items-center gap-2">
@@ -182,12 +224,12 @@
                   </div>
                 </td>
 
-                <td class="px-4 py-3 text-right text-text-secondary">
+                <td class="px-4 py-3 text-right text-text-secondary" :aria-label="t('bazaar.instaSellRevenue')">
                   {{ formatCoins(item.buy_price) }}
                   <span class="ml-1 text-xs" :class="trendClass(buyTrend[item.product_id] || 'flat')">{{ trendIcon(buyTrend[item.product_id] || 'flat') }}</span>
                 </td>
 
-                <td class="px-4 py-3 text-right text-text-secondary">
+                <td class="px-4 py-3 text-right text-text-secondary" :aria-label="t('bazaar.instaBuyCost')">
                   {{ formatCoins(item.sell_price) }}
                   <span class="ml-1 text-xs" :class="trendClass(sellTrend[item.product_id] || 'flat')">{{ trendIcon(sellTrend[item.product_id] || 'flat') }}</span>
                 </td>
@@ -211,7 +253,7 @@
                 <td class="px-4 py-3 text-center">
                   <button
                     type="button"
-                    class="rounded border border-border bg-surface-700 px-2 py-1 text-xs font-semibold text-text-primary hover:bg-surface-600"
+                    class="rounded-lg border border-border/80 bg-surface-800/80 px-2.5 py-1.5 text-xs font-semibold text-text-primary transition hover:border-profit/30 hover:bg-profit/10 hover:text-white"
                     @click="copyItemCommand(item.product_id)"
                   >
                     {{ t('bazaar.copyBz') }}
@@ -222,42 +264,49 @@
           </table>
         </div>
 
-        <div v-if="liveItems.length === 0" class="px-4 py-8 text-center text-text-secondary">
+        <div v-if="liveItems.length === 0" class="px-4 py-10 text-center text-sm text-text-secondary">
           {{ t('bazaar.noFlips') }}
+        </div>
+
+        <div v-else class="border-t border-border/60 px-4 py-2.5 text-[11px] leading-relaxed text-text-tertiary">
+          {{ t('bazaar.tableFootnote') }}
         </div>
       </div>
 
-      <!-- Pagination -->
-      <div v-if="pagination.last_page > 1" class="flex items-center justify-between">
+      <div v-if="pagination.last_page > 1" class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div class="text-sm text-text-secondary">
           {{ t('common.page') }} {{ pagination.current_page }} {{ t('common.of') }} {{ pagination.last_page }} ({{ pagination.total }} {{ t('common.total') }})
         </div>
-        <div class="flex gap-2">
+        <div class="flex flex-wrap gap-2">
           <button
             v-if="pagination.current_page > 1"
+            type="button"
+            class="rounded-xl border border-border/80 bg-surface-900/75 px-3 py-2 text-sm text-text-primary shadow-[0_8px_24px_rgba(0,0,0,0.2)] backdrop-blur-sm transition hover:border-profit/30 hover:bg-profit/10 hover:text-white"
             @click="goToPage(1)"
-            class="rounded border border-border bg-surface-700 px-3 py-2 text-sm text-text-primary hover:bg-surface-600"
           >
             {{ t('common.first') }}
           </button>
           <button
             v-if="pagination.current_page > 1"
+            type="button"
+            class="rounded-xl border border-border/80 bg-surface-900/75 px-3 py-2 text-sm text-text-primary shadow-[0_8px_24px_rgba(0,0,0,0.2)] backdrop-blur-sm transition hover:border-profit/30 hover:bg-profit/10 hover:text-white"
             @click="goToPage(pagination.current_page - 1)"
-            class="rounded border border-border bg-surface-700 px-3 py-2 text-sm text-text-primary hover:bg-surface-600"
           >
             {{ t('common.previous') }}
           </button>
           <button
             v-if="pagination.current_page < pagination.last_page"
+            type="button"
+            class="rounded-xl border border-border/80 bg-surface-900/75 px-3 py-2 text-sm text-text-primary shadow-[0_8px_24px_rgba(0,0,0,0.2)] backdrop-blur-sm transition hover:border-profit/30 hover:bg-profit/10 hover:text-white"
             @click="goToPage(pagination.current_page + 1)"
-            class="rounded border border-border bg-surface-700 px-3 py-2 text-sm text-text-primary hover:bg-surface-600"
           >
             {{ t('common.next') }}
           </button>
           <button
             v-if="pagination.current_page < pagination.last_page"
+            type="button"
+            class="rounded-xl border border-border/80 bg-surface-900/75 px-3 py-2 text-sm text-text-primary shadow-[0_8px_24px_rgba(0,0,0,0.2)] backdrop-blur-sm transition hover:border-profit/30 hover:bg-profit/10 hover:text-white"
             @click="goToPage(pagination.last_page)"
-            class="rounded border border-border bg-surface-700 px-3 py-2 text-sm text-text-primary hover:bg-surface-600"
           >
             {{ t('common.last') }}
           </button>
@@ -268,23 +317,42 @@
 </template>
 
 <script setup>
-import { Head, Link, router } from '@inertiajs/vue3'
+import { Head, router } from '@inertiajs/vue3'
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { useI18n } from 'vue-i18n'
+import { useI18n } from '@/strings/useI18n'
 
 const { t } = useI18n()
+
+/** Same glass panel as landing search bar */
+const bazaarSurface =
+  'rounded-2xl border border-border/80 bg-surface-900/75 shadow-[0_16px_40px_rgba(0,0,0,0.35)] backdrop-blur-sm'
+
+const fieldInputClass =
+  'mt-1 w-full rounded-xl border border-border/80 bg-surface-800/80 px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary transition focus:border-profit/55 focus:outline-none focus:ring-2 focus:ring-profit/15'
 
 const props = defineProps({
   items: Object,
   best_picks: Object,
   top_flips: Array,
-  ai_insights: Array,
+  flip_tax: {
+    type: Object,
+    default: () => ({
+      instant_buy_tax_rate: 0.01,
+      instant_sell_tax_rate: 0.0125,
+      sell_keep_multiplier: 0.9875,
+      buy_cost_multiplier: 1.01,
+    }),
+  },
+  buy_tax_meta: Object,
+  categories: {
+    type: Array,
+    default: () => [],
+  },
   filters: Object,
 })
 
 const isRestrictedFlip = () => false
-const isRestrictedTopFlip = () => false
 
 const pagination = ref({
   current_page: props.items.current_page,
@@ -297,10 +365,16 @@ const buyTrend = ref({})
 const sellTrend = ref({})
 
 const search = ref(props.filters.search || '')
+const category = ref(props.filters.category || '')
 const sortBy = ref(props.filters.sort || 'coins_per_hour')
 const sortDir = ref(props.filters.dir || 'desc')
+const minDailyVolume = ref(props.filters.min_daily_volume ?? 100)
+const maxEntryCost = ref(props.filters.max_entry_cost ?? '')
+const minMargin = ref(props.filters.min_margin ?? '')
+const minMarginPercent = ref(props.filters.min_margin_percent ?? '')
 const isRefreshing = ref(false)
 
+const flipTax = computed(() => props.flip_tax || {})
 const AUTO_REFRESH_INTERVAL_SECONDS = 180
 const autoRefreshRemainingSeconds = ref(AUTO_REFRESH_INTERVAL_SECONDS)
 
@@ -321,41 +395,54 @@ watch(() => props.items, (newItems) => {
   }
 })
 
+watch(() => props.filters, (f) => {
+  if (!f) return
+  search.value = f.search || ''
+  category.value = f.category || ''
+  sortBy.value = f.sort || 'coins_per_hour'
+  sortDir.value = f.dir || 'desc'
+  minDailyVolume.value = f.min_daily_volume ?? 100
+  maxEntryCost.value = f.max_entry_cost ?? ''
+  minMargin.value = f.min_margin ?? ''
+  minMarginPercent.value = f.min_margin_percent ?? ''
+}, { deep: true })
+
+function filterPayload(extra = {}) {
+  const payload = {
+    search: search.value || undefined,
+    category: category.value || undefined,
+    sort: sortBy.value,
+    dir: sortDir.value,
+    min_daily_volume: minDailyVolume.value === '' || minDailyVolume.value === null ? undefined : minDailyVolume.value,
+    max_entry_cost: maxEntryCost.value === '' || maxEntryCost.value === null ? undefined : maxEntryCost.value,
+    min_margin: minMargin.value === '' || minMargin.value === null ? undefined : minMargin.value,
+    min_margin_percent: minMarginPercent.value === '' || minMarginPercent.value === null ? undefined : minMarginPercent.value,
+    ...extra,
+  }
+  return Object.fromEntries(Object.entries(payload).filter(([, v]) => v !== undefined && v !== ''))
+}
+
 function debouncedApplyFilters() {
   clearTimeout(debounceTimer)
   debounceTimer = setTimeout(applyFilters, 300)
 }
 
 function applyFilters() {
-  router.get(route('bazaar'), {
-    search: search.value || undefined,
-    sort: sortBy.value,
-    dir: sortDir.value,
-  }, {
+  router.get(route('bazaar'), filterPayload(), {
     preserveState: true,
     preserveScroll: true,
   })
 }
 
-function toggleSort(column) {
-  if (sortBy.value === column) {
-    sortDir.value = sortDir.value === 'desc' ? 'asc' : 'desc'
-  } else {
-    sortBy.value = column
-    sortDir.value = 'desc'
-  }
-  applyFilters()
-}
-
-function sortIndicator(column) {
-  if (sortBy.value !== column) return '↕'
-  return sortDir.value === 'desc' ? '↓' : '↑'
-}
-
 function resetFilters() {
   search.value = ''
+  category.value = ''
   sortBy.value = 'coins_per_hour'
   sortDir.value = 'desc'
+  minDailyVolume.value = 100
+  maxEntryCost.value = ''
+  minMargin.value = ''
+  minMarginPercent.value = ''
   applyFilters()
 }
 
@@ -363,12 +450,7 @@ function refreshMarket() {
   if (isRefreshing.value) return
 
   isRefreshing.value = true
-  router.get(route('bazaar'), {
-    search: search.value || undefined,
-    sort: sortBy.value,
-    dir: sortDir.value,
-    refresh: 1,
-  }, {
+  router.get(route('bazaar'), { ...filterPayload(), refresh: 1 }, {
     preserveState: true,
     preserveScroll: true,
     onFinish: () => {
@@ -400,18 +482,12 @@ function startAutoRefreshTimer() {
 }
 
 function goToPage(page) {
-  router.get(route('bazaar'), {
-    search: search.value || undefined,
-    sort: sortBy.value,
-    dir: sortDir.value,
-    page,
-  }, {
+  router.get(route('bazaar'), { ...filterPayload(), page }, {
     preserveState: true,
     preserveScroll: true,
   })
 }
 
-// --- Texture helpers ---
 function getTextureUrl(productId) {
   return COFLNET_ICON_BASE + encodeURIComponent(String(productId || '').toUpperCase())
 }
@@ -436,15 +512,27 @@ function handleTextureError(event) {
   image.src = DEFAULT_ITEM_TEXTURE
 }
 
-// --- Calculation helpers ---
+function sellKeepMult() {
+  const m = Number(flipTax.value.sell_keep_multiplier)
+  return Number.isFinite(m) && m > 0 ? m : 0.9875
+}
+
+function buyCostMult() {
+  const m = Number(flipTax.value.buy_cost_multiplier)
+  return Number.isFinite(m) && m >= 1 ? m : 1.01
+}
+
 function margin(item) {
-  return (Number(item.buy_price || 0) * 0.9875) - Number(item.sell_price || 0)
+  const buy = Number(item.buy_price || 0)
+  const sell = Number(item.sell_price || 0)
+  return buy * sellKeepMult() - sell * buyCostMult()
 }
 
 function marginPercent(item) {
-  const buy = Number(item.buy_price || 0)
-  if (buy <= 0) return 0
-  return (margin(item) / buy) * 100
+  const sell = Number(item.sell_price || 0)
+  const entry = sell * buyCostMult()
+  if (entry <= 0) return 0
+  return (margin(item) / entry) * 100
 }
 
 function hourlyInstabuys(item) {
@@ -461,7 +549,6 @@ function coinsPerHour(item) {
   return m * Math.min(hourlyInstabuys(item), hourlyInstasells(item))
 }
 
-// --- Formatting ---
 function formatCoins(coins) {
   if (!Number.isFinite(Number(coins))) return '0'
   const num = Number(coins)
@@ -482,7 +569,6 @@ function formatCompact(num) {
   return n.toFixed(0)
 }
 
-// --- Trend (WebSocket live updates) ---
 function trendDirection(previous, current) {
   if (current > previous) return 'up'
   if (current < previous) return 'down'
@@ -501,7 +587,6 @@ function trendClass(direction) {
   return 'text-text-tertiary'
 }
 
-// --- Row styling ---
 function rowClass(item) {
   if (props.top_flips?.[0]?.product_id === item.product_id) {
     return 'bg-yellow-500/10 border-l-2 border-yellow-400'
@@ -515,7 +600,6 @@ function profitClass(percent) {
   return 'text-text-secondary'
 }
 
-// --- Clipboard ---
 async function copyItemCommand(productId) {
   const text = `/bz ${String(productId || '').trim()}`
   try {
@@ -532,7 +616,6 @@ async function copyItemCommand(productId) {
   }
 }
 
-// --- Lifecycle ---
 onMounted(() => {
   startAutoRefreshTimer()
 
@@ -582,23 +665,18 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-tr.vip-restricted {
+tr.flip-row-restricted {
   position: relative;
 }
 
-tr.vip-restricted:hover {
+tr.flip-row-restricted:hover {
   background-color: rgba(15, 23, 42, 0.75);
 }
 
-tr.vip-restricted a,
-tr.vip-restricted button {
+tr.flip-row-restricted a,
+tr.flip-row-restricted button {
   pointer-events: none;
   position: relative;
   z-index: 10;
 }
-
-.top-flip-card {
-  position: relative;
-}
-
 </style>

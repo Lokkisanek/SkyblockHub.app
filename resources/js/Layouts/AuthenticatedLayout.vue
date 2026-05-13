@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue';
-import { useI18n } from 'vue-i18n';
+import { useI18n } from '@/strings/useI18n';
 import { useSeo } from '@/composables/useSeo';
 import ApplicationLogo from '@/Components/ApplicationLogo.vue';
 import AuthSlidePanel from '@/Components/AuthSlidePanel.vue';

@@ -1,66 +1,189 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head, Link } from '@inertiajs/vue3';
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { useI18n } from 'vue-i18n';
+import { Head, Link, usePage } from '@inertiajs/vue3';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { useI18n } from '@/strings/useI18n';
 
 const { t } = useI18n();
 
-const sortTabs = [
-    { key: 'level', label: 'Level' },
-    { key: 'networth', label: 'Networth' },
-    { key: 'non_cosmetic_networth', label: 'Pure Coins' },
-    { key: 'account_age', label: 'Account Age' },
-];
+const page = usePage();
 
-const periodOptions = computed(() => [
-    { key: 'all', label: t('leaderboards.periodAll') },
-    { key: 'daily', label: t('leaderboards.periodDaily') },
-    { key: 'weekly', label: t('leaderboards.periodWeekly') },
-    { key: 'monthly', label: t('leaderboards.periodMonthly') },
-]);
-
-const filterOptions = [
-    { key: 'all', label: 'All Players' },
-    { key: 'app_users', label: 'App Users Only' },
-    { key: 'non_app_users', label: 'Non-App Users' },
-];
-
-const sortableColumns = [
+/** Mirrors App\Http\Controllers\Api\LeaderboardController::SORT_DEFINITIONS if props are missing. */
+const FALLBACK_SORT_COLUMNS = [
     { key: 'level', label: 'Level', format: 'integer', align: 'right' },
     { key: 'networth', label: 'Networth', format: 'compact', align: 'right' },
+    { key: 'non_cosmetic_networth', label: 'Pure Coins', format: 'compact', align: 'right' },
+    { key: 'account_age', label: 'Account Age', format: 'age', align: 'right' },
     { key: 'skill_average', label: 'Skill Avg', format: 'decimal', align: 'right' },
+    { key: 'weight', label: 'Weight', format: 'integer', align: 'right' },
     { key: 'slayer_total', label: 'Slayer XP', format: 'compact', align: 'right' },
-    { key: 'account_age', label: 'Age', format: 'age', align: 'right' },
-    { key: 'profile_visits', label: 'Visits', format: 'compact', align: 'right' },
 ];
+
+const sortColumns = computed(() => {
+    const cols = page.props.sortColumns;
+    return Array.isArray(cols) && cols.length ? cols : FALLBACK_SORT_COLUMNS;
+});
+
+const filterOptions = computed(() => [
+    { key: 'all', label: t('leaderboards.filterAllPlayers') },
+    { key: 'app_users', label: t('leaderboards.filterAppUsers') },
+    { key: 'non_app_users', label: t('leaderboards.filterNonAppUsers') },
+]);
+
+const visitsColumn = { key: 'profile_visits', label: 'Visits', format: 'compact', align: 'right' };
 
 const activeSort = ref('level');
 const activeDirection = ref('desc');
 const activeFilter = ref('all');
-const activePeriod = ref('all');
 const currentPage = ref(1);
 const loading = ref(false);
 const leaderboardData = ref(null);
 let activeRequestController = null;
 
-const activeSortLabel = computed(
-    () => sortableColumns.find((column) => column.key === activeSort.value)?.label ?? 'Leaderboards'
+const playerSearch = ref('');
+const playerSearchError = ref(null);
+const playerSearching = ref(false);
+const highlightUuid = ref(null);
+const pendingJump = ref(null);
+let highlightTimer = null;
+
+const normalizeUuidKey = (uuid) => String(uuid || '').replace(/-/g, '').toLowerCase();
+
+const isRowSearchHighlight = (row) =>
+    Boolean(highlightUuid.value && normalizeUuidKey(row.minecraft_uuid) === highlightUuid.value);
+
+const findPlayerOnLeaderboard = async () => {
+    const q = playerSearch.value.trim();
+    playerSearchError.value = null;
+
+    if (q.length < 2) {
+        playerSearchError.value = t('leaderboards.findPlayerTooShort');
+        return;
+    }
+
+    playerSearching.value = true;
+
+    try {
+        const params = new URLSearchParams({
+            q,
+            sort: activeSort.value,
+            direction: activeDirection.value,
+            filter: activeFilter.value,
+        });
+
+        const response = await fetch(`/api/v1/leaderboards/lookup?${params.toString()}`);
+        const body = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+            const err = body?.data?.error;
+            playerSearchError.value =
+                err === 'query_too_short' || response.status === 422
+                    ? t('leaderboards.findPlayerTooShort')
+                    : t('leaderboards.findPlayerError');
+            return;
+        }
+
+        const data = body?.data;
+        if (!data?.found) {
+            playerSearchError.value = t('leaderboards.findPlayerNotFound');
+            return;
+        }
+
+        const uuidKey = normalizeUuidKey(data.minecraft_uuid);
+        pendingJump.value = { page: data.page, uuid: uuidKey };
+        currentPage.value = data.page;
+    } catch (error) {
+        console.error('Leaderboard player lookup failed:', error);
+        playerSearchError.value = t('leaderboards.findPlayerError');
+    } finally {
+        playerSearching.value = false;
+    }
+};
+
+watch(
+    () => [leaderboardData.value, loading.value, pendingJump.value],
+    async () => {
+        const pj = pendingJump.value;
+        if (!pj || loading.value) {
+            return;
+        }
+
+        const pag = leaderboardData.value?.pagination;
+        if (!pag || pag.current_page !== pj.page) {
+            return;
+        }
+
+        const onPage = leaderboardData.value?.rows?.some(
+            (row) => normalizeUuidKey(row.minecraft_uuid) === pj.uuid
+        );
+
+        if (!onPage) {
+            return;
+        }
+
+        await nextTick();
+        const el = document.querySelector(`[data-lb-uuid="${pj.uuid}"]`);
+        el?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+
+        highlightUuid.value = pj.uuid;
+        if (highlightTimer) {
+            clearTimeout(highlightTimer);
+        }
+        highlightTimer = setTimeout(() => {
+            highlightUuid.value = null;
+            highlightTimer = null;
+        }, 4000);
+
+        pendingJump.value = null;
+    },
+    { flush: 'post' }
 );
 
-const podiumRows = computed(() => leaderboardData.value?.rows?.slice(0, 3) ?? []);
+const activeSortLabel = computed(
+    () => sortColumns.value.find((column) => column.key === activeSort.value)?.label ?? 'Leaderboards'
+);
 
-const podiumPlacements = computed(() => {
-    const [first, second, third] = podiumRows.value;
+const activeSortColumn = computed(() =>
+    sortColumns.value.find((column) => column.key === activeSort.value) ?? sortColumns.value[0]
+);
 
-    return [
-        { slot: 'second', row: second },
-        { slot: 'first', row: first },
-        { slot: 'third', row: third },
-    ].filter((entry) => entry.row);
-});
+/** Metrics shown under each row (everything except the active leaderboard sort). */
+const secondaryColumns = computed(() => sortColumns.value.filter((column) => column.key !== activeSort.value));
 
-const getPodiumAvatarUrl = (row) => {
+const expandedRowKeys = ref(new Set());
+
+const leaderboardRowKey = (row) => `${normalizeUuidKey(row.minecraft_uuid)}-${row.rank}`;
+
+const isStatsExpanded = (row) => expandedRowKeys.value.has(leaderboardRowKey(row));
+
+const toggleStatsExpanded = (row) => {
+    const key = leaderboardRowKey(row);
+    const next = new Set(expandedRowKeys.value);
+    if (next.has(key)) {
+        next.delete(key);
+    } else {
+        next.add(key);
+    }
+    expandedRowKeys.value = next;
+};
+
+/** Hypixel-style accent colors for stat values (Tailwind `text-rarity-*`). */
+const metricValueClass = (key) => {
+    const map = {
+        level: 'text-rarity-legendary',
+        networth: 'text-rarity-legendary',
+        non_cosmetic_networth: 'text-rarity-mythic',
+        skill_average: 'text-rarity-divine',
+        weight: 'text-rarity-epic',
+        slayer_total: 'text-loss',
+        account_age: 'text-rarity-common',
+        profile_visits: 'text-rarity-uncommon',
+    };
+
+    return map[key] ?? 'text-text-primary';
+};
+
+const getLeaderboardAvatarUrl = (row) => {
     const uuid = String(row?.minecraft_uuid || row?.linked_minecraft_uuid || '').replace(/-/g, '');
 
     if (uuid) {
@@ -69,26 +192,6 @@ const getPodiumAvatarUrl = (row) => {
 
     const fallbackName = row?.profile_username || row?.display_name || 'Steve';
     return `https://mc-heads.net/avatar/${encodeURIComponent(fallbackName)}/128`;
-};
-
-const getPodiumStatLabel = () => activeSortLabel.value;
-
-const getPodiumStatValue = (row) => getColumnValue(row, activeSort.value);
-
-const movementBadge = (row) => {
-    if (row?.movement === null || row?.movement === undefined) {
-        return null;
-    }
-
-    if (row.movement > 0) {
-        return { icon: '▲', label: `+${row.movement}` };
-    }
-
-    if (row.movement < 0) {
-        return { icon: '▼', label: `${row.movement}` };
-    }
-
-    return { icon: '•', label: '0' };
 };
 
 const fetchLeaderboard = async () => {
@@ -102,7 +205,7 @@ const fetchLeaderboard = async () => {
 
     try {
         const response = await fetch(
-            `/api/v1/leaderboards?sort=${encodeURIComponent(activeSort.value)}&direction=${encodeURIComponent(activeDirection.value)}&filter=${encodeURIComponent(activeFilter.value)}&period=${encodeURIComponent(activePeriod.value)}&page=${encodeURIComponent(currentPage.value)}`,
+            `/api/v1/leaderboards?sort=${encodeURIComponent(activeSort.value)}&direction=${encodeURIComponent(activeDirection.value)}&filter=${encodeURIComponent(activeFilter.value)}&page=${encodeURIComponent(currentPage.value)}`,
             { signal: controller.signal }
         );
 
@@ -203,20 +306,45 @@ const formatStatusTooltip = (row) => {
     return `Offline · Last seen ${formatLastSeen(row.last_seen_ts)}`;
 };
 
-const getColumnValue = (row, columnKey) => {
-    switch (columnKey) {
+const getMetricRaw = (row, key) => {
+    switch (key) {
         case 'level':
-            return formatInteger(row.skyblock_level);
+            return row.skyblock_level;
         case 'networth':
-            return formatCompactNumber(row.networth);
-        case 'skill_average':
-            return formatDecimal(row.skill_average);
-        case 'slayer_total':
-            return formatCompactNumber(row.slayer_total);
+            return row.networth;
+        case 'non_cosmetic_networth':
+            return row.non_cosmetic_networth;
         case 'account_age':
-            return formatAccountAge(row.account_age_days);
+            return row.account_age_days;
+        case 'skill_average':
+            return row.skill_average;
+        case 'weight':
+            return row.weight;
+        case 'slayer_total':
+            return row.slayer_total;
         case 'profile_visits':
-            return formatCompactNumber(row.profile_visits);
+            return row.profile_visits;
+        default:
+            return 0;
+    }
+};
+
+const getColumnValue = (row, column) => {
+    if (!column?.key) {
+        return '—';
+    }
+
+    const raw = getMetricRaw(row, column.key);
+
+    switch (column.format) {
+        case 'integer':
+            return formatInteger(raw);
+        case 'compact':
+            return formatCompactNumber(raw);
+        case 'decimal':
+            return formatDecimal(raw);
+        case 'age':
+            return formatAccountAge(raw);
         default:
             return '—';
     }
@@ -232,36 +360,70 @@ const getStatusLabel = (row) => {
 
 const getActionUsername = (row) => row.profile_username || row.display_name;
 
-const isActiveSort = (key) => activeSort.value === key;
-
-const sortIndicator = (key) => {
-    if (!isActiveSort(key)) {
-        return '↕';
+const getRowPrimaryName = (row) => {
+    const d = formatDisplayName(row.display_name || '');
+    if (d) {
+        return d;
     }
 
-    return activeDirection.value === 'desc' ? '↓' : '↑';
+    return formatDisplayName(row.profile_username || row.minecraft_uuid || '');
 };
 
-const setSort = (key) => {
-    if (activeSort.value === key) {
-        activeDirection.value = activeDirection.value === 'desc' ? 'asc' : 'desc';
-    } else {
-        activeSort.value = key;
-        activeDirection.value = 'desc';
+const getRowSubtitleName = (row) => {
+    const d = formatDisplayName(row.display_name || '');
+    const p = formatDisplayName(row.profile_username || '');
+    if (d && p && d !== p) {
+        return p;
     }
 
-    currentPage.value = 1;
+    return '';
+};
+
+const setSortMetric = (key) => {
+    if (activeSort.value !== key) {
+        activeSort.value = key;
+        currentPage.value = 1;
+    }
+    closeControlMenus();
+};
+
+const setSortDirection = (dir) => {
+    if (activeDirection.value !== dir) {
+        activeDirection.value = dir;
+        currentPage.value = 1;
+    }
+    closeControlMenus();
 };
 
 const setFilter = (key) => {
     activeFilter.value = key;
     currentPage.value = 1;
+    closeControlMenus();
 };
 
-const setPeriod = (key) => {
-    activePeriod.value = key;
-    currentPage.value = 1;
+/** Which leaderboard control dropdown is open ('filter' | 'sort' | 'direction' | null). */
+const openControlMenu = ref(null);
+const lbControlsRoot = ref(null);
+
+const toggleControlMenu = (key) => {
+    openControlMenu.value = openControlMenu.value === key ? null : key;
 };
+
+const closeControlMenus = () => {
+    openControlMenu.value = null;
+};
+
+const onDocumentPointerDown = (event) => {
+    const root = lbControlsRoot.value;
+    if (root instanceof HTMLElement && !root.contains(event.target)) {
+        closeControlMenus();
+    }
+};
+
+const activeFilterLabel = computed(() => filterOptions.value.find((o) => o.key === activeFilter.value)?.label ?? '');
+const activeDirectionLabel = computed(() =>
+    activeDirection.value === 'desc' ? t('common.descending') : t('common.ascending')
+);
 
 const goToPage = (page) => {
     if (!leaderboardData.value?.pagination) {
@@ -272,662 +434,420 @@ const goToPage = (page) => {
     currentPage.value = Math.min(Math.max(page, 1), lastPage);
 };
 
-watch([activeSort, activeDirection, activeFilter, activePeriod, currentPage], () => {
+watch([activeSort, activeDirection, activeFilter, currentPage], () => {
     fetchLeaderboard();
+});
+
+watch([activeSort, activeDirection, activeFilter], () => {
+    playerSearchError.value = null;
+    expandedRowKeys.value = new Set();
+});
+
+watch(currentPage, () => {
+    expandedRowKeys.value = new Set();
 });
 
 onMounted(() => {
     fetchLeaderboard();
+    document.addEventListener('pointerdown', onDocumentPointerDown, true);
 });
 
 onBeforeUnmount(() => {
+    document.removeEventListener('pointerdown', onDocumentPointerDown, true);
     if (activeRequestController) {
         activeRequestController.abort();
+    }
+    if (highlightTimer) {
+        clearTimeout(highlightTimer);
+        highlightTimer = null;
     }
 });
 </script>
 
 <template>
-    <Head title="Leaderboards" />
+    <Head :title="t('leaderboards.title')" />
 
     <AuthenticatedLayout>
-        <div class="leaderboards-page">
-            <div class="leaderboards-shell mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-                <section class="leaderboards-hero">
-                    <div class="mb-5 flex items-center justify-between gap-4">
-                        <div>
-                            <p class="leaderboards-kicker">{{ t('leaderboards.kicker') }}</p>
-                            <div class="mt-2 flex flex-wrap items-center gap-2.5">
-                                <h1 class="leaderboards-title">{{ t('leaderboards.title') }}</h1>
-                                <span class="inline-flex items-center rounded-full border border-amber-300/35 bg-amber-300/12 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-amber-100">
-                                    {{ t('leaderboards.betaTag') }}
-                                </span>
-                                <Link
-                                    :href="route('leaderboards.info')"
-                                    class="inline-flex items-center rounded-full border border-white/15 bg-white/5 px-2.5 py-1 text-[11px] font-medium text-white/75 transition hover:border-white/30 hover:bg-white/10 hover:text-white"
-                                >
-                                    {{ t('leaderboards.seeMoreInfo') }}
-                                </Link>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="leaderboards-hero__copy">
-                        <p class="leaderboards-copy">{{ t('leaderboards.copy') }}</p>
-                    </div>
+        <div class="mx-auto max-w-7xl space-y-6 px-4 py-6 sm:px-6 lg:px-8">
+            <header class="max-w-2xl space-y-2">
+                <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-text-tertiary">{{ t('leaderboards.kicker') }}</p>
+                <h1 class="text-3xl font-bold tracking-tight text-text-primary">{{ t('leaderboards.title') }}</h1>
+                <p class="text-sm leading-relaxed text-text-secondary">{{ t('leaderboards.copy') }}</p>
+            </header>
 
-                    <div class="leaderboards-meta">
-                        <div class="meta-card">
-                            <span class="meta-card__label">Sorted by</span>
-                            <strong class="meta-card__value">{{ activeSortLabel }}</strong>
+            <div class="flex flex-col items-center gap-3">
+                <div class="w-full max-w-2xl lb-surface border border-border/80 bg-surface-900/75 p-3 shadow-[0_16px_40px_rgba(0,0,0,0.35)] backdrop-blur-sm">
+                    <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+                        <div class="relative min-w-0 flex-1">
+                            <svg
+                                class="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral"
+                                viewBox="0 0 20 20"
+                                fill="currentColor"
+                                aria-hidden="true"
+                            >
+                                <path
+                                    fill-rule="evenodd"
+                                    d="M8.5 3a5.5 5.5 0 104.35 8.87l2.64 2.64a1 1 0 001.42-1.42l-2.64-2.64A5.5 5.5 0 008.5 3zm-3.5 5.5a3.5 3.5 0 117 0 3.5 3.5 0 01-7 0z"
+                                    clip-rule="evenodd"
+                                />
+                            </svg>
+                            <input
+                                id="leaderboard-player-search"
+                                v-model="playerSearch"
+                                type="text"
+                                class="lb-inset w-full border border-border/80 bg-surface-800/80 py-3 pl-11 pr-4 text-sm text-white placeholder:text-neutral/80 transition focus:border-profit/70 focus:outline-none focus:ring-2 focus:ring-profit/25"
+                                :placeholder="t('leaderboards.findPlayerPlaceholder')"
+                                :aria-label="t('leaderboards.findPlayerPlaceholder')"
+                                autocomplete="off"
+                                @keydown.enter.prevent="findPlayerOnLeaderboard"
+                            />
                         </div>
-                        <div class="meta-card">
-                            <span class="meta-card__label">Direction</span>
-                            <strong class="meta-card__value">{{ activeDirection === 'desc' ? 'Descending' : 'Ascending' }}</strong>
-                        </div>
-                    </div>
-                </section>
-
-                <section class="leaderboards-controls">
-                    <div class="chip-row">
                         <button
-                            v-for="option in periodOptions"
-                            :key="option.key"
                             type="button"
-                            :class="['chip', { 'chip--active': activePeriod === option.key }]"
-                            @click="setPeriod(option.key)"
+                            class="lb-accent inline-flex h-[46px] shrink-0 items-center justify-center border border-profit/35 bg-profit/20 px-6 text-sm font-semibold text-profit transition hover:bg-profit/30 hover:text-white disabled:cursor-wait disabled:opacity-50"
+                            :disabled="playerSearching"
+                            @click="findPlayerOnLeaderboard"
                         >
-                            {{ option.label }}
+                            {{ playerSearching ? t('leaderboards.findPlayerSearching') : t('leaderboards.findPlayerGo') }}
                         </button>
                     </div>
+                    <p v-if="playerSearchError" class="mt-2 text-xs text-loss" role="alert">{{ playerSearchError }}</p>
+                </div>
 
-                    <div class="chip-row">
+                <div ref="lbControlsRoot" class="flex w-full max-w-2xl flex-wrap items-stretch justify-center gap-2 sm:justify-start">
+                    <div class="relative min-w-[9.5rem] flex-1 sm:flex-none sm:min-w-[11rem]">
                         <button
-                            v-for="option in filterOptions"
-                            :key="option.key"
                             type="button"
-                            :class="['chip', { 'chip--active': activeFilter === option.key }]"
-                            @click="setFilter(option.key)"
+                            class="lb-dd-trigger flex h-full min-h-[2.75rem] w-full items-center justify-between gap-2 border border-border bg-surface-900/70 px-3.5 py-2 text-left text-xs font-semibold text-text-primary transition hover:border-amber-500/35 hover:bg-surface-800/80"
+                            :class="
+                                openControlMenu === 'filter'
+                                    ? 'border-amber-400/50 bg-amber-500/10 text-amber-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]'
+                                    : 'text-text-secondary'
+                            "
+                            :aria-expanded="openControlMenu === 'filter'"
+                            aria-haspopup="listbox"
+                            @click.stop="toggleControlMenu('filter')"
                         >
-                            {{ option.label }}
-                        </button>
-                    </div>
-
-                    <div class="chip-row chip-row--muted">
-                        <button
-                            v-for="tab in sortTabs"
-                            :key="tab.key"
-                            type="button"
-                            :class="['chip', 'chip--sort', { 'chip--active': activeSort === tab.key }]"
-                            @click="setSort(tab.key)"
-                        >
-                            <span>{{ tab.label }}</span>
-                            <span class="chip__direction">{{ sortIndicator(tab.key) }}</span>
-                        </button>
-                    </div>
-                </section>
-
-                <section v-if="leaderboardData?.personal" class="leaderboards-personal">
-                    <div class="personal-card">
-                        <div>
-                            <p class="personal-kicker">{{ t('leaderboards.personalKicker') }}</p>
-                            <h2 class="personal-title">{{ t('leaderboards.personalTitle') }}</h2>
-                            <p class="personal-copy">{{ t('leaderboards.personalCopy') }}</p>
-                        </div>
-                        <div class="personal-rank">
-                            <span class="personal-rank__label">{{ t('leaderboards.personalRank') }}</span>
-                            <div class="personal-rank__value">
-                                #{{ leaderboardData.personal.rank }}
-                                <span v-if="movementBadge(leaderboardData.personal)" class="movement-chip" :class="movementBadge(leaderboardData.personal).icon === '▲' ? 'movement-chip--up' : (movementBadge(leaderboardData.personal).icon === '▼' ? 'movement-chip--down' : '')">
-                                    {{ movementBadge(leaderboardData.personal).icon }} {{ movementBadge(leaderboardData.personal).label }}
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
-                <section v-if="podiumPlacements.length" class="leaderboards-podium" aria-label="Top 3 players">
-                    <article
-                        v-for="entry in podiumPlacements"
-                        :key="`podium-${entry.slot}-${entry.row.user_id ?? entry.row.minecraft_uuid}`"
-                        class="podium-card"
-                        :class="[`podium-card--${entry.slot}`]"
-                    >
-                        <div class="podium-card__rank">#{{ entry.row.rank }}</div>
-                        <img
-                            class="podium-card__avatar"
-                            :src="getPodiumAvatarUrl(entry.row)"
-                            :alt="`${formatDisplayName(entry.row.display_name || entry.row.profile_username || entry.row.minecraft_uuid)} Minecraft avatar`"
-                            loading="lazy"
-                        />
-                        <div class="podium-card__name">
-                            <span v-if="entry.row.hypixel_rank" class="player-rank" :style="{ color: entry.row.hypixel_rank_color || '#94a3b8' }">
-                                {{ entry.row.hypixel_rank }}
+                            <span class="min-w-0">
+                                <span class="block text-[9px] font-bold uppercase tracking-[0.14em] text-text-tertiary">{{ t('leaderboards.controlFilterCaption') }}</span>
+                                <span class="mt-0.5 block truncate text-[13px] font-semibold text-text-primary">{{ activeFilterLabel }}</span>
                             </span>
-                            <strong>{{ formatDisplayName(entry.row.display_name || entry.row.profile_username || entry.row.minecraft_uuid) }}</strong>
+                            <svg class="h-4 w-4 shrink-0 text-amber-400/90" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                <path
+                                    fill-rule="evenodd"
+                                    d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z"
+                                    clip-rule="evenodd"
+                                />
+                            </svg>
+                        </button>
+                        <div
+                            v-show="openControlMenu === 'filter'"
+                            class="lb-panel absolute left-0 right-0 z-30 mt-1.5 border border-border/90 bg-surface-900/98 py-1 shadow-2xl shadow-black/40 backdrop-blur-md sm:right-auto sm:min-w-[12rem]"
+                            role="listbox"
+                            @click.stop
+                        >
+                            <button
+                                v-for="option in filterOptions"
+                                :key="option.key"
+                                type="button"
+                                role="option"
+                                class="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-xs font-medium transition hover:bg-surface-800/90"
+                                :class="activeFilter === option.key ? 'bg-amber-500/10 text-amber-100' : 'text-text-secondary'"
+                                @click="setFilter(option.key)"
+                            >
+                                {{ option.label }}
+                                <span v-if="activeFilter === option.key" class="text-amber-300">✓</span>
+                            </button>
                         </div>
-                        <div class="podium-card__stat-label">{{ getPodiumStatLabel() }}</div>
-                        <div class="podium-card__stat-value">{{ getPodiumStatValue(entry.row) }}</div>
-                        <div v-if="movementBadge(entry.row)" class="movement-chip" :class="movementBadge(entry.row).icon === '▲' ? 'movement-chip--up' : (movementBadge(entry.row).icon === '▼' ? 'movement-chip--down' : '')">
-                            {{ movementBadge(entry.row).icon }} {{ movementBadge(entry.row).label }}
+                    </div>
+
+                    <div class="relative min-w-[9.5rem] flex-[1.4] sm:flex-none sm:min-w-[13rem]">
+                        <button
+                            type="button"
+                            class="lb-dd-trigger flex h-full min-h-[2.75rem] w-full items-center justify-between gap-2 border border-border bg-surface-900/70 px-3.5 py-2 text-left text-xs font-semibold transition hover:border-amber-500/35 hover:bg-surface-800/80"
+                            :class="
+                                openControlMenu === 'sort'
+                                    ? 'border-amber-400/50 bg-amber-500/10 text-amber-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]'
+                                    : 'text-text-secondary'
+                            "
+                            :aria-expanded="openControlMenu === 'sort'"
+                            aria-haspopup="listbox"
+                            @click.stop="toggleControlMenu('sort')"
+                        >
+                            <span class="min-w-0">
+                                <span class="block text-[9px] font-bold uppercase tracking-[0.14em] text-text-tertiary">{{ t('leaderboards.controlSortCaption') }}</span>
+                                <span class="mt-0.5 block truncate text-[13px] font-semibold text-text-primary">{{ activeSortLabel }}</span>
+                            </span>
+                            <svg class="h-4 w-4 shrink-0 text-amber-400/90" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                <path
+                                    fill-rule="evenodd"
+                                    d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z"
+                                    clip-rule="evenodd"
+                                />
+                            </svg>
+                        </button>
+                        <div
+                            v-show="openControlMenu === 'sort'"
+                            class="lb-panel absolute left-0 right-0 z-30 mt-1.5 max-h-64 overflow-y-auto border border-border/90 bg-surface-900/98 py-1 shadow-2xl shadow-black/40 backdrop-blur-md sm:right-auto sm:min-w-[14rem]"
+                            role="listbox"
+                            @click.stop
+                        >
+                            <button
+                                v-for="col in sortColumns"
+                                :key="col.key"
+                                type="button"
+                                role="option"
+                                class="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-xs font-medium transition hover:bg-surface-800/90"
+                                :class="activeSort === col.key ? 'bg-amber-500/10 text-amber-100' : 'text-text-secondary'"
+                                @click="setSortMetric(col.key)"
+                            >
+                                {{ col.label }}
+                                <span v-if="activeSort === col.key" class="text-amber-300">✓</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="relative min-w-[9.5rem] flex-1 sm:flex-none sm:min-w-[11rem]">
+                        <button
+                            type="button"
+                            class="lb-dd-trigger flex h-full min-h-[2.75rem] w-full items-center justify-between gap-2 border border-border bg-surface-900/70 px-3.5 py-2 text-left text-xs font-semibold transition hover:border-cyan-500/35 hover:bg-surface-800/80"
+                            :class="
+                                openControlMenu === 'direction'
+                                    ? 'border-cyan-400/45 bg-cyan-500/10 text-cyan-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]'
+                                    : 'text-text-secondary'
+                            "
+                            :aria-expanded="openControlMenu === 'direction'"
+                            aria-haspopup="listbox"
+                            @click.stop="toggleControlMenu('direction')"
+                        >
+                            <span class="min-w-0">
+                                <span class="block text-[9px] font-bold uppercase tracking-[0.14em] text-text-tertiary">{{ t('leaderboards.controlDirectionCaption') }}</span>
+                                <span class="mt-0.5 block truncate text-[13px] font-semibold text-text-primary">{{ activeDirectionLabel }}</span>
+                            </span>
+                            <svg class="h-4 w-4 shrink-0 text-cyan-400/90" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                <path
+                                    fill-rule="evenodd"
+                                    d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z"
+                                    clip-rule="evenodd"
+                                />
+                            </svg>
+                        </button>
+                        <div
+                            v-show="openControlMenu === 'direction'"
+                            class="lb-panel absolute left-0 right-0 z-30 mt-1.5 border border-border/90 bg-surface-900/98 py-1 shadow-2xl shadow-black/40 backdrop-blur-md sm:right-auto sm:min-w-[11rem]"
+                            role="listbox"
+                            @click.stop
+                        >
+                            <button
+                                type="button"
+                                role="option"
+                                class="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-xs font-medium transition hover:bg-surface-800/90"
+                                :class="activeDirection === 'desc' ? 'bg-cyan-500/10 text-cyan-100' : 'text-text-secondary'"
+                                @click="setSortDirection('desc')"
+                            >
+                                {{ t('common.descending') }}
+                                <span v-if="activeDirection === 'desc'" class="text-cyan-300">✓</span>
+                            </button>
+                            <button
+                                type="button"
+                                role="option"
+                                class="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-xs font-medium transition hover:bg-surface-800/90"
+                                :class="activeDirection === 'asc' ? 'bg-cyan-500/10 text-cyan-100' : 'text-text-secondary'"
+                                @click="setSortDirection('asc')"
+                            >
+                                {{ t('common.ascending') }}
+                                <span v-if="activeDirection === 'asc'" class="text-cyan-300">✓</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <p class="max-w-2xl px-1 text-center text-[11px] leading-relaxed text-text-tertiary sm:text-left">{{ t('leaderboards.metricOrderHint') }}</p>
+            </div>
+
+            <section v-if="leaderboardData?.personal" class="mt-1">
+                <div class="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-border bg-surface-800/80 px-4 py-4 sm:px-5">
+                    <div>
+                        <p class="text-[10px] font-semibold uppercase tracking-[0.18em] text-text-tertiary">{{ t('leaderboards.personalKicker') }}</p>
+                        <h2 class="mt-1 text-base font-bold text-text-primary">{{ t('leaderboards.personalTitle') }}</h2>
+                        <p class="mt-1 text-xs text-text-secondary">{{ t('leaderboards.personalCopy') }}</p>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-[10px] font-semibold uppercase tracking-wide text-text-tertiary">{{ t('leaderboards.personalRank') }}</span>
+                        <div class="mt-0.5 text-3xl font-black tabular-nums text-neutral-400/90">#{{ leaderboardData.personal.rank }}</div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="relative">
+                <div v-if="loading" class="flex min-h-[220px] flex-col items-center justify-center gap-3 rounded-xl border border-border bg-surface-800/50 px-4 py-12 text-text-secondary" aria-live="polite">
+                    <span class="loading-bar"></span>
+                    <span class="text-sm font-medium">{{ t('leaderboards.tableLoading') }}</span>
+                </div>
+
+                <div v-else-if="!leaderboardData?.rows?.length" class="flex min-h-[220px] items-center justify-center rounded-xl border border-border bg-surface-800/50 px-4 py-12 text-center text-sm text-text-secondary">
+                    <p>{{ t('leaderboards.emptyLeaderboard') }}</p>
+                </div>
+
+                <div v-else class="space-y-3">
+                    <article
+                        v-for="row in leaderboardData.rows"
+                        :key="`${row.user_id ?? row.minecraft_uuid}-${row.rank}`"
+                        class="lb-surface border border-border/80 bg-surface-900/75 p-4 shadow-[0_16px_40px_rgba(0,0,0,0.35)] backdrop-blur-sm transition sm:p-5"
+                        :class="{
+                            'border-primary/40 bg-surface-900/88 ring-1 ring-primary/30': isRowSearchHighlight(row),
+                        }"
+                        :data-lb-uuid="normalizeUuidKey(row.minecraft_uuid)"
+                    >
+                        <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
+                            <div class="flex min-w-0 gap-3 sm:gap-4">
+                                <span
+                                    class="w-14 shrink-0 pt-0.5 text-right text-4xl font-black tabular-nums tracking-tight text-neutral-400/90 sm:w-16 sm:text-5xl"
+                                >
+                                    #{{ row.rank }}
+                                </span>
+                                <img
+                                    v-if="row.minecraft_uuid || row.linked_minecraft_uuid"
+                                    class="h-11 w-11 shrink-0 rounded-lg border border-border object-cover"
+                                    :src="getLeaderboardAvatarUrl(row)"
+                                    :alt="`${getRowPrimaryName(row)} Minecraft avatar`"
+                                    loading="lazy"
+                                />
+                                <div class="min-w-0 flex-1">
+                                    <div class="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                                        <span
+                                            v-if="row.hypixel_rank"
+                                            class="shrink-0 text-[11px] font-semibold"
+                                            :style="{ color: row.hypixel_rank_color || '#94a3b8' }"
+                                        >
+                                            {{ row.hypixel_rank }}
+                                        </span>
+                                        <span class="truncate text-base font-semibold text-text-primary sm:text-lg">
+                                            {{ getRowPrimaryName(row) }}
+                                        </span>
+                                        <span
+                                            v-if="row.is_app_user"
+                                            class="shrink-0 rounded-full border border-border bg-surface-900/80 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-text-tertiary"
+                                        >
+                                            {{ t('leaderboards.appUserTag') }}
+                                        </span>
+                                    </div>
+                                    <p v-if="getRowSubtitleName(row)" class="mt-0.5 truncate text-xs text-text-secondary">
+                                        {{ getRowSubtitleName(row) }}
+                                    </p>
+                                    <div class="mt-2 flex flex-wrap items-center gap-2">
+                                        <span
+                                            class="inline-flex items-center gap-1.5 text-xs text-text-secondary"
+                                            :title="formatStatusTooltip(row)"
+                                        >
+                                            <span
+                                                class="h-2 w-2 shrink-0 rounded-full"
+                                                :class="row.online ? 'bg-emerald-500 shadow-[0_0_0_3px_rgba(16,185,129,0.15)]' : 'bg-slate-500 shadow-[0_0_0_3px_rgba(100,116,139,0.12)]'"
+                                            />
+                                            {{ getStatusLabel(row) }}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="shrink-0 border-t border-border pt-3 sm:border-t-0 sm:border-l sm:pt-0 sm:pl-6 sm:text-right">
+                                <p
+                                    class="text-2xl font-black tabular-nums tracking-tight sm:text-3xl"
+                                    :class="metricValueClass(activeSortColumn.key)"
+                                >
+                                    {{ getColumnValue(row, activeSortColumn) }}
+                                </p>
+                                <p class="mt-1 text-[10px] font-bold uppercase tracking-[0.14em] text-amber-200/75">{{ activeSortLabel }}</p>
+                            </div>
+                        </div>
+
+                        <div class="mt-3 flex flex-wrap items-center gap-1.5 border-t border-border pt-3">
+                            <button
+                                type="button"
+                                class="lb-row-btn inline-flex items-center gap-1.5 border border-border bg-surface-700/85 px-3 py-2 text-xs font-medium text-text-primary transition hover:border-primary/40 hover:bg-surface-600/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-profit/30 focus-visible:ring-offset-0"
+                                :aria-expanded="isStatsExpanded(row)"
+                                @click="toggleStatsExpanded(row)"
+                            >
+                                <span>{{ isStatsExpanded(row) ? t('leaderboards.collapseStats') : t('leaderboards.expandStats') }}</span>
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    viewBox="0 0 20 20"
+                                    fill="currentColor"
+                                    class="h-4 w-4 shrink-0 text-text-secondary transition-transform duration-200"
+                                    :class="{ 'rotate-180': isStatsExpanded(row) }"
+                                    aria-hidden="true"
+                                >
+                                    <path
+                                        fill-rule="evenodd"
+                                        d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z"
+                                        clip-rule="evenodd"
+                                    />
+                                </svg>
+                            </button>
+                            <Link
+                                v-if="getActionUsername(row)"
+                                :href="route('profile-stats', { username: getActionUsername(row) })"
+                                class="lb-row-btn inline-flex items-center border border-border bg-surface-700/85 px-3 py-2 text-xs font-medium text-text-primary transition hover:border-primary/40 hover:bg-surface-600/90"
+                            >
+                                {{ t('nav.profileStats') }}
+                            </Link>
+                            <Link
+                                v-if="row.is_app_user && row.has_public_dashboard && row.linked_minecraft_uuid"
+                                :href="route('dashboard.visit', { minecraftUuid: row.linked_minecraft_uuid })"
+                                class="lb-row-btn inline-flex items-center border border-primary/35 bg-primary/15 px-3 py-2 text-xs font-medium text-primary transition hover:bg-primary/22"
+                            >
+                                {{ t('nav.dashboard') }}
+                            </Link>
+                        </div>
+
+                        <div v-show="isStatsExpanded(row)" class="mt-3">
+                            <p class="mb-3 text-[10px] font-bold uppercase tracking-[0.16em] text-text-tertiary">
+                                {{ t('leaderboards.otherStatsHeading') }}
+                            </p>
+                            <dl class="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3 lg:grid-cols-4">
+                                <div v-for="col in secondaryColumns" :key="`sub-${col.key}`">
+                                    <dt class="text-[10px] font-semibold uppercase tracking-wide text-neutral">{{ col.label }}</dt>
+                                    <dd class="mt-0.5 text-sm font-bold tabular-nums" :class="metricValueClass(col.key)">
+                                        {{ getColumnValue(row, col) }}
+                                    </dd>
+                                </div>
+                                <div>
+                                    <dt class="text-[10px] font-semibold uppercase tracking-wide text-neutral">{{ t('leaderboards.visitsLabel') }}</dt>
+                                    <dd class="mt-0.5 text-sm font-bold tabular-nums" :class="metricValueClass('profile_visits')">
+                                        {{ getColumnValue(row, visitsColumn) }}
+                                    </dd>
+                                </div>
+                            </dl>
                         </div>
                     </article>
-                </section>
+                </div>
+            </section>
 
-                <section class="leaderboards-table-shell">
-                    <div v-if="loading" class="leaderboards-loading" aria-live="polite">
-                        <span class="loading-bar"></span>
-                        <span class="loading-text">Refreshing leaderboard</span>
-                    </div>
-
-                    <div v-else-if="!leaderboardData?.rows?.length" class="leaderboards-empty">
-                        <p>No players found for the selected filters.</p>
-                    </div>
-
-                    <div v-else class="leaderboards-results">
-                        <div class="leaderboards-table-wrap leaderboards-table-wrap--desktop">
-                            <table class="leaderboards-table">
-                                <thead>
-                                    <tr>
-                                        <th class="col-rank">#</th>
-                                        <th class="col-movement">Δ</th>
-                                        <th class="col-player">Player</th>
-                                        <th
-                                            v-for="column in sortableColumns"
-                                            :key="column.key"
-                                            :class="['col-data', `col-${column.key}`, `align-${column.align}`]"
-                                            :aria-sort="isActiveSort(column.key) ? (activeDirection === 'desc' ? 'descending' : 'ascending') : 'none'"
-                                        >
-                                            <button type="button" class="th-button" @click="setSort(column.key)">
-                                                <span>{{ column.label }}</span>
-                                                <span class="th-button__sort" :class="{ 'th-button__sort--active': isActiveSort(column.key) }">
-                                                    {{ sortIndicator(column.key) }}
-                                                </span>
-                                            </button>
-                                        </th>
-                                        <th class="col-status">Status</th>
-                                        <th class="col-actions">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr v-for="row in leaderboardData.rows" :key="`${row.user_id ?? row.minecraft_uuid}-${row.rank}`" class="leaderboard-row">
-                                        <td class="col-rank">
-                                            <span class="rank-badge">{{ row.rank }}</span>
-                                        </td>
-                                        <td class="col-movement">
-                                            <span v-if="movementBadge(row)" class="movement-chip" :class="movementBadge(row).icon === '▲' ? 'movement-chip--up' : (movementBadge(row).icon === '▼' ? 'movement-chip--down' : '')">
-                                                {{ movementBadge(row).icon }} {{ movementBadge(row).label }}
-                                            </span>
-                                            <span v-else class="movement-chip movement-chip--neutral">—</span>
-                                        </td>
-                                        <td class="col-player">
-                                            <div class="player-cell">
-                                                <img
-                                                    v-if="row.minecraft_uuid || row.linked_minecraft_uuid"
-                                                    class="player-avatar"
-                                                    :src="getPodiumAvatarUrl(row)"
-                                                    :alt="`${formatDisplayName(row.display_name || row.profile_username || row.minecraft_uuid)} Minecraft avatar`"
-                                                    loading="lazy"
-                                                />
-                                                <span
-                                                    v-if="row.hypixel_rank"
-                                                    class="player-rank"
-                                                    :style="{ color: row.hypixel_rank_color || '#94a3b8' }"
-                                                >
-                                                    {{ row.hypixel_rank }}
-                                                </span>
-                                                <div class="player-name-wrap">
-                                                    <span class="player-name">{{ formatDisplayName(row.display_name || row.profile_username || row.minecraft_uuid) }}</span>
-                                                    <span v-if="row.is_app_user" class="player-flag">App user</span>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td class="col-data col-level align-right">{{ getColumnValue(row, 'level') }}</td>
-                                        <td class="col-data col-networth align-right">{{ getColumnValue(row, 'networth') }}</td>
-                                        <td class="col-data col-skill_average align-right">{{ getColumnValue(row, 'skill_average') }}</td>
-                                        <td class="col-data col-slayer_total align-right">{{ getColumnValue(row, 'slayer_total') }}</td>
-                                        <td class="col-data col-account_age align-right">{{ getColumnValue(row, 'account_age') }}</td>
-                                        <td class="col-data col-profile_visits align-right">{{ getColumnValue(row, 'profile_visits') }}</td>
-                                        <td class="col-status">
-                                            <span
-                                                class="status-text"
-                                                :class="row.online ? 'status-text--online' : 'status-text--offline'"
-                                                :title="formatStatusTooltip(row)"
-                                                :aria-label="formatStatusTooltip(row)"
-                                            >
-                                                {{ getStatusLabel(row) }}
-                                            </span>
-                                        </td>
-                                        <td class="col-actions">
-                                            <div class="row-actions">
-                                                <Link
-                                                    v-if="getActionUsername(row)"
-                                                    :href="route('profile-stats', { username: getActionUsername(row) })"
-                                                    class="ghost-action"
-                                                >
-                                                    <span class="ghost-action__icon">↗</span>
-                                                    <span>Profile</span>
-                                                </Link>
-                                                <Link
-                                                    v-if="row.is_app_user && row.has_public_dashboard && row.linked_minecraft_uuid"
-                                                    :href="route('dashboard.visit', { minecraftUuid: row.linked_minecraft_uuid })"
-                                                    class="ghost-action ghost-action--accent"
-                                                >
-                                                    <span class="ghost-action__icon">▣</span>
-                                                    <span>Dashboard</span>
-                                                </Link>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-
-                        <div class="leaderboards-mobile-grid">
-                            <article v-for="row in leaderboardData.rows" :key="`mobile-${row.user_id ?? row.minecraft_uuid}-${row.rank}`" class="leaderboard-mobile-card">
-                                <div class="leaderboard-mobile-card__top">
-                                    <div>
-                                        <p class="leaderboard-mobile-card__kicker">Rank #{{ row.rank }}</p>
-                                        <h3 class="leaderboard-mobile-card__title">{{ formatDisplayName(row.display_name || row.profile_username || row.minecraft_uuid) }}</h3>
-                                    </div>
-                                    <span class="rank-badge">{{ row.rank }}</span>
-                                </div>
-
-                                <div class="leaderboard-mobile-card__meta">
-                                    <span v-if="row.hypixel_rank" class="player-rank" :style="{ color: row.hypixel_rank_color || '#94a3b8' }">{{ row.hypixel_rank }}</span>
-                                    <span v-if="row.is_app_user" class="player-flag">App user</span>
-                                    <span class="movement-chip" :class="movementBadge(row)?.icon === '▲' ? 'movement-chip--up' : (movementBadge(row)?.icon === '▼' ? 'movement-chip--down' : '')">
-                                        <template v-if="movementBadge(row)">{{ movementBadge(row).icon }} {{ movementBadge(row).label }}</template>
-                                        <template v-else>—</template>
-                                    </span>
-                                </div>
-
-                                <dl class="leaderboard-mobile-card__stats">
-                                    <div>
-                                        <dt>Level</dt>
-                                        <dd>{{ getColumnValue(row, 'level') }}</dd>
-                                    </div>
-                                    <div>
-                                        <dt>Networth</dt>
-                                        <dd>{{ getColumnValue(row, 'networth') }}</dd>
-                                    </div>
-                                    <div>
-                                        <dt>Skill Avg</dt>
-                                        <dd>{{ getColumnValue(row, 'skill_average') }}</dd>
-                                    </div>
-                                    <div>
-                                        <dt>Slayer XP</dt>
-                                        <dd>{{ getColumnValue(row, 'slayer_total') }}</dd>
-                                    </div>
-                                    <div>
-                                        <dt>Age</dt>
-                                        <dd>{{ getColumnValue(row, 'account_age') }}</dd>
-                                    </div>
-                                    <div>
-                                        <dt>Visits</dt>
-                                        <dd>{{ getColumnValue(row, 'profile_visits') }}</dd>
-                                    </div>
-                                    <div>
-                                        <dt>Status</dt>
-                                        <dd>{{ getStatusLabel(row) }}</dd>
-                                    </div>
-                                </dl>
-
-                                <div class="leaderboard-mobile-card__actions">
-                                    <Link
-                                        v-if="getActionUsername(row)"
-                                        :href="route('profile-stats', { username: getActionUsername(row) })"
-                                        class="ghost-action"
-                                    >
-                                        <span class="ghost-action__icon">↗</span>
-                                        <span>Profile</span>
-                                    </Link>
-                                    <Link
-                                        v-if="row.is_app_user && row.has_public_dashboard && row.linked_minecraft_uuid"
-                                        :href="route('dashboard.visit', { minecraftUuid: row.linked_minecraft_uuid })"
-                                        class="ghost-action ghost-action--accent"
-                                    >
-                                        <span class="ghost-action__icon">▣</span>
-                                        <span>Dashboard</span>
-                                    </Link>
-                                </div>
-                            </article>
-                        </div>
-                    </div>
-                </section>
-
-                <section v-if="leaderboardData?.pagination" class="leaderboards-pagination">
-                    <button type="button" class="pagination-btn" :disabled="currentPage === 1" @click="goToPage(currentPage - 1)">
-                        Previous
-                    </button>
-                    <span class="pagination-info">
-                        Page {{ leaderboardData.pagination.current_page }} of {{ leaderboardData.pagination.last_page }}
-                    </span>
-                    <button
-                        type="button"
-                        class="pagination-btn"
-                        :disabled="currentPage === leaderboardData.pagination.last_page"
-                        @click="goToPage(currentPage + 1)"
-                    >
-                        Next
-                    </button>
-                </section>
-            </div>
+            <section v-if="leaderboardData?.pagination" class="flex flex-wrap items-center justify-center gap-3 pt-1 sm:justify-between">
+                <button
+                    type="button"
+                    class="rounded-lg border border-border bg-surface-800/80 px-4 py-2 text-sm font-medium text-text-primary transition hover:border-primary/40 hover:bg-surface-700/80 disabled:cursor-not-allowed disabled:opacity-40"
+                    :disabled="currentPage === 1"
+                    @click="goToPage(currentPage - 1)"
+                >
+                    {{ t('common.previous') }}
+                </button>
+                <span class="text-sm text-text-secondary">
+                    {{ t('leaderboards.pageOf', { current: leaderboardData.pagination.current_page, last: leaderboardData.pagination.last_page }) }}
+                </span>
+                <button
+                    type="button"
+                    class="rounded-lg border border-border bg-surface-800/80 px-4 py-2 text-sm font-medium text-text-primary transition hover:border-primary/40 hover:bg-surface-700/80 disabled:cursor-not-allowed disabled:opacity-40"
+                    :disabled="currentPage === leaderboardData.pagination.last_page"
+                    @click="goToPage(currentPage + 1)"
+                >
+                    {{ t('common.next') }}
+                </button>
+            </section>
         </div>
     </AuthenticatedLayout>
 </template>
 
 <style scoped>
-.leaderboards-page {
-    min-height: 100%;
-    background: transparent;
-    color: #fff;
-    font-family: 'Inter', sans-serif;
-}
-
-.leaderboards-shell {
-    display: flex;
-    flex-direction: column;
-    gap: 1.25rem;
-}
-
-.leaderboards-hero {
-    display: grid;
-    gap: 1rem;
-}
-
-.leaderboards-kicker {
-    font-size: 0.73rem;
-    font-weight: 600;
-    letter-spacing: 0.22em;
-    text-transform: uppercase;
-    color: rgba(148, 163, 184, 0.95);
-}
-
-.leaderboards-hero__copy {
-    display: grid;
-    gap: 0.55rem;
-}
-
-.leaderboards-title {
-    margin: 0;
-    font-size: clamp(2rem, 4vw, 3.1rem);
-    line-height: 1;
-    font-weight: 600;
-    letter-spacing: -0.04em;
-}
-
-.leaderboards-copy {
-    margin: 0;
-    max-width: 72ch;
-    color: rgba(148, 163, 184, 0.96);
-    line-height: 1.6;
-    font-size: 0.95rem;
-}
-
-.leaderboards-meta {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.75rem;
-}
-
-.meta-card {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-    min-width: 160px;
-    border-radius: 16px;
-    background: rgba(255, 255, 255, 0.03);
-    padding: 0.85rem 1rem;
-}
-
-.meta-card__label {
-    font-size: 0.72rem;
-    font-weight: 400;
-    color: rgba(148, 163, 184, 0.82);
-    text-transform: uppercase;
-    letter-spacing: 0.14em;
-}
-
-.meta-card__value {
-    font-size: 0.95rem;
-    font-weight: 500;
-    color: #fff;
-}
-
-.leaderboards-controls {
-    display: grid;
-    gap: 0.75rem;
-}
-
-.leaderboards-personal {
-    margin-top: 0.2rem;
-}
-
-.personal-card {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
-    border-radius: 18px;
-    border: 1px solid rgba(148, 163, 184, 0.2);
-    background: rgba(15, 23, 42, 0.75);
-    padding: 1rem 1.2rem;
-}
-
-.personal-kicker {
-    margin: 0;
-    text-transform: uppercase;
-    letter-spacing: 0.18em;
-    font-size: 0.62rem;
-    font-weight: 700;
-    color: rgba(148, 163, 184, 0.86);
-}
-
-.personal-title {
-    margin: 0.3rem 0 0;
-    font-size: 1.05rem;
-    font-weight: 700;
-}
-
-.personal-copy {
-    margin: 0.35rem 0 0;
-    color: rgba(148, 163, 184, 0.9);
-    font-size: 0.82rem;
-}
-
-.personal-rank {
-    display: flex;
-    flex-direction: column;
-    gap: 0.3rem;
-    align-items: flex-end;
-}
-
-.personal-rank__label {
-    font-size: 0.7rem;
-    color: rgba(148, 163, 184, 0.9);
-    text-transform: uppercase;
-    letter-spacing: 0.14em;
-}
-
-.personal-rank__value {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-size: 1.4rem;
-    font-weight: 700;
-}
-
-.leaderboards-podium {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1.06fr) minmax(0, 1fr);
-    grid-template-areas: 'second first third';
-    gap: 0.65rem;
-    align-items: end;
-}
-
-.podium-card {
-    --step-height: 30px;
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.4rem;
-    border-radius: 16px;
-    padding: 0.82rem 0.82rem 0.88rem;
-    background: rgba(15, 17, 26, 0.78);
-    border: 1px solid rgba(148, 163, 184, 0.14);
-    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.16);
-    text-align: center;
-    min-height: 188px;
-    overflow: hidden;
-}
-
-.podium-card > * {
-    position: relative;
-    z-index: 1;
-}
-
-.podium-card::after {
-    content: '';
-    position: absolute;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    height: var(--step-height);
-    background: linear-gradient(180deg, rgba(148, 163, 184, 0.06) 0%, rgba(148, 163, 184, 0.14) 100%);
-    border-top: 1px solid rgba(148, 163, 184, 0.2);
-    z-index: 0;
-}
-
-.podium-card--first {
-    grid-area: first;
-    --step-height: 56px;
-    transform: translateY(-0.6rem);
-    min-height: 226px;
-    border-color: rgba(251, 191, 36, 0.28);
-    box-shadow: 0 18px 44px rgba(251, 191, 36, 0.08), 0 12px 36px rgba(0, 0, 0, 0.16);
-}
-
-.podium-card--second {
-    grid-area: second;
-    --step-height: 40px;
-    min-height: 206px;
-    transform: translateY(0.25rem);
-}
-
-.podium-card--third {
-    grid-area: third;
-    --step-height: 26px;
-    min-height: 190px;
-    transform: translateY(0.58rem);
-}
-
-.podium-card__rank {
-    font-size: 0.72rem;
-    font-weight: 700;
-    letter-spacing: 0.18em;
-    color: rgba(148, 163, 184, 0.95);
-    text-transform: uppercase;
-}
-
-.podium-card__avatar {
-    width: 70px;
-    height: 70px;
-    border-radius: 18px;
-    border: 1px solid rgba(148, 163, 184, 0.16);
-    background: rgba(255, 255, 255, 0.03);
-    object-fit: cover;
-}
-
-.podium-card__name {
-    display: flex;
-    flex-direction: column;
-    gap: 0.2rem;
-    align-items: center;
-    min-width: 0;
-}
-
-.podium-card__name strong {
-    font-size: 0.92rem;
-    font-weight: 600;
-    color: #fff;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 100%;
-}
-
-.podium-card__stat-label {
-    font-size: 0.66rem;
-    font-weight: 600;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: rgba(148, 163, 184, 0.82);
-}
-
-.podium-card__stat-value {
-    font-size: 1.05rem;
-    font-weight: 700;
-    color: #fff;
-}
-
-.chip-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-}
-
-.chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.45rem;
-    border: 1px solid rgba(148, 163, 184, 0.18);
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.03);
-    color: rgba(226, 232, 240, 0.88);
-    padding: 0.6rem 0.95rem;
-    font-size: 0.82rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: border-color 160ms ease, background-color 160ms ease, color 160ms ease, transform 160ms ease;
-}
-
-.chip:hover {
-    background: rgba(255, 255, 255, 0.06);
-    border-color: rgba(148, 163, 184, 0.32);
-    transform: translateY(-1px);
-}
-
-.chip--active {
-    background: rgba(56, 189, 248, 0.12);
-    border-color: rgba(56, 189, 248, 0.45);
-    color: #fff;
-}
-
-.chip--sort .chip__direction {
-    color: rgba(148, 163, 184, 0.95);
-    font-size: 0.78rem;
-}
-
-.leaderboards-table-shell {
-    margin-top: 0.35rem;
-    position: relative;
-    border-radius: 22px;
-    background: rgba(15, 17, 26, 0.82);
-    box-shadow: 0 16px 52px rgba(0, 0, 0, 0.18);
-    overflow: hidden;
-}
-
-.leaderboards-loading,
-.leaderboards-empty {
-    display: grid;
-    place-items: center;
-    min-height: 220px;
-    gap: 0.75rem;
-    color: rgba(148, 163, 184, 0.92);
-}
-
 .loading-bar {
     width: 140px;
     height: 3px;
@@ -935,375 +855,6 @@ onBeforeUnmount(() => {
     background: linear-gradient(90deg, rgba(56, 189, 248, 0.12), rgba(56, 189, 248, 0.85), rgba(251, 191, 36, 0.6));
     background-size: 200% 100%;
     animation: loading-shift 1.2s linear infinite;
-}
-
-.loading-text {
-    font-size: 0.9rem;
-    font-weight: 500;
-}
-
-.leaderboards-table-wrap {
-    overflow-x: hidden;
-    -webkit-overflow-scrolling: touch;
-}
-
-.leaderboards-mobile-grid {
-    display: none;
-    gap: 0.7rem;
-}
-
-.leaderboard-mobile-card {
-    border-radius: 16px;
-    border: 1px solid rgba(148, 163, 184, 0.16);
-    background: rgba(15, 17, 26, 0.82);
-    padding: 0.85rem;
-}
-
-.leaderboard-mobile-card__top {
-    display: flex;
-    justify-content: space-between;
-    gap: 0.75rem;
-    align-items: flex-start;
-}
-
-.leaderboard-mobile-card__kicker {
-    margin: 0;
-    text-transform: uppercase;
-    letter-spacing: 0.18em;
-    font-size: 0.62rem;
-    font-weight: 700;
-    color: rgba(148, 163, 184, 0.82);
-}
-
-.leaderboard-mobile-card__title {
-    margin: 0.3rem 0 0;
-    color: #fff;
-    font-size: 0.95rem;
-    font-weight: 700;
-    line-height: 1.25;
-}
-
-.leaderboard-mobile-card__meta {
-    margin-top: 0.6rem;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.4rem;
-}
-
-.leaderboard-mobile-card__stats {
-    margin-top: 0.75rem;
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.55rem;
-}
-
-.leaderboard-mobile-card__stats dt {
-    font-size: 0.62rem;
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
-    color: rgba(148, 163, 184, 0.82);
-}
-
-.leaderboard-mobile-card__stats dd {
-    margin: 0.14rem 0 0;
-    color: #f8fafc;
-    font-size: 0.8rem;
-    font-weight: 600;
-}
-
-.leaderboard-mobile-card__actions {
-    margin-top: 0.75rem;
-    display: flex;
-    gap: 0.4rem;
-    flex-wrap: wrap;
-}
-
-.leaderboards-table {
-    width: 100%;
-    table-layout: fixed;
-    border-collapse: collapse;
-}
-
-.leaderboards-table thead th {
-    border-bottom: 1px solid rgba(148, 163, 184, 0.14);
-    background: rgba(255, 255, 255, 0.02);
-    padding: 0.6rem 0.55rem;
-    text-align: left;
-    color: rgba(226, 232, 240, 0.9);
-    font-size: 0.65rem;
-    font-weight: 600;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    white-space: nowrap;
-}
-
-.leaderboards-table tbody td {
-    border-bottom: 1px solid rgba(148, 163, 184, 0.1);
-    padding: 0.72rem 0.55rem;
-    vertical-align: middle;
-    color: rgba(255, 255, 255, 0.92);
-    font-size: 0.84rem;
-}
-
-.leaderboard-row {
-    transition: background-color 160ms ease;
-}
-
-.leaderboard-row:hover {
-    background: rgba(255, 255, 255, 0.03);
-}
-
-.col-rank {
-    width: 52px;
-    text-align: center;
-}
-
-.col-movement {
-    width: 60px;
-    text-align: center;
-}
-
-.col-player {
-    width: 190px;
-}
-
-.col-status {
-    width: 122px;
-    text-align: left;
-}
-
-.col-actions {
-    width: 136px;
-}
-
-.align-right {
-    text-align: right;
-}
-
-.th-button {
-    display: inline-flex;
-    width: 100%;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.55rem;
-    border: 0;
-    background: transparent;
-    color: inherit;
-    padding: 0;
-    cursor: pointer;
-    text-align: inherit;
-    font: inherit;
-}
-
-.th-button__sort {
-    color: rgba(148, 163, 184, 0.75);
-    font-size: 0.67rem;
-    font-weight: 600;
-}
-
-.th-button__sort--active {
-    color: #fff;
-}
-
-.rank-badge {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 1.7rem;
-    height: 1.7rem;
-    border-radius: 0.65rem;
-    background: rgba(255, 255, 255, 0.06);
-    color: #fff;
-    font-size: 0.78rem;
-    font-weight: 600;
-}
-
-.movement-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.25rem;
-    padding: 0.2rem 0.45rem;
-    border-radius: 999px;
-    border: 1px solid rgba(148, 163, 184, 0.2);
-    font-size: 0.7rem;
-    color: rgba(226, 232, 240, 0.9);
-    background: rgba(15, 23, 42, 0.6);
-}
-
-.movement-chip--up {
-    border-color: rgba(74, 222, 128, 0.35);
-    color: #4ade80;
-}
-
-.movement-chip--down {
-    border-color: rgba(248, 113, 113, 0.4);
-    color: #f87171;
-}
-
-.movement-chip--neutral {
-    color: rgba(148, 163, 184, 0.8);
-}
-
-.player-cell {
-    display: flex;
-    align-items: center;
-    gap: 0.35rem;
-    min-width: 0;
-}
-
-.player-avatar {
-    width: 20px;
-    height: 20px;
-    border-radius: 6px;
-    object-fit: cover;
-    flex-shrink: 0;
-    border: 1px solid rgba(148, 163, 184, 0.16);
-    background: rgba(255, 255, 255, 0.03);
-}
-
-.player-rank {
-    flex-shrink: 0;
-    font-size: 0.7rem;
-    font-weight: 600;
-    letter-spacing: 0.02em;
-}
-
-.player-name-wrap {
-    display: grid;
-    gap: 0.1rem;
-    min-width: 0;
-}
-
-.player-name {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    font-weight: 500;
-    color: #fff;
-    font-size: 0.84rem;
-}
-
-.player-flag {
-    width: fit-content;
-    border-radius: 999px;
-    padding: 0.14rem 0.38rem;
-    font-size: 0.6rem;
-    font-weight: 600;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: rgba(148, 163, 184, 0.95);
-    background: rgba(255, 255, 255, 0.04);
-}
-
-.status-text {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
-    font-size: 0.72rem;
-    font-weight: 500;
-    white-space: normal;
-    line-height: 1.15;
-}
-
-.status-text::before {
-    content: '';
-    width: 0.52rem;
-    height: 0.52rem;
-    border-radius: 999px;
-    flex-shrink: 0;
-}
-
-.status-text--online {
-    color: #d1fae5;
-}
-
-.status-text--online::before {
-    background: #22c55e;
-    box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.12);
-}
-
-.status-text--offline {
-    color: rgba(148, 163, 184, 0.95);
-}
-
-.status-text--offline::before {
-    background: #64748b;
-    box-shadow: 0 0 0 4px rgba(100, 116, 139, 0.12);
-}
-
-.row-actions {
-    display: flex;
-    justify-content: flex-start;
-    gap: 0.35rem;
-    flex-wrap: wrap;
-}
-
-.ghost-action {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
-    border-radius: 999px;
-    border: 1px solid rgba(148, 163, 184, 0.18);
-    background: rgba(255, 255, 255, 0.03);
-    color: rgba(255, 255, 255, 0.88);
-    padding: 0.3rem 0.5rem;
-    font-size: 0.66rem;
-    font-weight: 500;
-    text-decoration: none;
-    transition: border-color 160ms ease, background-color 160ms ease, color 160ms ease;
-}
-
-.ghost-action:hover {
-    border-color: rgba(56, 189, 248, 0.42);
-    background: rgba(56, 189, 248, 0.1);
-    color: #fff;
-}
-
-.ghost-action--accent:hover {
-    border-color: rgba(16, 185, 129, 0.45);
-    background: rgba(16, 185, 129, 0.12);
-}
-
-.ghost-action__icon {
-    font-size: 0.68rem;
-    opacity: 0.88;
-}
-
-.leaderboards-pagination {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.75rem;
-    padding-top: 0.5rem;
-}
-
-.pagination-btn {
-    border: 1px solid rgba(148, 163, 184, 0.18);
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.03);
-    color: rgba(226, 232, 240, 0.95);
-    padding: 0.55rem 0.95rem;
-    font-size: 0.82rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: border-color 160ms ease, background-color 160ms ease, transform 160ms ease;
-}
-
-.pagination-btn:hover:not(:disabled) {
-    border-color: rgba(56, 189, 248, 0.4);
-    background: rgba(56, 189, 248, 0.08);
-    transform: translateY(-1px);
-}
-
-.pagination-btn:disabled {
-    opacity: 0.42;
-    cursor: not-allowed;
-}
-
-.pagination-info {
-    color: rgba(148, 163, 184, 0.9);
-    font-size: 0.82rem;
-    font-weight: 500;
 }
 
 @keyframes loading-shift {
@@ -1316,57 +867,33 @@ onBeforeUnmount(() => {
     }
 }
 
-@media (max-width: 1200px) {
-    .col-slayer_total {
-        display: none;
+/* Smooth “continuous” corners: squircle where supported (G3-like), pill row buttons. */
+.lb-surface,
+.lb-inset,
+.lb-accent,
+.lb-dd-trigger,
+.lb-panel,
+.lb-row-btn {
+    border-radius: 1.125rem;
+}
+
+@supports (corner-shape: squircle) {
+    .lb-surface,
+    .lb-inset,
+    .lb-accent,
+    .lb-dd-trigger,
+    .lb-panel {
+        corner-shape: squircle;
     }
 }
 
-@media (max-width: 900px) {
-    .col-account_age,
-    .col-profile_visits {
-        display: none;
-    }
-
-    .leaderboards-podium {
-        grid-template-columns: 1fr;
-        grid-template-areas: none;
-    }
-
-    .podium-card--first,
-    .podium-card--second,
-    .podium-card--third {
-        --step-height: 30px;
-        grid-area: auto;
-        transform: none;
-    }
-
-    .leaderboards-pagination {
-        justify-content: space-between;
-    }
+.lb-row-btn {
+    border-radius: 0.8125rem;
 }
 
-@media (max-width: 640px) {
-    .leaderboards-table-wrap--desktop {
-        display: none;
-    }
-
-    .leaderboards-mobile-grid {
-        display: grid;
-    }
-
-    .leaderboards-meta {
-        flex-direction: column;
-    }
-
-    .leaderboards-table thead th,
-    .leaderboards-table tbody td {
-        padding-left: 0.7rem;
-        padding-right: 0.7rem;
-    }
-
-    .col-player {
-        width: 200px;
+@supports (corner-shape: squircle) {
+    .lb-row-btn {
+        corner-shape: squircle;
     }
 }
 </style>

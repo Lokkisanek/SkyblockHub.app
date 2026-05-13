@@ -348,7 +348,6 @@ export function getRarityBg(rarity) {
     return RARITY_BG[rarity] ?? 'rgba(170,170,170,0.10)';
 }
 
-/* ── Leather armor canvas coloring (SkyCrypt approach) ─── */
 
 const leatherCache = new Map();
 
@@ -362,16 +361,6 @@ function loadImage(src) {
     });
 }
 
-/**
- * Generate a dye-colored leather armor texture using canvas compositing.
- * Mirrors SkyCrypt's renderer.js renderColoredItem().
- *
- * Steps:
- *  1. Fill canvas with dye color
- *  2. Multiply with base texture (tints the leather)
- *  3. destination-in to clip to base shape (preserve transparency)
- *  4. (optional) Draw overlay on top for non-dyeable details
- */
 export async function getColoredLeatherUrl(type, hexColor) {
     const key = `${type}_${hexColor}`;
     if (leatherCache.has(key)) return leatherCache.get(key);
