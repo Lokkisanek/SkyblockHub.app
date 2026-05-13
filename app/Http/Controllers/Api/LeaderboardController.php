@@ -5,13 +5,16 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\UserDashboard;
 use Illuminate\Database\Query\Builder as QueryBuilder;
-use Illuminate\Database\Query\JoinClause;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Carbon;
 
+/**
+ * Leaderboard aggregates read `profiles_cache.raw_data` JSON. The previous profile-ingest
+ * pipeline was removed; time-filtered periods may be empty when no matching rows exist.
+ */
 class LeaderboardController extends Controller
 {
     private const CACHE_TTL = 300;

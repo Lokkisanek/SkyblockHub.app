@@ -309,7 +309,7 @@ let echoChannel = null
 let autoRefreshTickTimer = null
 
 const COFLNET_ICON_BASE = 'https://sky.coflnet.com/static/icon/'
-const SKYCRYPT_ICON_BASE = 'https://sky.shiiyu.moe/api/item/'
+const ITEM_TEXTURE_ICON_BASE = 'https://sky.shiiyu.moe/api/item/'
 const DEFAULT_ITEM_TEXTURE = '/img/textures/chest.png'
 
 watch(() => props.items, (newItems) => {
@@ -418,7 +418,7 @@ function getTextureUrl(productId) {
 
 function getTextureFallbackUrl(productId) {
   const pid = String(productId || '').toUpperCase()
-  return SKYCRYPT_ICON_BASE + encodeURIComponent(pid)
+  return ITEM_TEXTURE_ICON_BASE + encodeURIComponent(pid)
 }
 
 function handleTextureError(event) {

@@ -528,47 +528,6 @@ function profilePayload(widget) {
     return profilePayloadByUsername.value[key] ?? null;
 }
 
-function buildProfilePayload(apiData) {
-    const profiles = apiData?.profiles ?? {};
-    const profileKeys = Object.keys(profiles);
-
-    if (profileKeys.length === 0) {
-        return null;
-    }
-
-    const selectedKey = profileKeys.find((key) => profiles[key]?.selected) ?? profileKeys[0];
-    const currentData = profiles[selectedKey]?.data ?? null;
-
-    if (!currentData) {
-        return null;
-    }
-
-    const skills = currentData.skills ?? {};
-    const skillEntries = Object.entries(skills).filter(([, entry]) => entry && typeof entry === 'object');
-    const totalSkillLevel = skillEntries.reduce((sum, [, entry]) => sum + Number(entry.level ?? 0), 0);
-    const topSkill = skillEntries
-        .map(([name, entry]) => ({ name, level: Number(entry.level ?? 0) }))
-        .sort((a, b) => b.level - a.level)[0] ?? null;
-
-    const inventory = Array.isArray(currentData.inventory) ? currentData.inventory : [];
-    const inventoryUsedSlots = inventory.filter((slot) => slot !== null).length;
-    const armor = Array.isArray(currentData.armor) ? currentData.armor : [];
-    const equipment = Array.isArray(currentData.equipment) ? currentData.equipment : [];
-
-    return {
-        uuid: apiData.uuid ?? null,
-        displayname: apiData.displayname ?? 'Unknown',
-        currentData,
-        summary: {
-            averageSkillLevel: skillEntries.length ? totalSkillLevel / skillEntries.length : 0,
-            inventoryUsedSlots,
-            armorCount: armor.filter(Boolean).length,
-            equipmentCount: equipment.filter(Boolean).length,
-            topSkill,
-        },
-    };
-}
-
 async function fetchProfilePayload(username) {
     const normalized = username.trim().toLowerCase();
 
@@ -586,25 +545,9 @@ async function fetchProfilePayload(username) {
     };
 
     try {
-        const response = await fetch(`/api/skycrypt/${encodeURIComponent(username)}`);
-        const json = await response.json();
-
-        if (!response.ok) {
-            profilePayloadByUsername.value = {
-                ...profilePayloadByUsername.value,
-                [normalized]: { error: json?.error || 'Profile fetch failed' },
-            };
-            return;
-        }
-
         profilePayloadByUsername.value = {
             ...profilePayloadByUsername.value,
-            [normalized]: buildProfilePayload(json.data ?? {}) ?? { error: 'No profile data available' },
-        };
-    } catch {
-        profilePayloadByUsername.value = {
-            ...profilePayloadByUsername.value,
-            [normalized]: { error: 'Network error while loading profile' },
+            [normalized]: { unavailable: true },
         };
     } finally {
         profileLoadingByUsername.value = {
@@ -631,7 +574,11 @@ function refreshLiveProfiles() {
 
 function widgetProfileData(widget) {
     const payload = profilePayload(widget);
-    return payload?.error ? null : payload;
+    if (!payload || payload.error || payload.unavailable) {
+        return null;
+    }
+
+    return payload;
 }
 
 function widgetStatusText(widget) {
@@ -647,6 +594,10 @@ function widgetStatusText(widget) {
     }
 
     const payload = profilePayload(widget);
+    if (payload?.unavailable) {
+        return 'No profile data';
+    }
+
     if (payload?.error) {
         if ((payload.error || '').toLowerCase().includes('no profile')) {
             return 'No profile data';

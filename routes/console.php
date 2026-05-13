@@ -86,11 +86,6 @@ Schedule::call(fn () => app(AnalyzeMarketManipulationJob::class)->handle())
     ->everyFifteenMinutes()
     ->withoutOverlapping(20);
 
-Schedule::command('leaderboard:ingest-searched --limit=80')
-    ->name('leaderboard:ingest-searched')
-    ->everyTenMinutes()
-    ->withoutOverlapping(8);
-
 Schedule::command('analytics:review-digest --days=7')
     ->name('analytics:review-digest')
     ->weeklyOn(1, '09:00')

@@ -1,6 +1,5 @@
 <?php
 
-use App\Http\Controllers\Api\SkyCryptProxyController;
 use App\Http\Controllers\Api\SocialProofMetricsController;
 use App\Http\Controllers\Api\BinSniperAnalysisController;
 use App\Http\Controllers\Api\BazaarController as ApiBazaarController;
@@ -13,16 +12,6 @@ use Illuminate\Support\Facades\Route;
 Route::get('/user', function (Request $request) {
     return $request->user();
 })->middleware('auth:sanctum');
-
-/*
-|--------------------------------------------------------------------------
-| SkyCrypt Profile Proxy
-|--------------------------------------------------------------------------
-*/
-Route::get('/skycrypt/{username}', [SkyCryptProxyController::class, 'profile'])
-    ->middleware('throttle:30,1')
-    ->where('username', '[A-Za-z0-9_]{1,16}')
-    ->name('api.skycrypt.profile');
 
 /*
 |--------------------------------------------------------------------------

@@ -313,7 +313,6 @@ let debounceTimer = null
 let autoRefreshTickTimer = null
 const DEFAULT_ITEM_TEXTURE = '/img/textures/chest.png'
 const COFLNET_ICON_BASE = 'https://sky.coflnet.com/static/icon/'
-const SKYCRYPT_ICON_BASE = 'https://sky.shiiyu.moe/api/item/'
 
 const PRODUCT_TEXTURE_OVERRIDES = {
   ICE_BAIT: '/item/fish_cod_raw',

@@ -117,7 +117,7 @@ onMounted(() => {
                             Packs
                         </h3>
                         <p class="text-xs text-neutral leading-relaxed">
-                            Resource packs change the textures of items, mobs and other elements in SkyCrypt.
+                            Resource packs change the textures of items, mobs, and other elements in the profile viewer.
                         </p>
                         <p class="text-xs text-neutral leading-relaxed mt-1">
                             You can enable or disable as many packs as you want, but their preference order can't be changed.
