@@ -6,7 +6,7 @@
     "keywords": ["laravel", "framework"],
     "license": "MIT",
     "require": {
-        "php": "^8.2",
+        "php": "^8.3",
         "inertiajs/inertia-laravel": "^2.0",
         "laravel/framework": "^11.31",
         "laravel/reverb": "^1.8",
@@ -17,6 +17,14 @@
         "socialiteproviders/discord": "^4.2",
         "socialiteproviders/microsoft": "^4.9",
         "stripe/stripe-php": "^15.0",
+        "symfony/clock": "^7.4",
+        "symfony/css-selector": "^7.4",
+        "symfony/event-dispatcher": "^7.4",
+        "symfony/options-resolver": "^7.4",
+        "symfony/psr-http-message-bridge": "^7.4",
+        "symfony/string": "^7.4",
+        "symfony/translation": "^7.4",
+        "symfony/yaml": "^7.4",
         "tightenco/ziggy": "^2.0"
     },
     "require-dev": {
