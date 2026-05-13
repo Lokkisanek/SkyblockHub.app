@@ -21,6 +21,8 @@ const loading = ref(false);
 const error = ref('');
 const selectedProfile = ref(null);
 const activeTab = ref('gear');
+let activeFetchController = null;
+let fetchSequence = 0;
 
 /* ── Tab definitions ─────────────────────────────────────── */
 const tabs = computed(() => [
@@ -79,22 +81,6 @@ async function onPacksChanged(packIds) {
     textureVersion.value++;
 }
 
-/* ── Profile lookup (server-side Hypixel profile API removed) ─ */
-async function fetchProfile() {
-    const name = username.value.trim();
-    if (!name) return;
-
-    loading.value = true;
-    error.value = '';
-    profileData.value = null;
-    selectedProfile.value = null;
-
-    await Promise.resolve();
-
-    error.value = t('profileStats.profileUnavailable');
-    loading.value = false;
-}
-
 const petTierColors = {
     COMMON:    '#AAAAAA',
     UNCOMMON:  '#55FF55',
@@ -103,6 +89,66 @@ const petTierColors = {
     LEGENDARY: '#FFAA00',
     MYTHIC:    '#FF55FF',
 };
+
+/* ── API fetch (Hypixel-backed profile JSON) ─────────────── */
+async function fetchProfile() {
+    const name = username.value.trim();
+    if (!name) return;
+
+    if (activeFetchController) {
+        activeFetchController.abort();
+    }
+
+    const requestId = ++fetchSequence;
+    const controller = new AbortController();
+    activeFetchController = controller;
+    const timeoutId = setTimeout(() => controller.abort(), 25000);
+
+    loading.value = true;
+    error.value = '';
+    profileData.value = null;
+    selectedProfile.value = null;
+
+    try {
+        const res = await fetch(`/api/profile/minecraft/${encodeURIComponent(name)}`, {
+            signal: controller.signal,
+        });
+        const json = await res.json();
+
+        if (requestId !== fetchSequence) {
+            return;
+        }
+
+        if (!res.ok) {
+            error.value = json.error || t('profileStats.fetchFailed');
+            return;
+        }
+
+        profileData.value = json.data;
+
+        const profiles = json.data?.profiles ?? {};
+        const keys = Object.keys(profiles);
+        const sel = keys.find(k => profiles[k].selected) || keys[0];
+        if (sel) selectedProfile.value = sel;
+    } catch (e) {
+        if (requestId !== fetchSequence) {
+            return;
+        }
+
+        if (e?.name === 'AbortError') {
+            error.value = t('profileStats.requestTimeout');
+        } else {
+            error.value = t('profileStats.networkError');
+        }
+    } finally {
+        clearTimeout(timeoutId);
+
+        if (requestId === fetchSequence) {
+            loading.value = false;
+            activeFetchController = null;
+        }
+    }
+}
 
 /* ── Computed ─────────────────────────────────────────────── */
 const currentProfile = computed(() => {

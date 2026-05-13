@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\HypixelProfileController;
 use App\Http\Controllers\Api\SocialProofMetricsController;
 use App\Http\Controllers\Api\BinSniperAnalysisController;
 use App\Http\Controllers\Api\BazaarController as ApiBazaarController;
@@ -12,6 +13,16 @@ use Illuminate\Support\Facades\Route;
 Route::get('/user', function (Request $request) {
     return $request->user();
 })->middleware('auth:sanctum');
+
+/*
+|--------------------------------------------------------------------------
+| Minecraft profile (Hypixel API → frontend shape)
+|--------------------------------------------------------------------------
+*/
+Route::get('/profile/minecraft/{username}', [HypixelProfileController::class, 'profile'])
+    ->middleware('throttle:30,1')
+    ->where('username', '[A-Za-z0-9_]{1,16}')
+    ->name('api.profile.minecraft');
 
 /*
 |--------------------------------------------------------------------------
