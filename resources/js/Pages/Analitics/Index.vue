@@ -2,7 +2,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, router } from '@inertiajs/vue3';
 import { computed } from 'vue';
-import { Bar, Doughnut, Line } from 'vue-chartjs';
+import { Doughnut, Line } from 'vue-chartjs';
 import {
     CategoryScale,
     Chart as ChartJS,
@@ -11,7 +11,6 @@ import {
     LinearScale,
     ArcElement,
     LineElement,
-    BarElement,
     PointElement,
     Tooltip,
 } from 'chart.js';
@@ -21,7 +20,6 @@ ChartJS.register(
     LinearScale,
     PointElement,
     LineElement,
-    BarElement,
     ArcElement,
     Tooltip,
     Legend,
@@ -33,16 +31,11 @@ const props = defineProps({
     owner: { type: String, default: 'growth' },
     kpis: { type: Object, default: () => ({}) },
     eventCounts: { type: Object, default: () => ({}) },
-    funnel: { type: Array, default: () => [] },
     dailyLabels: { type: Array, default: () => [] },
     dailySeries: { type: Object, default: () => ({}) },
     topCtas: { type: Object, default: () => ({}) },
     topSources: { type: Object, default: () => ({}) },
-    sourceSegments: { type: Array, default: () => [] },
-    weeklyReview: { type: Object, default: () => ({}) },
-    conversionAlerts: { type: Array, default: () => [] },
     onboardingExperimentVariants: { type: Array, default: () => [] },
-    experimentVariants: { type: Array, default: () => [] },
     aiSummary: { type: Object, default: () => ({}) },
 });
 
@@ -50,53 +43,28 @@ const dayOptions = [7, 30, 90];
 
 const eventOrder = [
     'landing_cta_click',
-    'billing_view',
-    'trial_start',
-    'checkout_start',
-    'checkout_success',
-    'subscription_cancel',
+    'onboarding_view',
+    'onboarding_step_complete',
+    'onboarding_dismiss',
 ];
 
 const eventTitles = {
     landing_cta_click: 'Landing CTA Click',
-    billing_view: 'Billing View',
-    trial_start: 'Trial Start',
-    checkout_start: 'Checkout Start',
-    checkout_success: 'Checkout Success',
-    subscription_cancel: 'Subscription Cancel',
+    onboarding_view: 'Onboarding View',
+    onboarding_step_complete: 'Onboarding Step Complete',
+    onboarding_dismiss: 'Onboarding Dismiss',
 };
 
 const eventColors = {
     landing_cta_click: '#60A5FA',
-    billing_view: '#A78BFA',
-    trial_start: '#34D399',
-    checkout_start: '#F59E0B',
-    checkout_success: '#22C55E',
-    subscription_cancel: '#F87171',
+    onboarding_view: '#A78BFA',
+    onboarding_step_complete: '#34D399',
+    onboarding_dismiss: '#F59E0B',
 };
 
 const numberFmt = (value) => new Intl.NumberFormat('en-US').format(Number(value || 0));
 const percentFmt = (value) => `${Number(value || 0).toFixed(1)}%`;
-const signedNumber = (value) => {
-    const numeric = Number(value || 0);
-    const sign = numeric > 0 ? '+' : '';
-    return `${sign}${numberFmt(numeric)}`;
-};
-const signedPoints = (value) => {
-    if (value === null || value === undefined) return 'n/a';
-    const numeric = Number(value);
-    const sign = numeric > 0 ? '+' : '';
-    return `${sign}${numeric.toFixed(1)}pp`;
-};
 const safeRate = (value) => (value === null || value === undefined ? 'n/a' : percentFmt(value));
-
-const experimentWinner = computed(() => {
-    if (!props.experimentVariants?.length) return null;
-
-    return [...props.experimentVariants]
-        .filter((row) => row.cta_rate_pct !== null)
-        .sort((left, right) => Number(right.cta_rate_pct || 0) - Number(left.cta_rate_pct || 0))[0] ?? null;
-});
 
 const onboardingWinner = computed(() => {
     if (!props.onboardingExperimentVariants?.length) return null;
@@ -156,43 +124,6 @@ const volumeChart = computed(() => {
     };
 });
 
-const funnelChart = computed(() => {
-    const labels = props.funnel.map((step) => eventTitles[step.step] || step.step);
-    const values = props.funnel.map((step) => Number(step.count || 0));
-
-    return {
-        data: {
-            labels,
-            datasets: [
-                {
-                    label: 'Funnel Volume',
-                    data: values,
-                    backgroundColor: ['#60A5FA', '#A78BFA', '#F59E0B', '#22C55E'],
-                    borderRadius: 8,
-                    borderSkipped: false,
-                },
-            ],
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: { display: false },
-            },
-            scales: {
-                x: {
-                    ticks: { color: '#cbd5e1' },
-                    grid: { display: false },
-                },
-                y: {
-                    beginAtZero: true,
-                    ticks: { color: '#9ca3af' },
-                    grid: { color: 'rgba(148, 163, 184, 0.12)' },
-                },
-            },
-        },
-    };
-});
 
 const ctaChart = computed(() => {
     const labels = Object.keys(props.topCtas || {});
@@ -235,7 +166,7 @@ const ctaChart = computed(() => {
                         <p class="hero-kicker">Admin Intelligence</p>
                         <h1 class="hero-title">Admin Command Center</h1>
                         <p class="hero-copy">
-                            Firemni funnel dashboard pro rozhodovani nad konverzi, retenci a revenue kvalitou.
+                            Firemni growth dashboard pro rozhodovani nad aktivaci, onboardingem a engagementem.
                         </p>
                         <p class="mt-3 text-xs uppercase tracking-[0.18em] text-white/45">Owner: {{ owner }}</p>
                     </div>
@@ -267,16 +198,16 @@ const ctaChart = computed(() => {
                         <p class="kpi-value">{{ numberFmt(kpis.uniqueSessions) }}</p>
                     </article>
                     <article class="kpi-card">
-                        <p class="kpi-label">Checkout Success</p>
-                        <p class="kpi-value">{{ percentFmt(kpis.checkoutSuccessRatePct) }}</p>
+                        <p class="kpi-label">CTA Clicks</p>
+                        <p class="kpi-value">{{ numberFmt(kpis.landingCtaClicks) }}</p>
                     </article>
                     <article class="kpi-card">
-                        <p class="kpi-label">Trial Starts</p>
-                        <p class="kpi-value">{{ numberFmt(kpis.trialStarts) }}</p>
+                        <p class="kpi-label">Onboarding Views</p>
+                        <p class="kpi-value">{{ numberFmt(eventCounts?.onboarding_view || 0) }}</p>
                     </article>
                     <article class="kpi-card">
-                        <p class="kpi-label">Cancellations</p>
-                        <p class="kpi-value">{{ numberFmt(kpis.cancellations) }}</p>
+                        <p class="kpi-label">Onboarding Completion</p>
+                        <p class="kpi-value">{{ safeRate(kpis.onboardingCompletionRatePct) }}</p>
                     </article>
                 </section>
 
@@ -284,78 +215,10 @@ const ctaChart = computed(() => {
                     <article class="panel-card">
                         <header class="panel-head">
                             <h2>Event Volume Trend</h2>
-                            <p>Daily timeline across all tracked funnel events</p>
+                            <p>Daily timeline across tracked growth events</p>
                         </header>
                         <div class="chart-lg">
                             <Line :data="volumeChart.data" :options="volumeChart.options" />
-                        </div>
-                    </article>
-
-                    <article class="panel-card">
-                        <header class="panel-head">
-                            <h2>Funnel Shape</h2>
-                            <p>Volume by conversion step</p>
-                        </header>
-                        <div class="chart-lg">
-                            <Bar :data="funnelChart.data" :options="funnelChart.options" />
-                        </div>
-                    </article>
-                </section>
-
-                <section class="mt-6 grid gap-6 lg:grid-cols-3">
-                    <article class="panel-card lg:col-span-2">
-                        <header class="panel-head">
-                            <h2>Step Conversion Table</h2>
-                            <p>Where traffic leaks between steps</p>
-                        </header>
-                        <div class="table-wrap table-wrap--desktop">
-                            <table class="analytics-table">
-                                <thead>
-                                    <tr>
-                                        <th>Step</th>
-                                        <th>Count</th>
-                                        <th>Conversion From Previous</th>
-                                        <th>Drop-off From Previous</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr v-for="row in funnel" :key="row.step">
-                                        <td>{{ eventTitles[row.step] || row.step }}</td>
-                                        <td>{{ numberFmt(row.count) }}</td>
-                                        <td>
-                                            <span v-if="row.conversion_from_prev_pct !== null">{{ percentFmt(row.conversion_from_prev_pct) }}</span>
-                                            <span v-else>n/a</span>
-                                        </td>
-                                        <td>
-                                            <span v-if="row.dropoff_from_prev_pct !== null">{{ percentFmt(row.dropoff_from_prev_pct) }}</span>
-                                            <span v-else>n/a</span>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-
-                        <div class="mobile-card-grid mobile-card-grid--table">
-                            <article v-for="row in funnel" :key="`mobile-funnel-${row.step}`" class="mobile-data-card">
-                                <div class="mobile-data-card__header">
-                                    <p class="mobile-data-card__kicker">Step</p>
-                                    <h3 class="mobile-data-card__title">{{ eventTitles[row.step] || row.step }}</h3>
-                                </div>
-                                <dl class="mobile-data-card__stats">
-                                    <div>
-                                        <dt>Count</dt>
-                                        <dd>{{ numberFmt(row.count) }}</dd>
-                                    </div>
-                                    <div>
-                                        <dt>Conversion</dt>
-                                        <dd>{{ row.conversion_from_prev_pct !== null ? percentFmt(row.conversion_from_prev_pct) : 'n/a' }}</dd>
-                                    </div>
-                                    <div>
-                                        <dt>Drop-off</dt>
-                                        <dd>{{ row.dropoff_from_prev_pct !== null ? percentFmt(row.dropoff_from_prev_pct) : 'n/a' }}</dd>
-                                    </div>
-                                </dl>
-                            </article>
                         </div>
                     </article>
 
@@ -368,58 +231,6 @@ const ctaChart = computed(() => {
                             <Doughnut :data="ctaChart.data" :options="ctaChart.options" />
                         </div>
                         <p v-else class="empty-note">No CTA data in selected range.</p>
-                    </article>
-                </section>
-
-                <section class="mt-6 grid gap-6 lg:grid-cols-2">
-                    <article class="panel-card">
-                        <header class="panel-head">
-                            <h2>Weekly Review Ritual</h2>
-                            <p>Compare current 7 days vs previous week and log one action</p>
-                        </header>
-                        <div class="review-grid">
-                            <div class="review-card">
-                                <p class="review-label">Landing → Billing</p>
-                                <p class="review-value">{{ safeRate(weeklyReview?.current?.rates?.landing_to_billing) }}</p>
-                                <p class="review-delta">{{ signedPoints(weeklyReview?.delta?.landing_to_billing_rate_pp) }}</p>
-                            </div>
-                            <div class="review-card">
-                                <p class="review-label">Billing → Checkout</p>
-                                <p class="review-value">{{ safeRate(weeklyReview?.current?.rates?.billing_to_checkout) }}</p>
-                                <p class="review-delta">{{ signedPoints(weeklyReview?.delta?.billing_to_checkout_rate_pp) }}</p>
-                            </div>
-                            <div class="review-card">
-                                <p class="review-label">Checkout Success</p>
-                                <p class="review-value">{{ safeRate(weeklyReview?.current?.rates?.checkout_success) }}</p>
-                                <p class="review-delta">{{ signedPoints(weeklyReview?.delta?.checkout_success_rate_pp) }}</p>
-                            </div>
-                            <div class="review-card">
-                                <p class="review-label">Trial Starts</p>
-                                <p class="review-value">{{ numberFmt(weeklyReview?.current?.counts?.trial_start || 0) }}</p>
-                                <p class="review-delta">{{ signedNumber(weeklyReview?.delta?.trial_starts || 0) }}</p>
-                            </div>
-                        </div>
-                        <p class="review-note">Owner: {{ weeklyReview?.owner || owner }}. Ritual: check deltas, pick one experiment, write the decision in your weekly log.</p>
-                    </article>
-
-                    <article class="panel-card">
-                        <header class="panel-head">
-                            <h2>Conversion Alerts</h2>
-                            <p>Auto-detected drops vs last week</p>
-                        </header>
-                        <p class="review-note">
-                            Ownership: growth owns conversion alerts, ops owns green-state monitoring. Thresholds: drop &ge; 5pp or 25% relative drop, with at least 20 prior samples.
-                        </p>
-                        <ul class="alert-list">
-                            <li v-for="(alert, index) in conversionAlerts" :key="index" :class="['alert-item', `alert-item--${alert.severity}`]">
-                                <div>
-                                    <p class="alert-title">{{ alert.title }}</p>
-                                    <p class="alert-message">{{ alert.message }}</p>
-                                    <p v-if="alert.owner" class="alert-meta">Owner: {{ alert.owner }}</p>
-                                </div>
-                                <span class="alert-pill">{{ alert.severity }}</span>
-                            </li>
-                        </ul>
                     </article>
                 </section>
 
@@ -499,159 +310,6 @@ const ctaChart = computed(() => {
                                     <div>
                                         <dt>Dismiss</dt>
                                         <dd>{{ safeRate(row.dismiss_rate_pct) }}</dd>
-                                    </div>
-                                </dl>
-                            </article>
-                        </div>
-                    </article>
-                </section>
-
-                <section class="mt-6">
-                    <article class="panel-card">
-                        <header class="panel-head">
-                            <h2>A/B Prompt Performance</h2>
-                            <p>Upgrade prompt variants tracked from existing funnel events</p>
-                        </header>
-
-                        <div class="ab-summary">
-                            <div class="review-card">
-                                <p class="review-label">Winner</p>
-                                <p class="review-value">{{ experimentWinner?.variant ? `Variant ${experimentWinner.variant.toUpperCase()}` : 'n/a' }}</p>
-                                <p class="review-delta">Based on CTA click rate</p>
-                            </div>
-                            <div class="review-card">
-                                <p class="review-label">Best CTA Rate</p>
-                                <p class="review-value">{{ safeRate(experimentWinner?.cta_rate_pct) }}</p>
-                                <p class="review-delta">{{ numberFmt(experimentWinner?.cta || 0) }} clicks / {{ numberFmt(experimentWinner?.impressions || 0) }} impressions</p>
-                            </div>
-                            <div class="review-card">
-                                <p class="review-label">Experiment Scope</p>
-                                <p class="review-value">Prompt A/B</p>
-                                <p class="review-delta">upgrade_prompt_* events</p>
-                            </div>
-                        </div>
-
-                        <div class="table-wrap table-wrap--desktop">
-                            <table class="analytics-table experiment-table">
-                                <thead>
-                                    <tr>
-                                        <th>Variant</th>
-                                        <th>Impressions</th>
-                                        <th>CTA Clicks</th>
-                                        <th>Compare Clicks</th>
-                                        <th>CTA Rate</th>
-                                        <th>Compare Rate</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr v-for="row in experimentVariants" :key="row.variant">
-                                        <td class="segment-source">{{ row.variant.toUpperCase() }}</td>
-                                        <td>{{ numberFmt(row.impressions) }}</td>
-                                        <td>{{ numberFmt(row.cta) }}</td>
-                                        <td>{{ numberFmt(row.compare) }}</td>
-                                        <td>{{ safeRate(row.cta_rate_pct) }}</td>
-                                        <td>{{ safeRate(row.compare_rate_pct) }}</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-
-                        <div class="mobile-card-grid mobile-card-grid--table">
-                            <article v-for="row in experimentVariants" :key="`mobile-experiment-${row.variant}`" class="mobile-data-card">
-                                <div class="mobile-data-card__header">
-                                    <p class="mobile-data-card__kicker">Variant</p>
-                                    <h3 class="mobile-data-card__title">{{ row.variant.toUpperCase() }}</h3>
-                                </div>
-                                <dl class="mobile-data-card__stats mobile-data-card__stats--wide">
-                                    <div>
-                                        <dt>Impressions</dt>
-                                        <dd>{{ numberFmt(row.impressions) }}</dd>
-                                    </div>
-                                    <div>
-                                        <dt>CTA</dt>
-                                        <dd>{{ numberFmt(row.cta) }}</dd>
-                                    </div>
-                                    <div>
-                                        <dt>Compare</dt>
-                                        <dd>{{ numberFmt(row.compare) }}</dd>
-                                    </div>
-                                    <div>
-                                        <dt>CTA Rate</dt>
-                                        <dd>{{ safeRate(row.cta_rate_pct) }}</dd>
-                                    </div>
-                                    <div>
-                                        <dt>Compare Rate</dt>
-                                        <dd>{{ safeRate(row.compare_rate_pct) }}</dd>
-                                    </div>
-                                </dl>
-                            </article>
-                        </div>
-                    </article>
-                </section>
-
-                <section class="mt-6">
-                    <article class="panel-card">
-                        <header class="panel-head">
-                            <h2>Source Segments</h2>
-                            <p>Top sources split by funnel steps</p>
-                        </header>
-                        <div class="table-wrap table-wrap--desktop">
-                            <table class="analytics-table segment-table">
-                                <thead>
-                                    <tr>
-                                        <th>Source</th>
-                                        <th>Total</th>
-                                        <th>Landing CTA</th>
-                                        <th>Billing View</th>
-                                        <th>Checkout Start</th>
-                                        <th>Checkout Success</th>
-                                        <th>Success Rate</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr v-for="segment in sourceSegments" :key="segment.source">
-                                        <td class="segment-source">{{ segment.source }}</td>
-                                        <td>{{ numberFmt(segment.total) }}</td>
-                                        <td>{{ numberFmt(segment.landing_cta_click) }}</td>
-                                        <td>{{ numberFmt(segment.billing_view) }}</td>
-                                        <td>{{ numberFmt(segment.checkout_start) }}</td>
-                                        <td>{{ numberFmt(segment.checkout_success) }}</td>
-                                        <td>{{ safeRate(segment.checkout_success_rate_pct) }}</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-
-                        <div class="mobile-card-grid mobile-card-grid--table">
-                            <article v-for="segment in sourceSegments" :key="`mobile-source-${segment.source}`" class="mobile-data-card">
-                                <div class="mobile-data-card__header">
-                                    <p class="mobile-data-card__kicker">Source</p>
-                                    <h3 class="mobile-data-card__title">{{ segment.source }}</h3>
-                                </div>
-                                <dl class="mobile-data-card__stats mobile-data-card__stats--wide">
-                                    <div>
-                                        <dt>Total</dt>
-                                        <dd>{{ numberFmt(segment.total) }}</dd>
-                                    </div>
-                                    <div>
-                                        <dt>Landing CTA</dt>
-                                        <dd>{{ numberFmt(segment.landing_cta_click) }}</dd>
-                                    </div>
-                                    <div>
-                                        <dt>Billing View</dt>
-                                        <dd>{{ numberFmt(segment.billing_view) }}</dd>
-                                    </div>
-                                    <div>
-                                        <dt>Checkout Start</dt>
-                                        <dd>{{ numberFmt(segment.checkout_start) }}</dd>
-                                    </div>
-                                    <div>
-                                        <dt>Checkout Success</dt>
-                                        <dd>{{ numberFmt(segment.checkout_success) }}</dd>
-                                    </div>
-                                    <div>
-                                        <dt>Success Rate</dt>
-                                        <dd>{{ safeRate(segment.checkout_success_rate_pct) }}</dd>
                                     </div>
                                 </dl>
                             </article>

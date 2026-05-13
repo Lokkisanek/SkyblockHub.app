@@ -48,7 +48,6 @@ Pro test prostredi nastav v `.env`:
 - `STRIPE_WEBHOOK_SECRET=whsec_...`
 - `STRIPE_PRICE_VIP_MONTHLY=price_...` nebo `prod_...`
 - `STRIPE_PRICE_MVP_MONTHLY=price_...` nebo `prod_...`
-- `STRIPE_TRIAL_DAYS=7`
 
 Poznamka:
 - Checkout podporuje jak `price_` ID, tak `prod_` ID. Pokud das `prod_`, backend pouzije default price produktu.

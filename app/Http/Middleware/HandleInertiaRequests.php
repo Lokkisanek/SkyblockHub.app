@@ -6,7 +6,6 @@ use App\Services\MayorService;
 use App\Services\OnboardingChecklistService;
 use App\Services\PerkService;
 use App\Services\SeoService;
-use App\Services\SubscriptionFeatureService;
 use App\Support\TestingAdminGate;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
@@ -50,7 +49,6 @@ class HandleInertiaRequests extends Middleware
                     'bin_sniper' => (bool) config('navigation.experimental_modules.bin_sniper', false),
                 ],
             ],
-            'subscriptionFeatures' => fn () => app(SubscriptionFeatureService::class)->forUser($request->user()),
             'onboarding' => fn () => app(OnboardingChecklistService::class)->captureAndGetState($request),
             'currentMayor' => fn () => $this->buildCurrentMayorWidget(),
             'seo' => SeoService::getPageSeo($request),

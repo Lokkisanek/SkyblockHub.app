@@ -1,7 +1,6 @@
 <?php
 
 use App\Http\Controllers\BazaarController;
-use App\Http\Controllers\BillingController;
 use App\Http\Controllers\BinSniperController;
 use App\Http\Controllers\AnaliticsController;
 use App\Http\Controllers\CookieConsentController;
@@ -71,53 +70,15 @@ Route::get('/terms', function () {
 })->name('terms');
 
 Route::get('/pricing', function () {
-    return redirect()->to(url('/billing#faq'));
+    return redirect()->to('https://buymeacoffee.com/lokkisan');
 })->name('pricing');
-
-Route::get('/billing', [BillingController::class, 'index'])->name('billing');
 Route::get('/analytics', function () {
     return redirect()->route('admin.index');
 })->name('analytics.redirect');
 
-Route::get('/subscribe/{plan}', function (string $plan) {
-    $plan = strtolower($plan);
-    abort_unless(in_array($plan, ['vip', 'mvp', 'trial'], true), 404);
-
-    if (auth()->check()) {
-        return redirect()->route('billing', [
-            'plan' => $plan !== 'trial' ? $plan : null,
-            'trial' => $plan === 'trial' ? 1 : null,
-        ]);
-    }
-
-    $billingParams = [];
-    if ($plan === 'trial') {
-        $billingParams['trial'] = 1;
-    } else {
-        $billingParams['plan'] = $plan;
-    }
-
-    $query = http_build_query($billingParams);
-    $url = url('/billing').($query ? '?'.$query : '');
-
-    if (request()->header('X-Inertia')) {
-        return Inertia::location($url);
-    }
-
-    return redirect()->to($url);
-})->name('subscribe');
-
 Route::middleware('auth')->group(function () {
     Route::post('/onboarding/complete-step', [OnboardingController::class, 'completeStep'])->name('onboarding.complete-step');
     Route::post('/onboarding/dismiss', [OnboardingController::class, 'dismiss'])->name('onboarding.dismiss');
-
-    Route::get('/billing/checkout', [BillingController::class, 'checkout'])->name('billing.checkout');
-    Route::post('/billing/trial', [BillingController::class, 'startTrial'])->name('billing.trial');
-    Route::post('/billing/cancel', [BillingController::class, 'cancel'])->name('billing.cancel');
-    Route::post('/billing/dev-toggle-subscription', [BillingController::class, 'devToggleSubscription'])
-        ->middleware('testing.admin')
-        ->name('billing.dev-toggle-subscription');
-    Route::get('/billing/success', [BillingController::class, 'success'])->name('billing.success');
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
@@ -152,7 +113,7 @@ Route::middleware('auth')->group(function () {
 Route::get('/sitemap.xml', function () {
     $sitemap = '<?xml version="1.0" encoding="UTF-8"?>'.PHP_EOL;
     $sitemap .= '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'.PHP_EOL;
-    
+
     $urls = [
         ['url' => url('/'), 'changefreq' => 'weekly', 'priority' => '1.0'],
         ['url' => url('/dashboard'), 'changefreq' => 'daily', 'priority' => '0.9'],
@@ -162,7 +123,7 @@ Route::get('/sitemap.xml', function () {
         ['url' => url('/event-timer'), 'changefreq' => 'daily', 'priority' => '0.8'],
         ['url' => url('/leaderboards'), 'changefreq' => 'weekly', 'priority' => '0.7'],
     ];
-    
+
     foreach ($urls as $page) {
         $sitemap .= '  <url>'.PHP_EOL;
         $sitemap .= '    <loc>'.$page['url'].'</loc>'.PHP_EOL;
@@ -170,9 +131,9 @@ Route::get('/sitemap.xml', function () {
         $sitemap .= '    <priority>'.$page['priority'].'</priority>'.PHP_EOL;
         $sitemap .= '  </url>'.PHP_EOL;
     }
-    
+
     $sitemap .= '</urlset>';
-    
+
     return response($sitemap, 200, ['Content-Type' => 'application/xml']);
 })->name('sitemap');
 

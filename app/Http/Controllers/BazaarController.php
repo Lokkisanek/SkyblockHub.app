@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Jobs\FetchHypixelBazaarJob;
 use App\Models\BazaarPrice;
-use App\Services\SubscriptionFeatureService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -12,15 +11,8 @@ use Inertia\Response;
 
 class BazaarController extends Controller
 {
-    public function __construct(
-        private readonly SubscriptionFeatureService $subscriptionFeatureService,
-    ) {
-    }
-
     public function index(Request $request): Response
     {
-        $subscriptionFeatures = $this->subscriptionFeatureService->forUser($request->user());
-
         if ($request->boolean('refresh')) {
             app(FetchHypixelBazaarJob::class)->handle();
         }
@@ -127,31 +119,6 @@ class BazaarController extends Controller
 
         $items = $query->paginate(50)->withQueryString();
 
-        $isVipOrHigher = in_array((string) ($subscriptionFeatures['tier'] ?? 'free'), ['vip', 'mvp'], true);
-        if (! $isVipOrHigher && $sortBy === 'coins_per_hour') {
-            $items->setCollection(
-                $items->getCollection()->values()->map(function ($item, $index) {
-                    if ($index >= 2) {
-                        return $item;
-                    }
-
-                    $item->name = 'Locked';
-                    $item->product_id = 'LOCKED';
-                    $item->buy_price = 0;
-                    $item->sell_price = 0;
-                    $item->margin = 0;
-                    $item->margin_percent = 0;
-                    $item->hourly_instabuys = 0;
-                    $item->hourly_instasells = 0;
-                    $item->coins_per_hour = 0;
-                    $item->sell_moving_week = 0;
-                    $item->buy_moving_week = 0;
-
-                    return $item;
-                })
-            );
-        }
-
         // Best picks — top items across different criteria (unfiltered except positive margin + min volume)
         $bestPicksBase = BazaarPrice::query()
             ->join('bazaar_products', 'bazaar_prices.product_id', '=', 'bazaar_products.product_id')
@@ -177,13 +144,14 @@ class BazaarController extends Controller
             ->orderByRaw("LEAST({$hourlyInstabuysSql}, {$hourlyInstasellsSql}) DESC")
             ->first();
 
-        $topFlipsLimit = max(1, min(3, (int) ($subscriptionFeatures['top_flips_limit'] ?? 1)));
+        $topFlipsLimit = 3;
+        $canAiFlips = true;
         $topFlipsRows = (clone $bestPicksBase)
             ->orderByRaw("{$coinsPerHourSql} DESC")
             ->limit($topFlipsLimit)
             ->get();
 
-        $topFlips = $topFlipsRows->map(function ($row) use ($subscriptionFeatures) {
+        $topFlips = $topFlipsRows->map(function ($row) use ($canAiFlips) {
             $record = [
                 'product_id' => $row->product_id,
                 'name' => $row->name,
@@ -193,33 +161,15 @@ class BazaarController extends Controller
                 'hourly_instasells' => (float) ($row->hourly_instasells ?? 0),
             ];
 
-            if ($subscriptionFeatures['can_ai_flips'] ?? false) {
+            if ($canAiFlips) {
                 $record['trust_score'] = $this->calculateTrustScore($record);
             }
 
             return $record;
         })->values();
 
-        if (! $isVipOrHigher) {
-            $topFlips = $topFlips->values()->map(function (array $row, int $index): array {
-                if ($index >= 2) {
-                    return $row;
-                }
-
-                $row['product_id'] = 'LOCKED';
-                $row['name'] = 'Locked';
-                $row['coins_per_hour'] = 0;
-                $row['margin'] = 0;
-                $row['hourly_instabuys'] = 0;
-                $row['hourly_instasells'] = 0;
-                unset($row['trust_score']);
-
-                return $row;
-            });
-        }
-
         $aiInsights = [];
-        if ($subscriptionFeatures['can_ai_flips'] ?? false) {
+        if ($canAiFlips) {
             $aiInsights = $topFlips
                 ->map(function (array $row) {
                     $risk = $row['trust_score'] >= 80 ? 'Low risk' : ($row['trust_score'] >= 60 ? 'Medium risk' : 'High risk');
@@ -244,7 +194,6 @@ class BazaarController extends Controller
             ],
             'top_flips' => $topFlips,
             'ai_insights' => $aiInsights,
-            'subscriptionFeatures' => $subscriptionFeatures,
             'filters' => [
                 'search'   => $search,
                 'category' => $category,

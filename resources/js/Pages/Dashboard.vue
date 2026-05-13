@@ -14,8 +14,7 @@ const props = defineProps({
     requiresMinecraftLink: { type: Boolean, default: false },
     dashboard: { type: Object, default: null },
     widgetTemplates: { type: Array, default: () => [] },
-    dashboardLimits: { type: Object, default: () => ({ free_slots: 1, total_slots: 3, unlocked_slots: 1, locked_slots: [2, 3] }) },
-    subscriptionFeatures: { type: Object, default: () => ({ priority_widget_updates: false }) },
+    dashboardLimits: { type: Object, default: () => ({ free_slots: 3, total_slots: 3, unlocked_slots: 3, locked_slots: [] }) },
     activeSlotIndex: { type: Number, default: 1 },
     liveWidgetData: { type: Object, default: () => ({ items: {}, event: null }) },
 });
@@ -62,8 +61,6 @@ const slotCards = computed(() => {
         isLocked: index + 1 > unlocked,
     }));
 });
-const hasLockedSlots = computed(() => slotCards.value.some((slot) => slot.isLocked));
-const showEditModeUpgradeCta = computed(() => !props.requiresLogin && (hasLockedSlots.value || !props.subscriptionFeatures?.priority_widget_updates));
 
 const profileWidgetTypes = new Set(['skin_view_widget', 'inventory_gui_widget']);
 const totalGridCells = computed(() => gridColumns.value * gridRows.value);
@@ -510,7 +507,7 @@ function saveDashboard() {
             vibrate(10);
         },
         onError: () => {
-            clearFeedbackSoon('Save failed. Check collisions, bounds, and entitlement.');
+            clearFeedbackSoon('Save failed. Check collisions and bounds.');
         },
         onFinish: () => {
             isSaving.value = false;
@@ -780,14 +777,6 @@ onBeforeUnmount(() => {
                 <div class="dashboard-toolbar-row">
                     <div class="dashboard-toolbar-spacer"></div>
                     <div class="dashboard-toolbar-actions" v-if="editMode">
-                        <Link
-                            v-if="showEditModeUpgradeCta"
-                            :href="route('billing')"
-                            class="apple-secondary-button"
-                        >
-                            {{ t('dashboard.upgradeLink') }}
-                        </Link>
-
                         <div v-if="selectedWidget" class="dashboard-toolbar-settings">
                             <label class="widget-field-label">{{ t('dashboard.widgetData') }}</label>
 

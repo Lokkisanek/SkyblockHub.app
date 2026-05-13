@@ -2,7 +2,6 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { Head, router } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import ContextualUpgradePrompt from '@/Components/ContextualUpgradePrompt.vue';
 import { getItemTextureUrl } from '@/utils/textures';
 import { useI18n } from 'vue-i18n';
 
@@ -252,25 +251,6 @@ onBeforeUnmount(() => {
 
     <AuthenticatedLayout>
         <div class="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
-            <div class="mb-4">
-                <ContextualUpgradePrompt
-                    module-key="bin_sniper"
-                    experiment-key="bin-sniper-upgrade-copy"
-                    target-tier="mvp"
-                    :kicker="t('billing.readyUpgrade')"
-                    :free-title="t('featurePrompts.binSniper.freeTitle')"
-                    :free-title-b="t('featurePrompts.binSniper.freeTitleB')"
-                    :free-body="t('featurePrompts.binSniper.freeBody')"
-                    :free-body-b="t('featurePrompts.binSniper.freeBodyB')"
-                    :premium-title="t('featurePrompts.binSniper.premiumTitle')"
-                    :premium-title-b="t('featurePrompts.binSniper.premiumTitleB')"
-                    :premium-body="t('featurePrompts.binSniper.premiumBody')"
-                    :premium-body-b="t('featurePrompts.binSniper.premiumBodyB')"
-                    :cta-label="t('billing.upgradeLink')"
-                    :compare-label="t('pricingFaq.comparePlans')"
-                />
-            </div>
-
             <div class="mb-4 flex flex-wrap items-center gap-3 border border-border bg-gradient-to-r from-surface-800 to-surface-700 p-3 shadow-[0_0_0_1px_rgba(90,110,130,0.12)]">
                 <input
                     v-model="search"
@@ -318,19 +298,6 @@ onBeforeUnmount(() => {
                 >
                     {{ isRefreshing ? t('binSniper.refreshing') : t('binSniper.refreshNow') }}
                 </button>
-            </div>
-
-            <div class="mb-4">
-                <ContextualUpgradePrompt
-                    target-tier="mvp"
-                    :kicker="t('billing.readyUpgrade')"
-                    :free-title="t('featurePrompts.binSniper.freeTitle')"
-                    :free-body="t('featurePrompts.binSniper.freeBody')"
-                    :premium-title="t('featurePrompts.binSniper.premiumTitle')"
-                    :premium-body="t('featurePrompts.binSniper.premiumBody')"
-                    :cta-label="t('billing.upgradeLink')"
-                    :compare-label="t('pricingFaq.comparePlans')"
-                />
             </div>
 
             <div class="mb-4 flex flex-wrap gap-4 text-[11px] text-neutral">

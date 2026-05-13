@@ -29,11 +29,6 @@
 - Trust score + risk badge on AI insights.
 - Dashboard slots: 3.
 
-## Trial
-- Trial duration is controlled by `STRIPE_TRIAL_DAYS` (default 7 days).
-- Trial requires Discord-linked account (`users.discord_id` must be present).
-- Trial can be used once per account (`user_entitlements.trial_started_at`).
-
 ## Stripe Environment Variables
 Set these in `.env`:
 
@@ -42,7 +37,6 @@ Set these in `.env`:
 - `STRIPE_WEBHOOK_SECRET`
 - `STRIPE_PRICE_VIP_MONTHLY`
 - `STRIPE_PRICE_MVP_MONTHLY`
-- `STRIPE_TRIAL_DAYS`
 
 ## Main Backend Pieces
 
@@ -52,7 +46,7 @@ Set these in `.env`:
 
 - `app/Http/Controllers/BillingController.php`
   - Billing page render.
-  - Trial activation endpoint.
+  - Stripe checkout and subscription cancellation.
   - Stripe Checkout session creation.
   - Enforces Discord-linked account for paid and trial flows.
 

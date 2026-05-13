@@ -52,11 +52,6 @@ class User extends Authenticatable
         return $this->hasMany(UserDashboard::class);
     }
 
-    public function entitlement(): HasOne
-    {
-        return $this->hasOne(UserEntitlement::class);
-    }
-
     public function karmaVotesGiven(): HasMany
     {
         return $this->hasMany(KarmaVote::class, 'voter_id');

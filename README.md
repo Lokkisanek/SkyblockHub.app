@@ -139,7 +139,6 @@ STRIPE_SECRET=...             # secret key
 STRIPE_WEBHOOK_SECRET=...     # signing secret z webhook endpointu
 STRIPE_PRICE_VIP_MONTHLY=...  # price ID pro VIP
 STRIPE_PRICE_MVP_MONTHLY=...  # price ID pro MVP
-STRIPE_TRIAL_DAYS=7
 ```
 
 4. Ve Stripe Dashboardu nastavte webhook endpoint na:

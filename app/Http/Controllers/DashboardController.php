@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\UserDashboard;
 use App\Services\DashboardEntitlementService;
-use App\Services\SubscriptionFeatureService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -27,7 +26,6 @@ class DashboardController extends Controller
 
     public function __construct(
         private readonly DashboardEntitlementService $entitlementService,
-        private readonly SubscriptionFeatureService $subscriptionFeatureService,
     ) {
     }
 
@@ -36,8 +34,6 @@ class DashboardController extends Controller
         $user = $request->user();
         $slotIndex = max((int) $request->query('slot', 1), 1);
         $limits = $this->entitlementService->getDashboardLimits($user);
-        $subscriptionFeatures = $this->subscriptionFeatureService->forUser($user);
-
         if (! $this->entitlementService->canAccessSlot($user, $slotIndex)) {
             $slotIndex = 1;
         }
@@ -100,7 +96,6 @@ class DashboardController extends Controller
                 ])->values(),
             ] : null,
             'dashboardLimits' => $limits,
-            'subscriptionFeatures' => $subscriptionFeatures,
             'liveWidgetData' => $liveWidgetData,
             'widgetTemplates' => $this->widgetTemplates(),
         ]);
@@ -153,9 +148,6 @@ class DashboardController extends Controller
                 'unlocked_slots' => 1,
                 'locked_slots' => [],
             ],
-            'subscriptionFeatures' => [
-                'priority_widget_updates' => false,
-            ],
             'liveWidgetData' => $this->buildLiveWidgetData(),
             'widgetTemplates' => $this->widgetTemplates(),
         ]);
@@ -169,12 +161,6 @@ class DashboardController extends Controller
         if (! $user || ! $user->is_mc_linked) {
             return back()->withErrors([
                 'dashboard' => 'Dashboard can be edited only after Minecraft account linking.',
-            ]);
-        }
-
-        if (! $this->entitlementService->canAccessSlot($user, $slotIndex)) {
-            return back()->withErrors([
-                'dashboard' => 'This dashboard slot is locked by Stripe entitlement.',
             ]);
         }
 

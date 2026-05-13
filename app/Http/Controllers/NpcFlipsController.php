@@ -6,7 +6,6 @@ use App\Jobs\FetchHypixelBazaarJob;
 use App\Models\BazaarPrice;
 use App\Services\NpcFlipService;
 use App\Services\PlayerBazaarTaxService;
-use App\Services\SubscriptionFeatureService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
@@ -18,7 +17,6 @@ class NpcFlipsController extends Controller
     public function __construct(
         private readonly NpcFlipService $npcFlipService,
         private readonly PlayerBazaarTaxService $playerBazaarTaxService,
-        private readonly SubscriptionFeatureService $subscriptionFeatureService,
     ) {
     }
 
@@ -31,8 +29,6 @@ class NpcFlipsController extends Controller
 
         $taxMeta = $this->playerBazaarTaxService->getTaxMetaForUser(Auth::user());
         $currentTaxRate = (float) ($taxMeta['rate'] ?? 0.01);
-        $subscriptionFeatures = $this->subscriptionFeatureService->forUser($request->user());
-
         $query = BazaarPrice::query()
             ->join('bazaar_products', 'bazaar_prices.product_id', '=', 'bazaar_products.product_id')
             ->select([
@@ -165,27 +161,6 @@ class NpcFlipsController extends Controller
             default => $flips->sortByDesc('coins_per_hour'),
         };
 
-        $isVipOrHigher = in_array((string) ($subscriptionFeatures['tier'] ?? 'free'), ['vip', 'mvp'], true);
-        if (! $isVipOrHigher) {
-            $flips = $flips->values()->map(function ($flip, $index) {
-                if ($index >= 2) {
-                    return $flip;
-                }
-
-                $flip['name'] = 'Locked';
-                $flip['product_id'] = 'LOCKED';
-                $flip['buy_price'] = 0;
-                $flip['npc_sell_price'] = 0;
-                $flip['profit_per_item'] = 0;
-                $flip['profit_percent'] = 0;
-                $flip['coins_per_hour'] = 0;
-                $flip['profit_per_inventory'] = 0;
-                $flip['one_hour_instasells'] = 0;
-                $flip['time_to_fill_minutes'] = 0;
-
-                return $flip;
-            });
-        }
 
         // Pagination
         $perPage = (int) $request->input('per_page', 50);
@@ -215,7 +190,6 @@ class NpcFlipsController extends Controller
             'overall_best_pick' => $overallBestPick,
             'tax_meta' => $taxMeta,
             'has_compactor' => $hasCompactor,
-            'subscriptionFeatures' => $subscriptionFeatures,
         ]);
     }
 

@@ -17,7 +17,6 @@ return [
     'leaderboardTierTag' => 'Leaderboard Tier Tag',
     'aiControlledFlips' => 'AI-Controlled Flips',
     'aiTrustSignals' => 'AI Trust Signals',
-    'trial7days' => '7-Day Free Trial',
     
     // FAQs
     'faqs' => [

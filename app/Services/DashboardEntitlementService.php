@@ -6,31 +6,18 @@ use App\Models\User;
 
 class DashboardEntitlementService
 {
-    public function __construct(
-        private readonly SubscriptionFeatureService $subscriptionFeatureService,
-    ) {
-    }
-
     public function getDashboardLimits(?User $user): array
     {
         $totalSlots = 3;
-        $features = $this->subscriptionFeatureService->forUser($user);
-        $unlockedSlots = max(1, min($totalSlots, (int) ($features['dashboard_slots_unlocked'] ?? 1)));
-
+        $unlockedSlots = $totalSlots;
         $lockedSlots = [];
-        for ($slot = 1; $slot <= $totalSlots; $slot++) {
-            if ($slot > $unlockedSlots) {
-                $lockedSlots[] = $slot;
-            }
-        }
-
         return [
             'total_slots' => $totalSlots,
-            'free_slots' => 1,
+            'free_slots' => $totalSlots,
             'unlocked_slots' => $unlockedSlots,
             'locked_slots' => $lockedSlots,
-            'paywall_provider' => 'stripe',
-            'has_active_entitlement' => (bool) ($features['has_active_entitlement'] ?? false),
+            'paywall_provider' => 'none',
+            'has_active_entitlement' => false,
         ];
     }
 
@@ -40,8 +27,6 @@ class DashboardEntitlementService
             return false;
         }
 
-        $limits = $this->getDashboardLimits($user);
-
-        return $slotIndex <= (int) $limits['unlocked_slots'];
+        return $slotIndex <= 3;
     }
 }

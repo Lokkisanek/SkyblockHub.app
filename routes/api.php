@@ -7,7 +7,6 @@ use App\Http\Controllers\Api\BazaarController as ApiBazaarController;
 use App\Http\Controllers\Api\LeaderboardController;
 use App\Http\Controllers\CraftingArbitrageController;
 use App\Http\Controllers\KarmaController;
-use App\Http\Controllers\StripeWebhookController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -61,9 +60,6 @@ Route::get('/arbitrage/crafting', [CraftingArbitrageController::class, 'api']);
 Route::post('/bin-sniper/analyze', [BinSniperAnalysisController::class, 'analyze'])
     ->middleware('throttle:30,1')
     ->name('api.bin-sniper.analyze');
-
-Route::post('/stripe/webhook', [StripeWebhookController::class, 'handle'])
-    ->name('api.stripe.webhook');
 
 Route::get('/social-proof-metrics', SocialProofMetricsController::class)
     ->middleware('throttle:60,1')

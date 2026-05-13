@@ -24,6 +24,7 @@ const siteOrigin = typeof window !== 'undefined' ? window.location.origin : 'htt
 const canonicalUrl = `${siteOrigin}/`;
 const pageTitle = 'Hypixel SkyBlock Tools - Bazaar Flips, NPC Arbitrage, Profiles';
 const pageDescription = 'SkyblockHub is a clean Hypixel SkyBlock dashboard for Bazaar flips, NPC arbitrage, profile analysis, mayor perks, and event timing.';
+const currentYear = new Date().getFullYear();
 
 const featureCards = computed(() => [
     {
@@ -329,78 +330,24 @@ function cardAccentClass(accent) {
                             </Link>
                         </div>
 
-                        <!-- Pricing Cards -->
-                        <div class="grid gap-6 md:grid-cols-2">
-                            <!-- VIP -->
-                            <div class="rounded-2xl border border-white/10 bg-surface-900/75 p-6 shadow-[0_16px_40px_rgba(0,0,0,0.25)] backdrop-blur-sm">
-                                <p class="text-[10px] font-bold uppercase tracking-[0.24em] text-emerald-400/80">{{ $t('welcome.pricing.vipTitle') }}</p>
-                                <p class="mt-3 text-4xl font-black text-white">{{ $t('welcome.pricing.vipPrice') }}<span class="text-lg font-medium text-white/45">{{ $t('welcome.pricing.vipPeriod') }}</span></p>
-                                <ul class="mt-5 space-y-2.5 text-sm leading-relaxed text-white/75">
-                                    <li class="flex items-center gap-2">
-                                        <svg class="h-4 w-4 shrink-0 text-emerald-400/70" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd" /></svg>
-                                        {{ $t('welcome.pricing.vipFeature1') }}
-                                    </li>
-                                    <li class="flex items-center gap-2">
-                                        <svg class="h-4 w-4 shrink-0 text-emerald-400/70" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd" /></svg>
-                                        {{ $t('welcome.pricing.vipFeature2') }}
-                                    </li>
-                                    <li class="flex items-center gap-2">
-                                        <svg class="h-4 w-4 shrink-0 text-emerald-400/70" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd" /></svg>
-                                        {{ $t('welcome.pricing.vipFeature3') }}
-                                    </li>
-                                    <li class="flex items-center gap-2">
-                                        <svg class="h-4 w-4 shrink-0 text-emerald-400/70" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd" /></svg>
-                                        {{ $t('welcome.pricing.vipFeature4') }}
-                                    </li>
-                                    <li class="flex items-center gap-2">
-                                        <svg class="h-4 w-4 shrink-0 text-emerald-400/70" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd" /></svg>
-                                        {{ $t('welcome.pricing.vipFeature5') }}
-                                    </li>
-                                </ul>
-                                <Link
-                                    :href="route('billing')"
-                                    @click="trackLandingCta('pricing_vip')"
-                                    class="mt-6 flex w-full items-center justify-center rounded-xl border border-emerald-400/30 bg-emerald-500/10 py-3 text-sm font-semibold text-emerald-400 transition hover:bg-emerald-500/20 hover:text-emerald-300"
+                        <!-- Support -->
+                        <div class="rounded-2xl border border-white/10 bg-surface-900/75 p-6 text-center shadow-[0_16px_40px_rgba(0,0,0,0.25)] backdrop-blur-sm">
+                            <p class="text-[10px] font-bold uppercase tracking-[0.24em] text-amber-300/80">{{ $t('welcome.support.kicker') }}</p>
+                            <h3 class="mt-2 text-2xl font-bold text-white">{{ $t('welcome.support.title') }}</h3>
+                            <p class="mx-auto mt-2 max-w-2xl text-sm leading-relaxed text-white/70">{{ $t('welcome.support.body') }}</p>
+                            <div class="mt-5 flex flex-wrap items-center justify-center gap-3">
+                                <a
+                                    href="https://buymeacoffee.com/lokkisan"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    class="inline-flex items-center justify-center rounded-xl border border-amber-400/30 bg-amber-500/15 px-6 py-3 text-sm font-semibold text-amber-200 transition hover:bg-amber-500/25 hover:text-amber-100"
+                                    @click="trackLandingCta('support_bmac')"
                                 >
-                                    {{ $t('welcome.pricing.subscribeVip') }}
-                                </Link>
-                            </div>
-
-                            <!-- MVP (highlighted) -->
-                            <div class="relative rounded-2xl border border-amber-400/25 bg-surface-900/75 p-6 shadow-[0_16px_40px_rgba(0,0,0,0.25),0_0_60px_rgba(251,191,36,0.06)] backdrop-blur-sm">
-                                <p class="text-[10px] font-bold uppercase tracking-[0.24em] text-amber-400/80">{{ $t('welcome.pricing.mvpTitle') }}</p>
-                                <p class="mt-3 text-4xl font-black text-white">{{ $t('welcome.pricing.mvpPrice') }}<span class="text-lg font-medium text-white/45">{{ $t('welcome.pricing.mvpPeriod') }}</span></p>
-                                <ul class="mt-5 space-y-2.5 text-sm leading-relaxed text-white/75">
-                                    <li class="flex items-center gap-2">
-                                        <svg class="h-4 w-4 shrink-0 text-amber-400/70" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd" /></svg>
-                                        {{ $t('welcome.pricing.mvpFeature1') }}
-                                    </li>
-                                    <li class="flex items-center gap-2">
-                                        <svg class="h-4 w-4 shrink-0 text-amber-400/70" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd" /></svg>
-                                        {{ $t('welcome.pricing.mvpFeature2') }}
-                                    </li>
-                                    <li class="flex items-center gap-2">
-                                        <svg class="h-4 w-4 shrink-0 text-amber-400/70" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd" /></svg>
-                                        {{ $t('welcome.pricing.mvpFeature3') }}
-                                    </li>
-                                    <li class="flex items-center gap-2">
-                                        <svg class="h-4 w-4 shrink-0 text-amber-400/70" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd" /></svg>
-                                        {{ $t('welcome.pricing.mvpFeature4') }}
-                                    </li>
-                                </ul>
-                                <Link
-                                    :href="route('billing')"
-                                    @click="trackLandingCta('pricing_mvp')"
-                                    class="mt-6 flex w-full items-center justify-center rounded-xl border border-amber-400/30 bg-amber-500/10 py-3 text-sm font-semibold text-amber-400 transition hover:bg-amber-500/20 hover:text-amber-300"
-                                >
-                                    {{ $t('welcome.pricing.subscribeMvp') }}
-                                </Link>
+                                    {{ $t('welcome.support.cta') }}
+                                </a>
+                                <span class="text-xs text-white/35">{{ $t('welcome.support.note') }}</span>
                             </div>
                         </div>
-
-                        <p class="mt-5 text-center text-xs text-white/30">
-                            <Link :href="`${route('billing')}#faq`" class="underline decoration-white/20 underline-offset-2 transition hover:text-white/60">{{ $t('welcome.pricing.comparePlans') }}</Link>
-                        </p>
 
                         <div class="mx-auto mt-8 max-w-4xl rounded-2xl border border-[#5865F2]/30 bg-[#5865F2]/[0.08] px-5 py-5 text-center shadow-[0_14px_38px_rgba(88,101,242,0.14)] backdrop-blur-sm sm:px-8 sm:py-6">
                             <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#B6BCFF]">Discord</p>
@@ -645,7 +592,7 @@ function cardAccentClass(accent) {
                     <div>
                         <h3 class="text-[10px] font-bold uppercase tracking-widest text-white/40">{{ $t('welcome.footer.legal') }}</h3>
                         <ul class="mt-3 space-y-2">
-                            <li><Link :href="`${route('billing')}#faq`" class="text-xs text-white/35 transition hover:text-white">{{ $t('welcome.footer.pricingFaq') }}</Link></li>
+                            <li><a href="https://buymeacoffee.com/lokkisan" target="_blank" rel="noopener noreferrer" class="text-xs text-white/35 transition hover:text-white">{{ $t('welcome.footer.supportLink') }}</a></li>
                             <li><Link :href="route('privacy')" class="text-xs text-white/35 transition hover:text-white">{{ $t('welcome.footer.privacyPolicy') }}</Link></li>
                             <li><Link :href="route('terms')" class="text-xs text-white/35 transition hover:text-white">{{ $t('welcome.footer.terms') }}</Link></li>
                         </ul>
@@ -653,7 +600,7 @@ function cardAccentClass(accent) {
                 </div>
 
                 <div class="mt-8 flex flex-col items-center justify-between gap-3 border-t border-white/[0.06] pt-6 sm:flex-row">
-                    <p class="text-[11px] text-white/25">{{ $t('welcome.footer.copyright', { year: new Date().getFullYear() }) }}</p>
+                    <p class="text-[11px] text-white/25">{{ $t('welcome.footer.copyright', { year: currentYear }) }}</p>
                     <p class="text-[11px] text-white/20">{{ $t('welcome.footer.notAffiliated') }}</p>
                 </div>
             </div>

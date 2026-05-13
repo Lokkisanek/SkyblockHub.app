@@ -32,8 +32,6 @@ const routeStepMap = [
     { routeName: 'event-timer', step: 'explore_module' },
     { routeName: 'mayors', step: 'explore_module' },
     { routeName: 'leaderboards', step: 'explore_module' },
-    { routeName: 'billing', step: 'visit_billing' },
-    { routeName: 'billing.success', step: 'visit_billing' },
 ];
 
 function trackOnboardingEvent(action, properties = {}) {

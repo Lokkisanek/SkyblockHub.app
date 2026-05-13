@@ -28,20 +28,11 @@ const props = defineProps({
         type: String,
         default: null,
     },
-    subscriptionFeatures: {
-        type: Object,
-        default: () => ({}),
-    },
-    paymentStatus: {
-        type: Object,
-        default: () => ({}),
-    },
 });
 
 const showLinkModal = ref(false);
 
 const unlinkForm = useForm({});
-const cancelSubscriptionForm = useForm({});
 const mcForm = useForm({
     minecraft_username: props.minecraftUsername ?? '',
 });
@@ -168,54 +159,6 @@ function linkDirect() {
                                     </div>
                                 </div>
                             </template>
-                        </div>
-                    </section>
-                </div>
-
-                <!-- Danger zone -->
-                <div class="rounded-lg border border-border bg-surface-800 p-5 sm:p-6">
-                    <section class="max-w-xl">
-                        <header>
-                            <h2 class="text-base font-semibold text-white">{{ $t('profile.payments.heading') }}</h2>
-                            <p class="mt-1 text-sm text-neutral">{{ $t('profile.payments.description') }}</p>
-                        </header>
-
-                        <div class="mt-4 space-y-2 text-sm text-neutral">
-                            <p>
-                                {{ $t('profile.payments.tier') }}:
-                                <strong class="text-white">{{ String(paymentStatus.tier || 'free').toUpperCase() }}</strong>
-                            </p>
-                            <p>
-                                {{ $t('profile.payments.status') }}:
-                                <strong class="text-white">{{ paymentStatus.status || 'inactive' }}</strong>
-                            </p>
-                            <p v-if="paymentStatus.trialEndsAt">
-                                {{ $t('profile.payments.trialEndsAt') }}:
-                                <strong class="text-white">{{ paymentStatus.trialEndsAt }}</strong>
-                            </p>
-                            <p v-if="paymentStatus.currentPeriodEndsAt">
-                                {{ $t('profile.payments.currentPeriodEndsAt') }}:
-                                <strong class="text-white">{{ paymentStatus.currentPeriodEndsAt }}</strong>
-                            </p>
-                        </div>
-
-                        <div class="mt-4 flex items-center gap-2">
-                            <button
-                                v-if="paymentStatus.hasSubscription"
-                                @click="cancelSubscriptionForm.post(route('billing.cancel'), { preserveScroll: true })"
-                                :disabled="cancelSubscriptionForm.processing"
-                                class="rounded-md border border-red-400/30 bg-red-500/10 px-3 py-1.5 text-xs font-medium text-red-200 hover:bg-red-500/20 disabled:opacity-50 transition-colors"
-                            >
-                                <span v-if="cancelSubscriptionForm.processing">{{ $t('profile.payments.cancelling') }}</span>
-                                <span v-else>{{ $t('profile.payments.cancelSubscription') }}</span>
-                            </button>
-
-                            <a
-                                :href="route('billing')"
-                                class="rounded-md border border-border bg-surface-700 px-3 py-1.5 text-xs font-medium text-neutral hover:bg-surface-600 hover:text-white transition-colors"
-                            >
-                                {{ $t('profile.payments.openBilling') }}
-                            </a>
                         </div>
                     </section>
                 </div>

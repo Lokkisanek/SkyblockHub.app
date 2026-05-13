@@ -51,11 +51,8 @@ return [
         'mvpPeriod' => '/month',
         'mvpFeature1' => 'AI-Controlled Flips',
         'mvpFeature2' => 'AI Trust Signals',
-        'mvpFeature3' => '7-Day Free Trial',
         'mvpFeature4' => 'All VIP Features',
-        'startTrial' => 'Start Free Trial',
         'subscribeMvp' => 'Subscribe to MVP',
-        'freeTrial' => 'Free Trial',
         'comparePlans' => 'Compare all plans',
     ],
     

@@ -88,11 +88,6 @@ function maybeOpenAuthPanelFromUrl() {
     const params = new URLSearchParams(window.location.search);
     if (params.get('auth') !== '1') return;
 
-    const reason = params.get('reason');
-    if (reason === 'subscribe') {
-        authNotice.value = t('auth.subscribeRequiresLogin');
-    }
-
     showAuthPanel.value = true;
 
     // Clean up URL so refresh/back doesn't keep re-opening the panel.

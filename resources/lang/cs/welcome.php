@@ -51,11 +51,8 @@ return [
         'mvpPeriod' => '/měsíc',
         'mvpFeature1' => 'AI-Řízené Flipy',
         'mvpFeature2' => 'AI Signály Důvěry',
-        'mvpFeature3' => '7denní Zkoušení Zdarma',
         'mvpFeature4' => 'Všechny Funkce VIP',
-        'startTrial' => 'Začít Bezplatnou Zkoušku',
         'subscribeMvp' => 'Předplať MVP',
-        'freeTrial' => 'Bezplatná Zkouška',
         'comparePlans' => 'Porovnej všechny plány',
     ],
     

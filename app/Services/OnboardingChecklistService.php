@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\Models\User;
 use App\Models\UserOnboarding;
-use App\Services\SubscriptionFeatureService;
 use Illuminate\Http\Request;
 
 class OnboardingChecklistService
@@ -18,17 +17,14 @@ class OnboardingChecklistService
         'link_minecraft' => 'profile.edit',
         'open_dashboard' => 'dashboard',
         'explore_module' => 'bazaar',
-        'visit_billing' => 'billing',
     ];
 
     /**
      * @var array<string, array<int, string>>
      */
     private const SEGMENT_STEPS = [
-        'unlinked' => ['link_minecraft', 'open_dashboard', 'explore_module', 'visit_billing'],
-        'linked_free' => ['open_dashboard', 'explore_module', 'visit_billing'],
-        'trial' => ['open_dashboard', 'explore_module', 'visit_billing'],
-        'paid' => ['open_dashboard', 'explore_module', 'visit_billing'],
+        'unlinked' => ['link_minecraft', 'open_dashboard', 'explore_module'],
+        'linked' => ['open_dashboard', 'explore_module'],
     ];
 
     /**
@@ -42,14 +38,7 @@ class OnboardingChecklistService
         'event-timer' => 'explore_module',
         'mayors' => 'explore_module',
         'leaderboards' => 'explore_module',
-        'billing' => 'visit_billing',
-        'billing.success' => 'visit_billing',
     ];
-
-    public function __construct(
-        private readonly SubscriptionFeatureService $subscriptionFeatureService,
-    ) {
-    }
 
     /**
      * @return array<string, mixed>|null
@@ -70,23 +59,20 @@ class OnboardingChecklistService
             $this->markStep($user, 'link_minecraft');
         }
 
-        $features = $this->subscriptionFeatureService->forUser($user);
-
-        return $this->getState($user, $features);
+        return $this->getState($user);
     }
 
     /**
      * @return array<string, mixed>
      */
     /**
-     * @param array<string, mixed> $subscriptionFeatures
      * @return array<string, mixed>
      */
-    public function getState(User $user, array $subscriptionFeatures = []): array
+    public function getState(User $user): array
     {
         $onboarding = $this->getOrCreate($user);
         $completedSteps = $this->completedSteps($onboarding);
-        $segment = $this->resolveSegment($user, $subscriptionFeatures);
+        $segment = $this->resolveSegment($user);
         $stepKeys = $this->resolveStepsForSegment($segment);
         $copyVariant = $this->resolveCopyVariant($onboarding, $user);
 
@@ -175,24 +161,13 @@ class OnboardingChecklistService
         )));
     }
 
-    /**
-     * @param array<string, mixed> $subscriptionFeatures
-     */
-    private function resolveSegment(User $user, array $subscriptionFeatures): string
+    private function resolveSegment(User $user): string
     {
         if (! $user->is_mc_linked) {
             return 'unlinked';
         }
 
-        if (! empty($subscriptionFeatures['is_trialing'])) {
-            return 'trial';
-        }
-
-        if (! empty($subscriptionFeatures['has_active_entitlement'])) {
-            return 'paid';
-        }
-
-        return 'linked_free';
+        return 'linked';
     }
 
     /**
@@ -200,7 +175,7 @@ class OnboardingChecklistService
      */
     private function resolveStepsForSegment(string $segment): array
     {
-        return self::SEGMENT_STEPS[$segment] ?? self::SEGMENT_STEPS['linked_free'];
+        return self::SEGMENT_STEPS[$segment] ?? self::SEGMENT_STEPS['linked'];
     }
 
     private function resolveCopyVariant(UserOnboarding $onboarding, User $user): string

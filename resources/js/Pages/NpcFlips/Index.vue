@@ -13,13 +13,6 @@
         </div>
 
         <div class="flex flex-col items-end gap-1">
-          <button
-            @click="refreshMarket"
-            class="rounded border border-border bg-surface-700 px-4 py-2 text-sm font-medium text-text-primary hover:bg-surface-600"
-            :disabled="isRefreshing"
-          >
-            {{ isRefreshing ? t('common.refreshing') : t('bazaar.refreshBazaar') }}
-          </button>
           <span class="text-[11px] text-text-tertiary">
             {{ t('common.autoRefreshIn') }} {{ formatCountdown(autoRefreshRemainingSeconds) }}
           </span>
@@ -75,26 +68,6 @@
           >
             {{ t('common.reset') }}
           </button>
-        </div>
-      </div>
-
-      <div v-if="!isMvp" class="rounded-2xl border border-sky-300/30 bg-[radial-gradient(circle_at_top,rgba(56,189,248,0.2),rgba(15,23,42,0.88))] p-5">
-        <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h3 class="text-base font-semibold text-sky-100">{{ t('npc.upsellTitle') }}</h3>
-            <p class="mt-1 text-sm text-sky-100/80">
-              {{ !isVipOrHigher ? t('npc.upsellFreeDesc') : t('npc.upsellVipDesc') }}
-            </p>
-            <p class="mt-1 text-xs text-sky-100/65">{{ t('npc.upsellCurrentRefresh', { seconds: AUTO_REFRESH_INTERVAL_SECONDS }) }}</p>
-          </div>
-          <div class="flex gap-2">
-            <Link :href="route('billing')" class="rounded-lg bg-sky-400 px-4 py-2 text-xs font-semibold text-black transition hover:bg-sky-300">
-              {{ !isVipOrHigher ? t('npc.upsellFreeCta') : t('npc.upsellVipCta') }}
-            </Link>
-              <Link :href="`${route('billing')}#faq`" class="rounded-lg border border-sky-200/35 bg-black/20 px-4 py-2 text-xs font-semibold text-sky-100 transition hover:bg-black/30">
-                {{ t('npc.upsellCompareCta') }}
-              </Link>
-          </div>
         </div>
       </div>
 
@@ -324,21 +297,16 @@ const props = defineProps({
   best_picks: Object,
   tax_meta: Object,
   has_compactor: Boolean,
-  subscriptionFeatures: { type: Object, default: () => ({}) },
 })
 
-const tier = computed(() => String(props.subscriptionFeatures?.tier || 'free'))
-const isVipOrHigher = computed(() => tier.value === 'vip' || tier.value === 'mvp')
-const isMvp = computed(() => tier.value === 'mvp')
-
-const isRestrictedFlip = (index) => !isVipOrHigher.value && index < 2
+const isRestrictedFlip = () => false
 
 const search = ref(props.filters.search || '')
 const sortBy = ref(props.filters.sort || 'best_pick_score')
 const sortDir = ref(props.filters.dir || 'desc')
 const isRefreshing = ref(false)
 
-const AUTO_REFRESH_INTERVAL_SECONDS = Number(props.subscriptionFeatures?.refresh_seconds || 180)
+const AUTO_REFRESH_INTERVAL_SECONDS = 180
 const autoRefreshRemainingSeconds = ref(AUTO_REFRESH_INTERVAL_SECONDS)
 
 let debounceTimer = null
@@ -651,24 +619,6 @@ onBeforeUnmount(() => {
 <style scoped>
 tr.vip-restricted {
   position: relative;
-}
-
-tr.vip-restricted::after {
-  content: 'VIP/MVP Only';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  background: rgba(0, 0, 0, 0.8);
-  color: rgb(96, 165, 250);
-  padding: 0.5rem 1rem;
-  border-radius: 0.375rem;
-  font-size: 0.75rem;
-  font-weight: 600;
-  white-space: nowrap;
-  z-index: 40;
-  pointer-events: none;
-  border: 1px solid rgb(96, 165, 250);
 }
 
 tr.vip-restricted:hover {
