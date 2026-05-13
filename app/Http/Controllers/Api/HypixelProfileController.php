@@ -31,7 +31,7 @@ class HypixelProfileController extends Controller
     ) {
     }
 
-    // ─── Skill XP tables (from SkyCrypt constants) ───────────────────
+    /** Cumulative XP thresholds per skill level (Hypixel curve). */
     private const SKILL_XP_TABLE = [
         0, 50, 175, 375, 675, 1175, 1925, 2925, 4425, 6425,
         9925, 14925, 22425, 32425, 47425, 67425, 97425, 147425, 222425, 322425,
@@ -59,7 +59,7 @@ class HypixelProfileController extends Controller
         'vampire'   => [0, 20, 75, 240, 840, 2400],
     ];
 
-    /** Cost in coins per boss tier (from SkyCrypt). */
+    /** Coin cost to unlock each slayer boss tier. */
     private const SLAYER_COST = [
         1 => 2000,
         2 => 7500,
@@ -68,7 +68,7 @@ class HypixelProfileController extends Controller
         5 => 100000,
     ];
 
-    /** Display names for each slayer type (from SkyCrypt). */
+    /** Slayer boss display names. */
     private const SLAYER_INFO = [
         'zombie'   => 'Revenant Horror',
         'spider'   => 'Tarantula Broodfather',
@@ -98,7 +98,7 @@ class HypixelProfileController extends Controller
         'WHITE'        => '#FFFFFF',
     ];
 
-    /** Pet XP required per level (from SkyCrypt constants). */
+    /** Pet XP required between levels (indexed by pet level). */
     private const PET_LEVELS = [
         100, 110, 120, 130, 145, 160, 175, 190, 210, 230,
         250, 275, 300, 330, 360, 400, 440, 490, 540, 600,
@@ -132,7 +132,7 @@ class HypixelProfileController extends Controller
         'MYTHIC'    => 20,
     ];
 
-    /** Pet type → head texture hash (from SkyCrypt PET_DATA). */
+    /** Pet mob type → skull texture hash for 3D heads. */
     private const PET_HEAD_TEXTURES = [
         'AMMONITE' => 'a074a7bd976fe6aba1624161793be547d54c835cf422243a851ba09d1e650553',
         'ANKYLOSAURUS' => 'c1aa836b9096c417903299a6c5ab41738c19648ac439fed4bcbe6c32605338dc',
@@ -598,8 +598,9 @@ class HypixelProfileController extends Controller
     // ═══════════════════════════════════════════════════════════════════
 
     /**
-     * Parse Hypixel rank from player data (mirrors SkyCrypt helper.js).
-     * Returns array with 'prefix', 'color', and optionally 'plusColor'.
+     * Map Hypixel player rank fields to a display prefix and colours for the UI.
+     *
+     * @return array{prefix: ?string, color: string, plusColor?: string}
      */
     private function parseRank(?array $player): array
     {
@@ -651,9 +652,6 @@ class HypixelProfileController extends Controller
         return ['prefix' => null, 'color' => '#AAAAAA'];
     }
 
-    // ═══════════════════════════════════════════════════════════════════
-    //  Data transformation (mirrors SkyCrypt logic)
-    // ═══════════════════════════════════════════════════════════════════
 
     /**
      * Transform raw Hypixel profiles response into the structure expected
@@ -700,7 +698,6 @@ class HypixelProfileController extends Controller
 
             $skills = $this->parseSkills($member);
 
-            // Average skill level (exclude runecrafting and social, like SkyCrypt)
             $countable = array_filter($skills, fn($v, $k) => !in_array($k, ['runecrafting', 'social']), ARRAY_FILTER_USE_BOTH);
             $avgSkillLevel = count($countable) > 0
                 ? round(array_sum(array_column($countable, 'level')) / count($countable), 2)
@@ -1668,9 +1665,7 @@ class HypixelProfileController extends Controller
     // ─── Inventory / Items ─────────────────────────────────────────────
 
     /**
-     * Inject item values from SkyHelper-Networth into parsed items.
-     * Matches by UUID first (unique per item), then falls back to skyblock_id.
-     * Also appends "Item Value" lore lines to item tooltips like SkyCrypt.
+     * Merge SkyHelper networth prices into parsed items (UUID, then skyblock_id) and extend lore.
      */
     private function injectItemValues(array $items, array &$pricesByUuid, array &$pricesById): array
     {
@@ -1698,7 +1693,6 @@ class HypixelProfileController extends Controller
                 $item['item_value']     = $price;
                 $item['item_soulbound'] = $soulbound;
 
-                // Append Item Value to lore_html (like SkyCrypt)
                 if ($price > 0 && isset($item['lore_html']) && is_array($item['lore_html'])) {
                     $item['lore_html'][] = ''; // empty separator line
                     $formattedFull  = number_format($price);
@@ -1924,7 +1918,6 @@ class HypixelProfileController extends Controller
         return ItemParser::parseInventory($data);
     }
 
-    // ─── Backpack Storage (like SkyCrypt's storage) ───────────────────
 
     private function parseBackpackStorage(array $member): array
     {
@@ -2061,9 +2054,6 @@ class HypixelProfileController extends Controller
 
     // ─── Pets ─────────────────────────────────────────────────────────
 
-    /**
-     * Calculate pet level from XP, rarity, and max level (mirrors SkyCrypt getPetLevel).
-     */
     private function getPetLevel(float $xp, string $rarity, int $maxLevel = 100): array
     {
         $offset    = self::PET_RARITY_OFFSET[strtoupper($rarity)] ?? 0;
@@ -2096,7 +2086,6 @@ class HypixelProfileController extends Controller
         ];
     }
 
-    /** Pet score → Magic Find mapping (from SkyCrypt PET_REWARDS). */
     private const PET_REWARDS = [
         0   => 0,   10  => 1,  25  => 2,  50  => 3,
         75  => 4,   100 => 5,  130 => 6,  175 => 7,
@@ -2104,13 +2093,11 @@ class HypixelProfileController extends Controller
         450 => 12,  500 => 13,
     ];
 
-    /** Point value per rarity for pet score (from SkyCrypt PET_VALUE). */
     private const PET_VALUE = [
         'common' => 1, 'uncommon' => 2, 'rare' => 3,
         'epic' => 4, 'legendary' => 5, 'mythic' => 6,
     ];
 
-    /** Max tier per pet type for missing-pets logic (from SkyCrypt PET_DATA). */
     private const PET_MAX_TIER = [
         'ARMADILLO' => 'LEGENDARY', 'BAT' => 'MYTHIC', 'BEE' => 'LEGENDARY',
         'BLACK_CAT' => 'MYTHIC', 'BLAZE' => 'LEGENDARY', 'BLUE_WHALE' => 'LEGENDARY',
@@ -2145,7 +2132,6 @@ class HypixelProfileController extends Controller
         'GLACIAL_WISP' => 'WISP', 'SUBZERO_WISP' => 'WISP',
     ];
 
-    /** Pets excluded from pet score (from SkyCrypt PET_DATA). */
     private const PET_SCORE_EXCLUDED = ['FRACTURED_MONTEZUMA_SOUL'];
 
     /** Pets exclusive to Bingo mode. */
@@ -2307,11 +2293,6 @@ class HypixelProfileController extends Controller
         ];
     }
 
-    /**
-     * Calculate pet score (from SkyCrypt getPetScore logic).
-     * Each unique pet type contributes its highest rarity value.
-     * Each max-level pet adds +1.
-     */
     private function calculatePetScore(array $pets, array $tierOrder): array
     {
         $highestRarity = [];
@@ -2398,9 +2379,6 @@ class HypixelProfileController extends Controller
         return $missingArr;
     }
 
-    /**
-     * Build a Minecraft-style progress bar (like SkyCrypt).
-     */
     private function buildProgressBar(float $progress): string
     {
         $total = 20;
@@ -2547,13 +2525,6 @@ class HypixelProfileController extends Controller
 
         return $data;
     }
-
-    // ─── Player Stats (SkyCrypt-style aggregation) ──────────────────
-
-    /**
-     * Calculate total player stats from base, skills, fairy souls, and equipped gear.
-     * Mirrors SkyCrypt's stat aggregation approach.
-     */
     private function calculatePlayerStats(array $member, array $skills, array $armor, array $equipment, array $accessories): array
     {
         // Base stats every player starts with
@@ -2582,7 +2553,6 @@ class HypixelProfileController extends Controller
             'Foraging Fortune'  => 0,
         ];
 
-        // ── Skill bonuses (simplified SkyCrypt logic) ──
         $skillStatBonuses = [
             'farming'     => ['Health' => 2, 'Farming Fortune' => 4],
             'mining'      => ['Defense' => 1, 'Mining Fortune' => 4, 'Mining Speed' => 20],
@@ -2672,9 +2642,6 @@ class HypixelProfileController extends Controller
         }
     }
 
-    /**
-     * Format stats for frontend display with SkyCrypt-style icons and colors.
-     */
     private function formatPlayerStats(array $stats): array
     {
         $statConfig = [

@@ -1,6 +1,6 @@
 <script setup>
 /**
- * PackSelector — SkyCrypt-style resource pack toggle modal.
+ * PackSelector — resource pack toggle modal for the profile viewer.
  * Shows available texture packs with toggle switches.
  * Persists selection in localStorage.
  */
@@ -97,7 +97,7 @@ onMounted(() => {
 
             <!-- Modal -->
             <div class="relative z-10 w-full max-w-md bg-surface-900 border border-border rounded-lg shadow-2xl overflow-hidden">
-                <!-- Tab bar (like SkyCrypt) -->
+                <!-- Tab bar -->
                 <div class="flex border-b border-border bg-surface-800">
                     <div class="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-sm font-semibold text-profit border-b-2 border-profit cursor-pointer">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">

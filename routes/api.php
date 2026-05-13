@@ -24,12 +24,6 @@ Route::get('/profile/minecraft/{username}', [HypixelProfileController::class, 'p
     ->where('username', '[A-Za-z0-9_]{1,16}')
     ->name('api.profile.minecraft');
 
-/** @deprecated Old JS bundles call this path; remove once all clients use /profile/minecraft/ */
-Route::get('/skycrypt/{username}', [HypixelProfileController::class, 'profile'])
-    ->middleware('throttle:30,1')
-    ->where('username', '[A-Za-z0-9_]{1,16}')
-    ->name('api.profile.minecraft.legacy-skycrypt');
-
 /*
 |--------------------------------------------------------------------------
 | Karma Voting

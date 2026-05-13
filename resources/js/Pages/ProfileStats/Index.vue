@@ -36,7 +36,7 @@ const tabs = computed(() => [
     { id: 'misc',        name: t('profileStats.tabMisc') },
 ]);
 
-/* ── Inventory sub-tabs with SkyCrypt-style icons ────────── */
+/* ── Inventory sub-tabs with SkyBlock UI style icons ────────── */
 const inventorySubTabs = computed(() => {
     const headIcon = profileData.value?.uuid
         ? `https://mc-heads.net/avatar/${profileData.value.uuid}/24`
@@ -544,7 +544,7 @@ onMounted(async () => {
                         </div>
                     </div>
 
-                    <!-- ═══ MAIN TAB NAVIGATION (SkyCrypt-style underline) ═══ -->
+                    <!-- ═══ MAIN TAB NAVIGATION (SkyBlock UI style underline) ═══ -->
                     <div class="flex border-b border-border mb-6 overflow-x-auto">
                         <button v-for="tab in tabs" :key="tab.id"
                             @click="activeTab = tab.id"
@@ -557,11 +557,11 @@ onMounted(async () => {
                     </div>
 
                     <!-- ═══════════════════════════════════════════════════ -->
-                    <!--  GEAR TAB (SkyCrypt-style)                         -->
+                    <!--  GEAR TAB (SkyBlock UI style)                         -->
                     <!-- ═══════════════════════════════════════════════════ -->
                     <div v-if="activeTab === 'gear'">
                         <div class="flex gap-8">
-                            <!-- Left: 3D Player Model (interactive, SkyCrypt-style) -->
+                            <!-- Left: 3D Player Model (interactive, SkyBlock UI style) -->
                             <div class="hidden lg:block w-52 shrink-0">
                                 <div class="sticky top-20">
                                     <!-- Username + Rank badge -->
@@ -654,11 +654,11 @@ onMounted(async () => {
                     </div>
 
                     <!-- ═══════════════════════════════════════════════════ -->
-                    <!--  INVENTORY TAB (SkyCrypt-style with sub-tabs)      -->
+                    <!--  INVENTORY TAB (SkyBlock UI style with sub-tabs)      -->
                     <!-- ═══════════════════════════════════════════════════ -->
                     <div v-if="activeTab === 'inventory'">
                         <div class="inventory-container">
-                            <!-- SkyCrypt-style inventory header tabs -->
+                            <!-- Inventory sub-tab headers -->
                             <div class="inv-tabs">
                                 <button v-for="subTab in inventorySubTabs" :key="subTab.id"
                                     @click="activeInventorySubTab = subTab.id; expandedBackpack = null; expandedEnderPage = null; expandedRiftEnderPage = null"
@@ -831,7 +831,7 @@ onMounted(async () => {
                     </div>
 
                     <!-- ═══════════════════════════════════════════════════ -->
-                    <!--  ACCESSORIES TAB (SkyCrypt-style)                  -->
+                    <!--  ACCESSORIES TAB (SkyBlock UI style)                  -->
                     <!-- ═══════════════════════════════════════════════════ -->
                     <div v-if="activeTab === 'accessories'">
                         <div v-if="currentData?.accessories?.length">
@@ -855,7 +855,7 @@ onMounted(async () => {
                                 </div>
                             </div>
 
-                            <!-- Active Accessories (SkyCrypt "pieces" style) -->
+                            <!-- Active Accessories (equipment slot style) -->
                             <h3 class="stat-header">{{ t('profileStats.activeAccessories') }}</h3>
                             <div class="pieces">
                                 <ItemSlot v-for="(item, i) in currentData.accessories" :key="i" :item="item" />
@@ -997,7 +997,7 @@ onMounted(async () => {
                                     </div>
                                 </div>
 
-                                <!-- Skills 2-column grid (SkyCrypt-style) -->
+                                <!-- Skills 2-column grid (SkyBlock UI style) -->
                                 <div class="skills-grid">
                                     <div v-for="skill in leftSkills" :key="skill.name" class="skill-row">
                                         <div class="skill-label">
@@ -1027,7 +1027,7 @@ onMounted(async () => {
                                     </div>
                                 </div>
 
-                                <!-- Player Stats (SkyCrypt-style stat grid) -->
+                                <!-- Player Stats (SkyBlock UI style stat grid) -->
                                 <div v-if="currentData?.player_stats?.length" class="stats-section">
                                     <div class="stats-grid">
                                         <span v-for="stat in currentData.player_stats" :key="stat.name"
@@ -1044,7 +1044,7 @@ onMounted(async () => {
                     </div>
 
                     <!-- ═══════════════════════════════════════════════════ -->
-                    <!--  SLAYER TAB  (SkyCrypt-style)                      -->
+                    <!--  SLAYER TAB  (SkyBlock UI style)                      -->
                     <!-- ═══════════════════════════════════════════════════ -->
                     <div v-if="activeTab === 'slayer'">
                         <div v-if="slayerData && Object.keys(slayerData.slayers).length > 0">
@@ -1097,7 +1097,7 @@ onMounted(async () => {
                     <!-- ═══════════════════════════════════════════════════ -->
                     <div v-if="activeTab === 'dungeons'">
                         <div v-if="currentData?.dungeons && Object.keys(currentData.dungeons).length > 0">
-                            <!-- ── Catacombs + Classes skill bars (SkyCrypt-style) ── -->
+                            <!-- ── Catacombs + Classes skill bars (SkyBlock UI style) ── -->
                             <div class="dungeon-skill-bars">
                                 <!-- Catacombs main level -->
                                 <div class="skill-row">

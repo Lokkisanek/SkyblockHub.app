@@ -51,10 +51,5 @@ class HypixelProfileFeatureTest extends TestCase
             ->assertJsonPath('data.username', $username)
             ->assertJsonPath('data.profiles.profile-1.cute_name', 'Strawberry')
             ->assertJsonPath('data.profiles.profile-1.data.skyblock_level', 42);
-
-        $this->getJson('/api/skycrypt/'.$username)
-            ->assertOk()
-            ->assertJsonPath('source', 'db-cache')
-            ->assertJsonPath('data.uuid', $uuid);
     }
 }

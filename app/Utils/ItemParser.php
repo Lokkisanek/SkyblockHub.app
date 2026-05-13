@@ -39,7 +39,7 @@ class ItemParser
 
     /**
      * Comprehensive Minecraft 1.8.9 numeric item IDs → item texture name.
-     * Matches SkyCrypt's minecraft-data approach.
+     * Matches common Hypixel / minecraft-data item conventions.
      * Format: id => name  OR  "id:damage" => name (for damage variants)
      */
     private const MC_ITEM_TEXTURES = [
@@ -339,7 +339,7 @@ class ItemParser
         '397:4'  => 'creeper_head',
     ];
 
-    /** Potion damage → color mapping (like SkyCrypt). */
+    /** Potion damage → color mapping (vanilla-style). */
     private const POTION_COLORS = [
         '0066ff', '7f00ff', '4c9331', '993300', '0000ff',
         'ff0000', '808080', '1f1f9b', '804000', 'ff0000',
@@ -480,15 +480,15 @@ class ItemParser
             $color = sprintf('#%02x%02x%02x', ($c >> 16) & 0xFF, ($c >> 8) & 0xFF, $c & 0xFF);
         }
 
-        // ── Texture path (like SkyCrypt) ─────────────────────────
+        // ── Texture path (resource resolution) ─────────────────
         $texturePath = self::resolveTexturePath($minecraftId, $damage, $textureHash, $color, $extraAttributes);
 
         // ── Item stats from lore ─────────────────────────────────
         $stats = self::extractStats($rawLore);
 
         // ──────────────────────────────────────────────────────────
-        //  Append extra info lines to lore_html (SkyCrypt-style)
-        //  Mirrors processItems() from SkyCrypt's processing.js
+        //  Append extra info lines to lore_html (inventory viewer style)
+        //  Mirrors common Hypixel item JSON processing patterns
         // ──────────────────────────────────────────────────────────
 
         // Recombobulated indicator
@@ -702,7 +702,7 @@ class ItemParser
     }
 
     /**
-     * Map full stat name to abbreviation (like SkyCrypt).
+     * Map full stat name to abbreviation (short display labels).
      */
     private static function statAbbreviation(string $name): ?string
     {
@@ -738,20 +738,6 @@ class ItemParser
             default                   => null,
         };
     }
-
-    // ═══════════════════════════════════════════════════════════════════
-    //  Texture path resolution (like SkyCrypt)
-    // ═══════════════════════════════════════════════════════════════════
-
-    /**
-     * Resolve the texture path for an item (mirrors SkyCrypt's processing.js logic).
-     *
-     * Returns a path string that the frontend can resolve to a CDN URL:
-     *   - "/head/{uuid}" for skull items
-     *   - "/leather/{type}/{color}" for leather armor
-     *   - "/potion/{normal|splash}/{color}" for potions
-     *   - "/item/{name}" for vanilla MC items
-     */
     private static function resolveTexturePath(int $minecraftId, int $damage, ?string $textureHash, ?string $color, array $extraAttributes): ?string
     {
         // Skull items — most SB custom items use skull textures
@@ -793,7 +779,7 @@ class ItemParser
     }
 
     // ═══════════════════════════════════════════════════════════════════
-    //  Extra lore helpers (mirrors SkyCrypt processItems logic)
+    //  Extra lore helpers (item JSON enrichment)
     // ═══════════════════════════════════════════════════════════════════
 
     /**
@@ -831,7 +817,7 @@ class ItemParser
     }
 
     /**
-     * Abbreviate a large number like SkyCrypt's formatNumber.
+     * Abbreviate a large number for compact display (K/M/B).
      * e.g. 57707012 → "57.71M", 1500 → "1.5K"
      */
     public static function formatNumberPublic(float $number, int $decimals = 2): string
@@ -877,7 +863,7 @@ class ItemParser
     }
 
     /**
-     * Convert Minecraft color codes to HTML using CSS variables (SkyCrypt-style).
+     * Convert Minecraft color codes to HTML using CSS variables (§-code mapping).
      *
      * Uses CSS custom properties (var(--mc-X)) for colors and CSS classes
      * for formatting codes, enabling theme-aware rendering.
@@ -887,7 +873,7 @@ class ItemParser
      */
     public static function colorCodeToHtml(string $text): string
     {
-        // Split on §X codes, keeping the delimiters — like SkyCrypt's renderLore regex
+        // Split on §X codes, keeping the delimiters (lore rendering)
         $parts = preg_split('/(§[0-9a-fk-orA-FK-OR])/u', $text, -1, PREG_SPLIT_DELIM_CAPTURE | PREG_SPLIT_NO_EMPTY);
 
         if ($parts === false || empty($parts)) {
