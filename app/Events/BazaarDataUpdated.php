@@ -12,11 +12,6 @@ class BazaarDataUpdated implements ShouldBroadcastNow
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
-    /**
-     * Batch of updated bazaar items (product_id → price/volume data).
-     *
-     * @var array<string, array>
-     */
     public array $items;
 
     public function __construct(array $items)
@@ -24,9 +19,7 @@ class BazaarDataUpdated implements ShouldBroadcastNow
         $this->items = $items;
     }
 
-    /**
-     * Public channel — all connected clients receive the update.
-     */
+
     public function broadcastOn(): Channel
     {
         return new Channel('bazaar');

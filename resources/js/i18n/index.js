@@ -71,7 +71,7 @@ const i18n = {
         }
 
         app.config.globalProperties.__skyblockhubI18nInstalled = true;
-        app.config.globalProperties.$t = (k) => lookup(k);
+        app.config.globalProperties.$t = (k, params) => lookup(k, params);
         app.config.globalProperties.$te = (k) => hasKey(k);
         app.config.globalProperties.$tm = (k) => {
             if (!k) return undefined;

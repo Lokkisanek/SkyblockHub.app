@@ -600,7 +600,7 @@ function cardAccentClass(accent) {
                 </div>
 
                 <div class="mt-8 flex flex-col items-center justify-between gap-3 border-t border-white/[0.06] pt-6 sm:flex-row">
-                    <p class="text-[11px] text-white/25">{{ $t('welcome.footer.copyright', { year: currentYear }) }}</p>
+                    <p class="text-[11px] text-white/25">{{ t('welcome.footer.copyright', { year: currentYear }) }}</p>
                     <p class="text-[11px] text-white/20">{{ $t('welcome.footer.notAffiliated') }}</p>
                 </div>
             </div>

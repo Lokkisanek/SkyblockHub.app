@@ -4,20 +4,12 @@ namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
 
-/**
- * Parses resource pack CIT (Custom Item Textures) .properties files
- * and builds a JSON index mapping skyblock_id → texture path.
- *
- * Mirrors SkyCrypt's custom-resources.js logic.
- */
+
 class BuildPackIndex extends Command
 {
     protected $signature = 'pack:build-index';
     protected $description = 'Parse resource pack .properties files and build JSON texture indices';
 
-    /**
-     * MC 1.8.9 item name → numeric ID map (subset for item matching).
-     */
     private const MC_ITEMS = [
         'wooden_sword' => 268, 'stone_sword' => 272, 'iron_sword' => 267,
         'golden_sword' => 283, 'diamond_sword' => 276,
@@ -124,11 +116,8 @@ class BuildPackIndex extends Command
             'version'  => $config['version'] ?? '',
             'author'   => $config['author'] ?? '',
             'priority' => $config['priority'] ?? 0,
-            // Mapping: skyblock_id (exact) → relative texture path
             'skyblock_id' => [],
-            // Mapping: skyblock_id (pattern/regex) → [{pattern, path, weight}]
             'skyblock_id_patterns' => [],
-            // Mapping: "itemId:damage" → relative texture path
             'item_id' => [],
             // Mapping: skull texture value → relative texture path
             'texture_value' => [],
