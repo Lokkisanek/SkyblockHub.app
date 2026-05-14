@@ -50,7 +50,7 @@ const form = useForm({
 });
 
 function next() {
-    if (currentStep.value < steps.length - 1) {
+    if (currentStep.value < steps.value.length - 1) {
         currentStep.value++;
     }
 }
