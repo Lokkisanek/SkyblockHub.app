@@ -1140,7 +1140,7 @@ onBeforeUnmount(() => {
                     </button>
 
                     <div class="min-w-0 overflow-x-auto">
-                        <div class="inventory-container">
+                        <div class="inventory-panel">
                             <div class="inventory-grid">
                                 <button
                                     v-for="(slot, idx) in calendarSlots"

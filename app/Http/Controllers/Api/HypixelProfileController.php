@@ -755,6 +755,8 @@ class HypixelProfileController extends Controller
             }
         }
 
+        $skyblockItemsPayload = $this->hypixelApi->getItems();
+
         foreach ($rawProfiles as $profile) {
             $profileId = $profile['profile_id'] ?? null;
             if (! $profileId) {
@@ -855,6 +857,7 @@ class HypixelProfileController extends Controller
                     'rift_inventory' => $this->parseRiftInventory($member),
                     'rift_enderchest' => $this->parseRiftEnderchest($member),
                     'accessory_bag_storage' => $this->parseAccessoryBagStorage($member),
+                    'accessory_summary' => $this->buildAccessorySummary($accessories, $skyblockItemsPayload),
                     'wardrobe_slot' => $member['inventory']['wardrobe_equipped_slot'] ?? null,
                     'inv_disabled' => empty($member['inventory']['inv_contents']['data'] ?? null),
                     'player_stats' => $this->calculatePlayerStats($member, $skills, $armor, $equipment, $accessories),
@@ -2008,10 +2011,83 @@ class HypixelProfileController extends Controller
     {
         $abs = $member['accessory_bag_storage'] ?? [];
 
+        return is_array($abs) ? $abs : [];
+    }
+
+    /**
+     * Accessory bag progress for the profile stats UI.
+     *
+     * Denominators are derived from Hypixel's public `/v2/resources/skyblock/items`
+     * catalog (non-dungeon ACCESSORY entries that grant stat bonuses). This tracks the
+     * live item list and may differ slightly from the in-game menu on patch boundaries.
+     *
+     * @param  array<int, array<string, mixed>>  $accessories  Parsed talisman bag items
+     * @param  array<string, mixed>|null  $itemsResponse  Raw Hypixel items resource payload
+     * @return array{unique: int, unique_max: ?int, recombobulated: int, recombobulatable_max: ?int}
+     */
+    private function buildAccessorySummary(array $accessories, ?array $itemsResponse): array
+    {
+        $uniqueIds = [];
+        $recombobulated = 0;
+
+        foreach ($accessories as $item) {
+            if (! empty($item['skyblock_id'])) {
+                $uniqueIds[$item['skyblock_id']] = true;
+            }
+            if (! empty($item['recombobulated'])) {
+                $recombobulated++;
+            }
+        }
+
+        $bounds = $this->accessoryCatalogBoundsFromItems($itemsResponse);
+
         return [
-            'selected_power' => $abs['selected_power'] ?? null,
-            'highest_magical_power' => $abs['highest_magical_power'] ?? null,
-            'tuning' => $abs['tuning'] ?? null,
+            'unique' => count($uniqueIds),
+            'unique_max' => $bounds['max_unique'],
+            'recombobulated' => $recombobulated,
+            'recombobulatable_max' => $bounds['max_recombobulatable'],
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $itemsResponse
+     * @return array{max_unique: ?int, max_recombobulatable: ?int}
+     */
+    private function accessoryCatalogBoundsFromItems(?array $itemsResponse): array
+    {
+        if ($itemsResponse === null || ! isset($itemsResponse['items']) || ! is_array($itemsResponse['items'])) {
+            return ['max_unique' => null, 'max_recombobulatable' => null];
+        }
+
+        $maxUnique = 0;
+        $maxRecombob = 0;
+
+        foreach ($itemsResponse['items'] as $item) {
+            if (! is_array($item)) {
+                continue;
+            }
+            if (($item['category'] ?? '') !== 'ACCESSORY') {
+                continue;
+            }
+            if (! empty($item['dungeon_item'])) {
+                continue;
+            }
+            $stats = $item['stats'] ?? null;
+            if (! is_array($stats) || count($stats) === 0) {
+                continue;
+            }
+
+            $maxUnique++;
+            $tier = $item['tier'] ?? null;
+            if (in_array($tier, ['SPECIAL', 'SUPREME'], true)) {
+                continue;
+            }
+            $maxRecombob++;
+        }
+
+        return [
+            'max_unique' => $maxUnique,
+            'max_recombobulatable' => $maxRecombob,
         ];
     }
 

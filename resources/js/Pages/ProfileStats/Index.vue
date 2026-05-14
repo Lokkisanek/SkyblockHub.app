@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, provide } from 'vue';
+import { ref, computed, watch, onMounted, provide, nextTick } from 'vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head } from '@inertiajs/vue3';
 import { useI18n } from '@/strings/useI18n';
@@ -25,6 +25,31 @@ const hasLoadedProfile = computed(
     () => !!(profileData.value && selectedProfile.value && currentProfile.value && !loading.value)
 );
 
+/** Frosted scrim fades in together with the 1s spacer / search-bar move (same duration as layout transition). */
+const profileStatsScrimEntered = ref(false);
+
+function revealProfileStatsScrim() {
+    if (typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        profileStatsScrimEntered.value = true;
+        return;
+    }
+    nextTick(() => {
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                profileStatsScrimEntered.value = true;
+            });
+        });
+    });
+}
+
+watch(hasLoadedProfile, (loaded) => {
+    if (!loaded) {
+        profileStatsScrimEntered.value = false;
+        return;
+    }
+    revealProfileStatsScrim();
+});
+
 const showHeroLoading = computed(() => loading.value && !profileData.value);
 const activeTab = ref('gear');
 let activeFetchController = null;
@@ -45,7 +70,7 @@ const tabs = computed(() => [
 /* ── Inventory sub-tabs with SkyBlock UI style icons ────────── */
 const inventorySubTabs = computed(() => {
     const headIcon = profileData.value?.uuid
-        ? `https://mc-heads.net/avatar/${profileData.value.uuid}/24`
+        ? `https://mc-heads.net/avatar/${profileData.value.uuid}/32`
         : null;
     return [
         { id: 'inv',              name: t('profileStats.subInventory'),      icon: headIcon },
@@ -242,22 +267,45 @@ const equipmentStats = computed(() => {
 });
 
 // ── Accessories ─────────────────────────────────────────
-const accessoryStats = computed(() => {
+/** Talisman bag headline stats (server denominators + full accessory_bag_storage). */
+const accessoryDisplay = computed(() => {
     const items = currentData.value?.accessories ?? [];
-    const unique = new Set();
-    let recombed = 0;
+    const summary = currentData.value?.accessory_summary;
+    const bag = currentData.value?.accessory_bag_storage ?? {};
+
+    const ids = new Set();
+    let recombedLocal = 0;
     for (const item of items) {
-        if (item?.skyblock_id) unique.add(item.skyblock_id);
-        if (item?.recombobulated) recombed++;
+        if (item?.skyblock_id) ids.add(item.skyblock_id);
+        if (item?.recombobulated) recombedLocal++;
     }
+
+    const unique = typeof summary?.unique === 'number' ? summary.unique : ids.size;
+    const uniqueMax = typeof summary?.unique_max === 'number' ? summary.unique_max : null;
+    const recombobulated = typeof summary?.recombobulated === 'number' ? summary.recombobulated : recombedLocal;
+    const recombobMax = typeof summary?.recombobulatable_max === 'number' ? summary.recombobulatable_max : null;
+
+    const uniquePct =
+        uniqueMax != null && uniqueMax > 0 ? Math.round((unique / uniqueMax) * 100) : null;
+
+    const rawMp = bag?.highest_magical_power;
+    const mpNum = rawMp === null || rawMp === undefined || rawMp === '' ? NaN : Number(rawMp);
+    const magicalPower = Number.isFinite(mpNum) ? mpNum : null;
+
+    const rawPower = bag?.selected_power;
+    const selectedPower =
+        typeof rawPower === 'string' && rawPower.length > 0 ? capitalize(rawPower) : null;
+
     return {
-        total: items.length,
-        unique: unique.size,
-        recombobulated: recombed,
+        unique,
+        uniqueMax,
+        uniquePct,
+        recombobulated,
+        recombobMax,
+        selectedPower,
+        magicalPower,
     };
 });
-
-const accessoryBag = computed(() => currentData.value?.accessory_bag_storage ?? {});
 
 // ── Active weapon ───────────────────────────────────────
 const activeWeapon = computed(() => {
@@ -505,7 +553,16 @@ onMounted(async () => {
     <Head :title="t('profileStats.title')" />
 
     <AuthenticatedLayout>
-        <div :class="hasLoadedProfile ? 'py-4' : ''">
+        <!-- Frosted scrim over wallpaper: must live here (page wraps layout — inject from layout never ran). -->
+        <div
+            aria-hidden="true"
+            class="profile-stats-bg-scrim pointer-events-none fixed inset-0 z-[15]"
+            :class="[
+                hasLoadedProfile ? 'profile-stats-bg-scrim--loaded' : 'profile-stats-bg-scrim--hero',
+                profileStatsScrimEntered && 'profile-stats-bg-scrim--visible',
+            ]"
+        />
+        <div class="relative z-20" :class="hasLoadedProfile ? 'py-4' : ''">
             <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                 <div class="flex w-full flex-col">
                     <!-- Top spacer: height animates (flex-grow does not interpolate in browsers). -->
@@ -598,31 +655,37 @@ onMounted(async () => {
                     </div>
 
                     <!-- ═══ PROFILE SELECTOR + HEADER ═══ -->
-                    <div class="mb-3 flex items-center gap-4 flex-wrap">
-                        <div class="flex items-center gap-1.5 flex-wrap">
-                            <button v-for="(profile, key) in profileData.profiles" :key="key"
+                    <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+                        <div class="profile-pill-group flex flex-wrap gap-1.5" role="tablist" aria-label="Profiles">
+                            <button
+                                v-for="(profile, key) in profileData.profiles"
+                                :key="key"
+                                type="button"
                                 @click="selectedProfile = key"
-                                class="px-3 py-1 text-xs rounded border transition"
-                                :class="selectedProfile === key
-                                    ? 'border-profit text-profit bg-profit/10'
-                                    : 'border-border text-neutral hover:text-white hover:border-border-light'">
-                                {{ profile.cute_name || key }}
-                                <span v-if="profile.selected" class="ml-1 text-[10px] text-profit">●</span>
+                                class="profile-pill-btn"
+                                :class="{ 'profile-pill-btn--active': selectedProfile === key }"
+                            >
+                                <span>{{ profile.cute_name || key }}</span>
+                                <span v-if="profile.selected" class="profile-pill-dot" aria-hidden="true" />
                             </button>
                         </div>
-                        <div class="flex items-center gap-1.5 ml-auto">
+                        <div class="flex shrink-0 items-center gap-2 sm:justify-end">
                             <PackSelector @update:packs="onPacksChanged" />
                         </div>
                     </div>
 
                     <!-- ═══ MAIN TAB NAVIGATION (SkyBlock UI style underline) ═══ -->
                     <div class="flex border-b border-border mb-6 overflow-x-auto overscroll-x-contain -mx-1 px-1 sm:mx-0 sm:px-0">
-                        <button v-for="tab in tabs" :key="tab.id"
+                        <button
+                            v-for="tab in tabs"
+                            :key="tab.id"
+                            type="button"
                             @click="activeTab = tab.id"
                             class="px-4 py-2.5 text-xs font-semibold uppercase tracking-wider whitespace-nowrap border-b-2 transition"
                             :class="activeTab === tab.id
                                 ? 'border-profit text-profit'
-                                : 'border-transparent text-neutral hover:text-white'">
+                                : 'border-transparent text-neutral hover:text-white'"
+                        >
                             {{ tab.name }}
                         </button>
                     </div>
@@ -743,24 +806,39 @@ onMounted(async () => {
                     <!-- ═══════════════════════════════════════════════════ -->
                     <div v-if="activeTab === 'accessories'">
                         <div v-if="currentData?.accessories?.length">
-                            <div class="mb-6 space-y-1 text-sm font-semibold">
-                                <div>
-                                    <span class="text-neutral">{{ t('profileStats.uniqueAccessories') }}</span>
-                                    <span class="text-white">{{ accessoryStats.unique }} / {{ accessoryStats.total }}</span>
+                            <dl class="profile-stat-strip profile-stat-strip--accessories">
+                                <div class="profile-stat-cell">
+                                    <dt>{{ t('profileStats.uniqueAccessories') }}</dt>
+                                    <dd>
+                                        <span>{{ accessoryDisplay.unique }}</span>
+                                        <template v-if="accessoryDisplay.uniqueMax != null">
+                                            <span class="profile-stat-muted"> / </span>
+                                            <span>{{ accessoryDisplay.uniqueMax }}</span>
+                                            <span v-if="accessoryDisplay.uniquePct != null" class="profile-stat-pct">
+                                                ({{ accessoryDisplay.uniquePct }}%)
+                                            </span>
+                                        </template>
+                                    </dd>
                                 </div>
-                                <div>
-                                    <span class="text-neutral">{{ t('profileStats.recombobulated') }}</span>
-                                    <span class="text-white">{{ accessoryStats.recombobulated }} / {{ accessoryStats.total }}</span>
+                                <div class="profile-stat-cell">
+                                    <dt>{{ t('profileStats.recombobulated') }}</dt>
+                                    <dd>
+                                        <span>{{ accessoryDisplay.recombobulated }}</span>
+                                        <template v-if="accessoryDisplay.recombobMax != null">
+                                            <span class="profile-stat-muted"> / </span>
+                                            <span>{{ accessoryDisplay.recombobMax }}</span>
+                                        </template>
+                                    </dd>
                                 </div>
-                                <div v-if="accessoryBag.selected_power">
-                                    <span class="text-neutral">{{ t('profileStats.selectedPower') }}</span>
-                                    <span class="text-profit">{{ capitalize(accessoryBag.selected_power) }}</span>
+                                <div v-if="accessoryDisplay.selectedPower" class="profile-stat-cell">
+                                    <dt>{{ t('profileStats.selectedPower') }}</dt>
+                                    <dd class="profile-stat-dd-profit">{{ accessoryDisplay.selectedPower }}</dd>
                                 </div>
-                                <div v-if="accessoryBag.highest_magical_power">
-                                    <span class="text-neutral">{{ t('profileStats.magicalPower') }}</span>
-                                    <span class="text-rarity-mythic">{{ accessoryBag.highest_magical_power }}</span>
+                                <div v-if="accessoryDisplay.magicalPower != null" class="profile-stat-cell">
+                                    <dt>{{ t('profileStats.magicalPower') }}</dt>
+                                    <dd class="profile-stat-dd-mythic">{{ accessoryDisplay.magicalPower }}</dd>
                                 </div>
-                            </div>
+                            </dl>
 
                             <h3 class="stat-header">{{ t('profileStats.activeAccessories') }}</h3>
                             <div class="pieces">
@@ -775,26 +853,32 @@ onMounted(async () => {
                     <!-- ═══════════════════════════════════════════════════ -->
                     <!--  INVENTORY TAB (SkyBlock UI style with sub-tabs)      -->
                     <!-- ═══════════════════════════════════════════════════ -->
-                    <div v-if="activeTab === 'inventory'">
-                        <div class="inventory-container">
-                            <!-- Inventory sub-tab headers -->
-                            <div class="inv-tabs">
-                                <button v-for="subTab in inventorySubTabs" :key="subTab.id"
-                                    @click="activeInventorySubTab = subTab.id; expandedBackpack = null; expandedEnderPage = null; expandedRiftEnderPage = null"
-                                    class="inv-tab"
-                                    :class="{ 'active-tab': activeInventorySubTab === subTab.id }">
-                                    <img v-if="subTab.icon" :src="subTab.icon" class="inv-tab-icon" loading="lazy" />
-                                    <span>{{ subTab.name }}</span>
-                                </button>
-                            </div>
+                    <div v-if="activeTab === 'inventory'" class="profile-inventory">
+                        <!-- Inventory sub-tab headers -->
+                        <div class="inv-tabs">
+                            <button
+                                v-for="subTab in inventorySubTabs"
+                                :key="subTab.id"
+                                type="button"
+                                @click="activeInventorySubTab = subTab.id; expandedBackpack = null; expandedEnderPage = null; expandedRiftEnderPage = null"
+                                class="inv-tab"
+                                :class="{ 'active-tab': activeInventorySubTab === subTab.id }"
+                            >
+                                <img v-if="subTab.icon" :src="subTab.icon" class="inv-tab-icon" loading="lazy" alt="" />
+                                <span>{{ subTab.name }}</span>
+                            </button>
+                        </div>
 
-                            <!-- BACKPACK / STORAGE sub-tab -->
-                            <div v-if="activeInventorySubTab === 'backpack'">
+                        <!-- BACKPACK / STORAGE sub-tab -->
+                        <div v-if="activeInventorySubTab === 'backpack'">
                                 <div v-if="backpackStorage.length > 0">
                                     <!-- Backpack cards (always visible) -->
                                     <div class="storage-cards">
-                                        <button v-for="(bp, idx) in backpackStorage" :key="idx"
-                                                class="storage-card"
+                                        <button
+                                            v-for="(bp, idx) in backpackStorage"
+                                            :key="idx"
+                                            type="button"
+                                            class="storage-card"
                                                 :class="{ 'storage-card-active': expandedBackpack === idx }"
                                                 @click="expandedBackpack = expandedBackpack === idx ? null : idx">
                                             <img v-if="getItemTextureUrl(bp.icon)"
@@ -823,8 +907,11 @@ onMounted(async () => {
                                 <div v-if="enderchestPages.length > 0">
                                     <!-- Enderchest page cards (always visible) -->
                                     <div class="storage-cards">
-                                        <button v-for="(page, idx) in enderchestPages" :key="idx"
-                                                class="storage-card"
+                                        <button
+                                            v-for="(page, idx) in enderchestPages"
+                                            :key="idx"
+                                            type="button"
+                                            class="storage-card"
                                                 :class="{ 'storage-card-active': expandedEnderPage === idx }"
                                                 @click="expandedEnderPage = expandedEnderPage === idx ? null : idx">
                                             <img src="/img/textures/ender_chest.png"
@@ -852,8 +939,11 @@ onMounted(async () => {
                                 <div v-if="riftEnderchestPages.length > 0">
                                     <!-- Rift enderchest page cards (always visible) -->
                                     <div class="storage-cards">
-                                        <button v-for="(page, idx) in riftEnderchestPages" :key="idx"
-                                                class="storage-card"
+                                        <button
+                                            v-for="(page, idx) in riftEnderchestPages"
+                                            :key="idx"
+                                            type="button"
+                                            class="storage-card"
                                                 :class="{ 'storage-card-active': expandedRiftEnderPage === idx }"
                                                 @click="expandedRiftEnderPage = expandedRiftEnderPage === idx ? null : idx">
                                             <img src="/img/textures/ender_chest.png"
@@ -946,7 +1036,6 @@ onMounted(async () => {
                                     </template>
                                 </div>
                             </div>
-                        </div>
                     </div>
 
                     <!-- ═══════════════════════════════════════════════════ -->
@@ -955,28 +1044,33 @@ onMounted(async () => {
                     <div v-if="activeTab === 'pets'">
                         <template v-if="currentData?.pets?.pets?.length > 0">
                             <!-- ── Stats header ─────────────────────────── -->
-                            <div class="pets-stats-header">
-                                <div class="pets-stat">
-                                    <span class="pets-stat-label">{{ t('profileStats.uniquePets') }}</span>
-                                    <span class="pets-stat-value">{{ currentData.pets.amount }} / {{ currentData.pets.total }}</span>
+                            <dl class="profile-stat-strip profile-stat-strip--pets">
+                                <div class="profile-stat-cell">
+                                    <dt>{{ t('profileStats.uniquePets') }}</dt>
+                                    <dd>{{ currentData.pets.amount }} / {{ currentData.pets.total }}</dd>
                                 </div>
-                                <div class="pets-stat">
-                                    <span class="pets-stat-label">{{ t('profileStats.uniquePetSkins') }}</span>
-                                    <span class="pets-stat-value">{{ currentData.pets.amountSkins }}</span>
+                                <div class="profile-stat-cell">
+                                    <dt>{{ t('profileStats.uniquePetSkins') }}</dt>
+                                    <dd>{{ currentData.pets.amountSkins }}</dd>
                                 </div>
-                                <div class="pets-stat">
-                                    <span class="pets-stat-label">{{ t('profileStats.petScore') }}</span>
-                                    <span class="pets-stat-value">{{ currentData.pets.petScore?.total ?? 0 }} <span class="pets-stat-mf">(+{{ currentData.pets.petScore?.magicFind ?? 0 }} ✯ {{ t('profileStats.magicFind') }})</span></span>
+                                <div class="profile-stat-cell profile-stat-cell--wide">
+                                    <dt>{{ t('profileStats.petScore') }}</dt>
+                                    <dd>
+                                        {{ currentData.pets.petScore?.total ?? 0 }}
+                                        <span class="profile-stat-meta">
+                                            (+{{ currentData.pets.petScore?.magicFind ?? 0 }} ✯ {{ t('profileStats.magicFind') }})
+                                        </span>
+                                    </dd>
                                 </div>
-                                <div class="pets-stat">
-                                    <span class="pets-stat-label">{{ t('profileStats.totalCandiesUsed') }}</span>
-                                    <span class="pets-stat-value">{{ (currentData.pets.totalCandy ?? 0).toLocaleString() }}</span>
+                                <div class="profile-stat-cell">
+                                    <dt>{{ t('profileStats.totalCandiesUsed') }}</dt>
+                                    <dd>{{ (currentData.pets.totalCandy ?? 0).toLocaleString() }}</dd>
                                 </div>
-                                <div class="pets-stat">
-                                    <span class="pets-stat-label">{{ t('profileStats.totalPetXP') }}</span>
-                                    <span class="pets-stat-value">{{ fNum(currentData.pets.totalPetXp ?? 0) }}</span>
+                                <div class="profile-stat-cell">
+                                    <dt>{{ t('profileStats.totalPetXP') }}</dt>
+                                    <dd>{{ fNum(currentData.pets.totalPetXp ?? 0) }}</dd>
                                 </div>
-                            </div>
+                            </dl>
 
                             <!-- ── Active Pet ───────────────────────────── -->
                             <template v-if="activePet">
@@ -1007,8 +1101,15 @@ onMounted(async () => {
                             <!-- ── Show More Pets (duplicates) ──────────── -->
                             <template v-if="currentData.pets.otherPets?.length > 0">
                                 <div class="pets-collapsible">
-                                    <button class="pets-collapsible-btn" @click="showMorePets = !showMorePets">
-                                        {{ showMorePets ? '▼' : '▶' }} {{ t('profileStats.showMorePets') }} ({{ currentData.pets.otherPets.length }})
+                                    <button
+                                        type="button"
+                                        class="pets-collapsible-btn"
+                                        :aria-expanded="showMorePets"
+                                        @click="showMorePets = !showMorePets"
+                                    >
+                                        <span class="pets-collapsible-chevron" :class="{ 'pets-collapsible-chevron--open': showMorePets }" aria-hidden="true" />
+                                        <span class="pets-collapsible-label">{{ t('profileStats.showMorePets') }}</span>
+                                        <span class="pets-collapsible-count">{{ currentData.pets.otherPets.length }}</span>
                                     </button>
                                     <div v-if="showMorePets" class="pets-grid" style="margin-top: 8px;">
                                         <div v-for="(pet, i) in currentData.pets.otherPets" :key="'o-'+i" class="pets-grid-item">
@@ -1024,8 +1125,15 @@ onMounted(async () => {
                             <!-- ── Missing Pets ─────────────────────────── -->
                             <template v-if="currentData.pets.missing?.length > 0">
                                 <div class="pets-collapsible">
-                                    <button class="pets-collapsible-btn" @click="showMissingPets = !showMissingPets">
-                                        {{ showMissingPets ? '▼' : '▶' }} {{ t('profileStats.missingPets') }} ({{ currentData.pets.missing.length }})
+                                    <button
+                                        type="button"
+                                        class="pets-collapsible-btn"
+                                        :aria-expanded="showMissingPets"
+                                        @click="showMissingPets = !showMissingPets"
+                                    >
+                                        <span class="pets-collapsible-chevron" :class="{ 'pets-collapsible-chevron--open': showMissingPets }" aria-hidden="true" />
+                                        <span class="pets-collapsible-label">{{ t('profileStats.missingPets') }}</span>
+                                        <span class="pets-collapsible-count">{{ currentData.pets.missing.length }}</span>
                                     </button>
                                     <div v-if="showMissingPets" class="pets-grid pets-missing-grid" style="margin-top: 8px;">
                                         <div v-for="(pet, i) in currentData.pets.missing" :key="'m-'+i" class="pets-grid-item pets-missing-item">
@@ -1511,3 +1619,35 @@ onMounted(async () => {
         </div>
     </AuthenticatedLayout>
 </template>
+
+<style scoped>
+/* Strong blur + light tint; explicit -webkit- for Safari. */
+.profile-stats-bg-scrim {
+    opacity: 0;
+    -webkit-backdrop-filter: blur(20px);
+    backdrop-filter: blur(20px);
+    transition:
+        opacity 1000ms ease-out,
+        background-color 1000ms ease-out;
+}
+
+.profile-stats-bg-scrim--visible {
+    opacity: 1;
+}
+
+.profile-stats-bg-scrim--hero {
+    background-color: rgba(0, 0, 0, 0.14);
+}
+
+.profile-stats-bg-scrim--loaded {
+    background-color: rgba(0, 0, 0, 0.055);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .profile-stats-bg-scrim {
+        transition: background-color 0.2s ease;
+        -webkit-backdrop-filter: blur(14px);
+        backdrop-filter: blur(14px);
+    }
+}
+</style>
