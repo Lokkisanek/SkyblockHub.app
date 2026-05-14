@@ -43,6 +43,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Local development: auto sign-in (no OAuth)
+    |--------------------------------------------------------------------------
+    |
+    | When APP_ENV is "local" and this is true, unauthenticated web requests
+    | are signed in as a disposable dev user so you can work without Discord.
+    | Ignored in every other environment.
+    |
+    */
+
+    'dev_auto_login' => (bool) env('APP_DEV_AUTO_LOGIN', false),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application URL
     |--------------------------------------------------------------------------
     |

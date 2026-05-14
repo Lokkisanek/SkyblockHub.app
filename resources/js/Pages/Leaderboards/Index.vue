@@ -6,6 +6,12 @@ import { useI18n } from '@/strings/useI18n';
 
 const { t } = useI18n();
 
+/** Same control chrome as dashboard filter triggers / panels (`Dashboard.vue`). */
+const LB_PICK_TRIGGER_BASE =
+    'lb-dd-trigger flex min-h-[2.75rem] w-full items-center justify-between gap-2 rounded-xl border border-border/80 bg-surface-800/80 px-3 py-2.5 text-left text-sm font-semibold text-white transition hover:border-border';
+const LB_PICK_PANEL_CLASS =
+    'lb-panel absolute left-0 right-0 z-30 mt-1.5 rounded-2xl border border-border/80 bg-surface-900/75 p-2 shadow-[0_16px_40px_rgba(0,0,0,0.35)] backdrop-blur-sm sm:right-auto';
+
 const page = usePage();
 
 /** Mirrors App\Http\Controllers\Api\LeaderboardController::SORT_DEFINITIONS if props are missing. */
@@ -476,7 +482,7 @@ onBeforeUnmount(() => {
             </header>
 
             <div class="flex flex-col items-center gap-3">
-                <div class="w-full max-w-2xl lb-surface border border-border/80 bg-surface-900/75 p-3 shadow-[0_16px_40px_rgba(0,0,0,0.35)] backdrop-blur-sm">
+                <div ref="lbControlsRoot" class="flex w-full max-w-2xl flex-col gap-3">
                     <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
                         <div class="relative min-w-0 flex-1">
                             <svg
@@ -512,152 +518,152 @@ onBeforeUnmount(() => {
                         </button>
                     </div>
                     <p v-if="playerSearchError" class="mt-2 text-xs text-loss" role="alert">{{ playerSearchError }}</p>
-                </div>
 
-                <div ref="lbControlsRoot" class="flex w-full max-w-2xl flex-wrap items-stretch justify-center gap-2 sm:justify-start">
-                    <div class="relative min-w-[9.5rem] flex-1 sm:flex-none sm:min-w-[11rem]">
-                        <button
-                            type="button"
-                            class="lb-dd-trigger flex h-full min-h-[2.75rem] w-full items-center justify-between gap-2 border border-border bg-surface-900/70 px-3.5 py-2 text-left text-xs font-semibold text-text-primary transition hover:border-amber-500/35 hover:bg-surface-800/80"
-                            :class="
-                                openControlMenu === 'filter'
-                                    ? 'border-amber-400/50 bg-amber-500/10 text-amber-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]'
-                                    : 'text-text-secondary'
-                            "
-                            :aria-expanded="openControlMenu === 'filter'"
-                            aria-haspopup="listbox"
-                            @click.stop="toggleControlMenu('filter')"
-                        >
-                            <span class="min-w-0">
-                                <span class="block text-[9px] font-bold uppercase tracking-[0.14em] text-text-tertiary">{{ t('leaderboards.controlFilterCaption') }}</span>
-                                <span class="mt-0.5 block truncate text-[13px] font-semibold text-text-primary">{{ activeFilterLabel }}</span>
-                            </span>
-                            <svg class="h-4 w-4 shrink-0 text-amber-400/90" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                                <path
-                                    fill-rule="evenodd"
-                                    d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z"
-                                    clip-rule="evenodd"
-                                />
-                            </svg>
-                        </button>
-                        <div
-                            v-show="openControlMenu === 'filter'"
-                            class="lb-panel absolute left-0 right-0 z-30 mt-1.5 border border-border/90 bg-surface-900/98 py-1 shadow-2xl shadow-black/40 backdrop-blur-md sm:right-auto sm:min-w-[12rem]"
-                            role="listbox"
-                            @click.stop
-                        >
+                    <div class="flex flex-wrap items-stretch justify-center gap-2 sm:justify-start">
+                        <div class="relative min-w-[9.5rem] flex-1 sm:flex-none sm:min-w-[11rem]">
                             <button
-                                v-for="option in filterOptions"
-                                :key="option.key"
                                 type="button"
-                                role="option"
-                                class="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-xs font-medium transition hover:bg-surface-800/90"
-                                :class="activeFilter === option.key ? 'bg-amber-500/10 text-amber-100' : 'text-text-secondary'"
-                                @click="setFilter(option.key)"
+                                :class="[
+                                    LB_PICK_TRIGGER_BASE,
+                                    openControlMenu === 'filter'
+                                        ? 'border-profit/70 text-white ring-2 ring-profit/25'
+                                        : 'text-white/90',
+                                ]"
+                                :aria-expanded="openControlMenu === 'filter'"
+                                aria-haspopup="listbox"
+                                @click.stop="toggleControlMenu('filter')"
                             >
-                                {{ option.label }}
-                                <span v-if="activeFilter === option.key" class="text-amber-300">✓</span>
+                                <span class="min-w-0">
+                                    <span class="block text-[9px] font-bold uppercase tracking-[0.14em] text-neutral/80">{{ t('leaderboards.controlFilterCaption') }}</span>
+                                    <span class="mt-0.5 block truncate text-[13px] font-semibold text-white">{{ activeFilterLabel }}</span>
+                                </span>
+                                <svg class="h-4 w-4 shrink-0 text-neutral/70" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                    <path
+                                        fill-rule="evenodd"
+                                        d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z"
+                                        clip-rule="evenodd"
+                                    />
+                                </svg>
                             </button>
+                            <div
+                                v-show="openControlMenu === 'filter'"
+                                :class="[LB_PICK_PANEL_CLASS, 'sm:min-w-[12rem]']"
+                                role="listbox"
+                                @click.stop
+                            >
+                                <button
+                                    v-for="option in filterOptions"
+                                    :key="option.key"
+                                    type="button"
+                                    role="option"
+                                    class="flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-white/80 transition hover:bg-surface-800/90"
+                                    :class="activeFilter === option.key ? 'bg-profit/15 text-profit' : ''"
+                                    @click="setFilter(option.key)"
+                                >
+                                    {{ option.label }}
+                                    <span v-if="activeFilter === option.key" class="text-profit">✓</span>
+                                </button>
+                            </div>
                         </div>
-                    </div>
 
-                    <div class="relative min-w-[9.5rem] flex-[1.4] sm:flex-none sm:min-w-[13rem]">
-                        <button
-                            type="button"
-                            class="lb-dd-trigger flex h-full min-h-[2.75rem] w-full items-center justify-between gap-2 border border-border bg-surface-900/70 px-3.5 py-2 text-left text-xs font-semibold transition hover:border-amber-500/35 hover:bg-surface-800/80"
-                            :class="
-                                openControlMenu === 'sort'
-                                    ? 'border-amber-400/50 bg-amber-500/10 text-amber-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]'
-                                    : 'text-text-secondary'
-                            "
-                            :aria-expanded="openControlMenu === 'sort'"
-                            aria-haspopup="listbox"
-                            @click.stop="toggleControlMenu('sort')"
-                        >
-                            <span class="min-w-0">
-                                <span class="block text-[9px] font-bold uppercase tracking-[0.14em] text-text-tertiary">{{ t('leaderboards.controlSortCaption') }}</span>
-                                <span class="mt-0.5 block truncate text-[13px] font-semibold text-text-primary">{{ activeSortLabel }}</span>
-                            </span>
-                            <svg class="h-4 w-4 shrink-0 text-amber-400/90" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                                <path
-                                    fill-rule="evenodd"
-                                    d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z"
-                                    clip-rule="evenodd"
-                                />
-                            </svg>
-                        </button>
-                        <div
-                            v-show="openControlMenu === 'sort'"
-                            class="lb-panel absolute left-0 right-0 z-30 mt-1.5 max-h-64 overflow-y-auto border border-border/90 bg-surface-900/98 py-1 shadow-2xl shadow-black/40 backdrop-blur-md sm:right-auto sm:min-w-[14rem]"
-                            role="listbox"
-                            @click.stop
-                        >
+                        <div class="relative min-w-[9.5rem] flex-[1.4] sm:flex-none sm:min-w-[13rem]">
                             <button
-                                v-for="col in sortColumns"
-                                :key="col.key"
                                 type="button"
-                                role="option"
-                                class="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-xs font-medium transition hover:bg-surface-800/90"
-                                :class="activeSort === col.key ? 'bg-amber-500/10 text-amber-100' : 'text-text-secondary'"
-                                @click="setSortMetric(col.key)"
+                                :class="[
+                                    LB_PICK_TRIGGER_BASE,
+                                    openControlMenu === 'sort'
+                                        ? 'border-profit/70 text-white ring-2 ring-profit/25'
+                                        : 'text-white/90',
+                                ]"
+                                :aria-expanded="openControlMenu === 'sort'"
+                                aria-haspopup="listbox"
+                                @click.stop="toggleControlMenu('sort')"
                             >
-                                {{ col.label }}
-                                <span v-if="activeSort === col.key" class="text-amber-300">✓</span>
+                                <span class="min-w-0">
+                                    <span class="block text-[9px] font-bold uppercase tracking-[0.14em] text-neutral/80">{{ t('leaderboards.controlSortCaption') }}</span>
+                                    <span class="mt-0.5 block truncate text-[13px] font-semibold text-white">{{ activeSortLabel }}</span>
+                                </span>
+                                <svg class="h-4 w-4 shrink-0 text-neutral/70" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                    <path
+                                        fill-rule="evenodd"
+                                        d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z"
+                                        clip-rule="evenodd"
+                                    />
+                                </svg>
                             </button>
+                            <div
+                                v-show="openControlMenu === 'sort'"
+                                :class="[LB_PICK_PANEL_CLASS, 'max-h-64 overflow-y-auto sm:min-w-[14rem]']"
+                                role="listbox"
+                                @click.stop
+                            >
+                                <button
+                                    v-for="col in sortColumns"
+                                    :key="col.key"
+                                    type="button"
+                                    role="option"
+                                    class="flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-white/80 transition hover:bg-surface-800/90"
+                                    :class="activeSort === col.key ? 'bg-profit/15 text-profit' : ''"
+                                    @click="setSortMetric(col.key)"
+                                >
+                                    {{ col.label }}
+                                    <span v-if="activeSort === col.key" class="text-profit">✓</span>
+                                </button>
+                            </div>
                         </div>
-                    </div>
 
-                    <div class="relative min-w-[9.5rem] flex-1 sm:flex-none sm:min-w-[11rem]">
-                        <button
-                            type="button"
-                            class="lb-dd-trigger flex h-full min-h-[2.75rem] w-full items-center justify-between gap-2 border border-border bg-surface-900/70 px-3.5 py-2 text-left text-xs font-semibold transition hover:border-cyan-500/35 hover:bg-surface-800/80"
-                            :class="
-                                openControlMenu === 'direction'
-                                    ? 'border-cyan-400/45 bg-cyan-500/10 text-cyan-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]'
-                                    : 'text-text-secondary'
-                            "
-                            :aria-expanded="openControlMenu === 'direction'"
-                            aria-haspopup="listbox"
-                            @click.stop="toggleControlMenu('direction')"
-                        >
-                            <span class="min-w-0">
-                                <span class="block text-[9px] font-bold uppercase tracking-[0.14em] text-text-tertiary">{{ t('leaderboards.controlDirectionCaption') }}</span>
-                                <span class="mt-0.5 block truncate text-[13px] font-semibold text-text-primary">{{ activeDirectionLabel }}</span>
-                            </span>
-                            <svg class="h-4 w-4 shrink-0 text-cyan-400/90" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                                <path
-                                    fill-rule="evenodd"
-                                    d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z"
-                                    clip-rule="evenodd"
-                                />
-                            </svg>
-                        </button>
-                        <div
-                            v-show="openControlMenu === 'direction'"
-                            class="lb-panel absolute left-0 right-0 z-30 mt-1.5 border border-border/90 bg-surface-900/98 py-1 shadow-2xl shadow-black/40 backdrop-blur-md sm:right-auto sm:min-w-[11rem]"
-                            role="listbox"
-                            @click.stop
-                        >
+                        <div class="relative min-w-[9.5rem] flex-1 sm:flex-none sm:min-w-[11rem]">
                             <button
                                 type="button"
-                                role="option"
-                                class="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-xs font-medium transition hover:bg-surface-800/90"
-                                :class="activeDirection === 'desc' ? 'bg-cyan-500/10 text-cyan-100' : 'text-text-secondary'"
-                                @click="setSortDirection('desc')"
+                                :class="[
+                                    LB_PICK_TRIGGER_BASE,
+                                    openControlMenu === 'direction'
+                                        ? 'border-profit/70 text-white ring-2 ring-profit/25'
+                                        : 'text-white/90',
+                                ]"
+                                :aria-expanded="openControlMenu === 'direction'"
+                                aria-haspopup="listbox"
+                                @click.stop="toggleControlMenu('direction')"
                             >
-                                {{ t('common.descending') }}
-                                <span v-if="activeDirection === 'desc'" class="text-cyan-300">✓</span>
+                                <span class="min-w-0">
+                                    <span class="block text-[9px] font-bold uppercase tracking-[0.14em] text-neutral/80">{{ t('leaderboards.controlDirectionCaption') }}</span>
+                                    <span class="mt-0.5 block truncate text-[13px] font-semibold text-white">{{ activeDirectionLabel }}</span>
+                                </span>
+                                <svg class="h-4 w-4 shrink-0 text-neutral/70" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                    <path
+                                        fill-rule="evenodd"
+                                        d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z"
+                                        clip-rule="evenodd"
+                                    />
+                                </svg>
                             </button>
-                            <button
-                                type="button"
-                                role="option"
-                                class="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-xs font-medium transition hover:bg-surface-800/90"
-                                :class="activeDirection === 'asc' ? 'bg-cyan-500/10 text-cyan-100' : 'text-text-secondary'"
-                                @click="setSortDirection('asc')"
+                            <div
+                                v-show="openControlMenu === 'direction'"
+                                :class="[LB_PICK_PANEL_CLASS, 'sm:min-w-[11rem]']"
+                                role="listbox"
+                                @click.stop
                             >
-                                {{ t('common.ascending') }}
-                                <span v-if="activeDirection === 'asc'" class="text-cyan-300">✓</span>
-                            </button>
+                                <button
+                                    type="button"
+                                    role="option"
+                                    class="flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-white/80 transition hover:bg-surface-800/90"
+                                    :class="activeDirection === 'desc' ? 'bg-profit/15 text-profit' : ''"
+                                    @click="setSortDirection('desc')"
+                                >
+                                    {{ t('common.descending') }}
+                                    <span v-if="activeDirection === 'desc'" class="text-profit">✓</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    role="option"
+                                    class="flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-white/80 transition hover:bg-surface-800/90"
+                                    :class="activeDirection === 'asc' ? 'bg-profit/15 text-profit' : ''"
+                                    @click="setSortDirection('asc')"
+                                >
+                                    {{ t('common.ascending') }}
+                                    <span v-if="activeDirection === 'asc'" class="text-profit">✓</span>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -680,9 +686,14 @@ onBeforeUnmount(() => {
             </section>
 
             <section class="relative">
-                <div v-if="loading" class="flex min-h-[220px] flex-col items-center justify-center gap-3 rounded-xl border border-border bg-surface-800/50 px-4 py-12 text-text-secondary" aria-live="polite">
-                    <span class="loading-bar"></span>
-                    <span class="text-sm font-medium">{{ t('leaderboards.tableLoading') }}</span>
+                <div
+                    v-if="loading"
+                    class="flex min-h-[220px] items-center justify-center gap-3 py-8 text-neutral"
+                    role="status"
+                    aria-live="polite"
+                >
+                    <span class="h-5 w-5 shrink-0 animate-spin rounded-full border-2 border-neutral/40 border-t-profit" />
+                    <span class="text-sm text-neutral">{{ t('leaderboards.tableLoading') }}</span>
                 </div>
 
                 <div v-else-if="!leaderboardData?.rows?.length" class="flex min-h-[220px] items-center justify-center rounded-xl border border-border bg-surface-800/50 px-4 py-12 text-center text-sm text-text-secondary">
@@ -848,25 +859,6 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-.loading-bar {
-    width: 140px;
-    height: 3px;
-    border-radius: 999px;
-    background: linear-gradient(90deg, rgba(56, 189, 248, 0.12), rgba(56, 189, 248, 0.85), rgba(251, 191, 36, 0.6));
-    background-size: 200% 100%;
-    animation: loading-shift 1.2s linear infinite;
-}
-
-@keyframes loading-shift {
-    from {
-        background-position: 0 0;
-    }
-
-    to {
-        background-position: 200% 0;
-    }
-}
-
 /* Smooth “continuous” corners: squircle where supported (G3-like), pill row buttons. */
 .lb-surface,
 .lb-inset,

@@ -3,9 +3,9 @@
 return [
     'free' => 'Free',
     'price' => 'Price',
-    'upgradeVip' => 'Standard tier: faster refresh and more dashboard room',
+    'upgradeVip' => 'Standard tier: faster refresh and priority widget updates',
     'upgradeMvp' => 'Plus tier: extra signals and tooling for heavier workflows',
-    
+
     // Features
     'bazaarFlipTable' => 'Bazaar Flip Table',
     'npcArbitrage' => 'NPC Arbitrage Detection',
@@ -17,7 +17,7 @@ return [
     'leaderboardTierTag' => 'Community tags in leaderboards',
     'aiControlledFlips' => 'Extra flip tooling',
     'aiTrustSignals' => 'AI Trust Signals',
-    
+
     // FAQs
     'faqs' => [
         [

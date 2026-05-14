@@ -1,8 +1,13 @@
 <?php
 
+use App\Http\Middleware\DevAutoLogin;
+use App\Http\Middleware\EnsureTestingAdmin;
+use App\Http\Middleware\HandleInertiaRequests;
+use App\Http\Middleware\TouchSitePresence;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -14,9 +19,10 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->web(append: [
-            \App\Http\Middleware\HandleInertiaRequests::class,
-            \Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class,
-            \App\Http\Middleware\TouchSitePresence::class,
+            DevAutoLogin::class,
+            HandleInertiaRequests::class,
+            AddLinkHeadersForPreloadedAssets::class,
+            TouchSitePresence::class,
         ]);
 
         $middleware->validateCsrfTokens(except: [
@@ -24,7 +30,7 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
 
         $middleware->alias([
-            'testing.admin' => \App\Http\Middleware\EnsureTestingAdmin::class,
+            'testing.admin' => EnsureTestingAdmin::class,
         ]);
 
         //

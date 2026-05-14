@@ -360,6 +360,7 @@ class LeaderboardController extends Controller
             ->join('users', 'users.id', '=', 'user_dashboards.user_id')
             ->whereRaw("LOWER(REPLACE(users.minecraft_uuid, '-', '')) = {$normalizedUuidExpr}")
             ->where('user_dashboards.is_public', true)
+            ->where('user_dashboards.slot_index', 1)
             ->limit(1);
 
         $linkedUserIdSubquery = DB::table('users')

@@ -61,9 +61,6 @@ Route::post('/analytics/funnel-event', [FunnelAnalyticsController::class, 'store
 Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 Route::get('/dashboard/visit/{minecraftUuid}', [DashboardController::class, 'visit'])->name('dashboard.visit');
 Route::post('/dashboard/save', [DashboardController::class, 'save'])->middleware('auth')->name('dashboard.save');
-Route::get('/dashboard/info', function () {
-    return Inertia::render('DashboardInfo');
-})->name('dashboard.info');
 
 Route::get('/leaderboards/info', function () {
     return Inertia::render('LeaderboardsInfo');

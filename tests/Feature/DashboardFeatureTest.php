@@ -4,7 +4,6 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use App\Models\UserDashboard;
-use App\Models\UserEntitlement;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia;
 use Tests\TestCase;
@@ -40,14 +39,13 @@ class DashboardFeatureTest extends TestCase
             );
     }
 
-    public function test_linked_user_can_save_dashboard_slot_one(): void
+    public function test_linked_user_can_save_dashboard(): void
     {
         $user = User::factory()->create([
             'is_mc_linked' => true,
         ]);
 
         $response = $this->actingAs($user)->post('/dashboard/save', [
-            'slot_index' => 1,
             'is_public' => false,
             'widgets' => [
                 [
@@ -79,7 +77,6 @@ class DashboardFeatureTest extends TestCase
         ]);
 
         $response = $this->actingAs($user)->post('/dashboard/save', [
-            'slot_index' => 1,
             'is_public' => false,
             'widgets' => [
                 [
@@ -97,8 +94,8 @@ class DashboardFeatureTest extends TestCase
                     'x' => 7,
                     'y' => 1,
                     'w' => 8,
-                    'h' => 6,
-                    'settings' => ['username' => 'Lokkisanek', 'show_hotbar' => false],
+                    'h' => 5,
+                    'settings' => ['username' => 'Lokkisanek'],
                 ],
             ],
         ]);
@@ -112,6 +109,99 @@ class DashboardFeatureTest extends TestCase
         $this->assertSame(['skin_view_widget', 'inventory_gui_widget'], $dashboard->widgets()->pluck('type')->all());
     }
 
+    public function test_inventory_gui_widget_can_be_saved(): void
+    {
+        $user = User::factory()->create([
+            'is_mc_linked' => true,
+        ]);
+
+        $response = $this->actingAs($user)->post('/dashboard/save', [
+            'is_public' => false,
+            'widgets' => [
+                [
+                    'type' => 'inventory_gui_widget',
+                    'title' => 'Inventory',
+                    'x' => 1,
+                    'y' => 1,
+                    'w' => 8,
+                    'h' => 5,
+                    'settings' => ['username' => 'Lokkisanek'],
+                ],
+            ],
+        ]);
+
+        $response->assertSessionHasNoErrors();
+
+        $dashboard = UserDashboard::query()->where('user_id', $user->id)->where('slot_index', 1)->first();
+
+        $this->assertNotNull($dashboard);
+        $this->assertSame(1, $dashboard->widgets()->count());
+        $this->assertSame('inventory_gui_widget', $dashboard->widgets()->first()->type);
+    }
+
+    public function test_profile_skills_widget_can_be_saved(): void
+    {
+        $user = User::factory()->create([
+            'is_mc_linked' => true,
+        ]);
+
+        $response = $this->actingAs($user)->post('/dashboard/save', [
+            'is_public' => false,
+            'widgets' => [
+                [
+                    'type' => 'profile_skills_widget',
+                    'title' => 'Skills',
+                    'x' => 1,
+                    'y' => 1,
+                    'w' => 6,
+                    'h' => 5,
+                    'settings' => ['username' => 'Lokkisanek'],
+                ],
+            ],
+        ]);
+
+        $response->assertSessionHasNoErrors();
+
+        $dashboard = UserDashboard::query()->where('user_id', $user->id)->where('slot_index', 1)->first();
+
+        $this->assertNotNull($dashboard);
+        $this->assertSame(1, $dashboard->widgets()->count());
+        $this->assertSame('profile_skills_widget', $dashboard->widgets()->first()->type);
+    }
+
+    public function test_profile_collections_widget_can_be_saved(): void
+    {
+        $user = User::factory()->create([
+            'is_mc_linked' => true,
+        ]);
+
+        $response = $this->actingAs($user)->post('/dashboard/save', [
+            'is_public' => false,
+            'widgets' => [
+                [
+                    'type' => 'profile_collections_widget',
+                    'title' => 'Collections',
+                    'x' => 1,
+                    'y' => 1,
+                    'w' => 6,
+                    'h' => 5,
+                    'settings' => [
+                        'username' => 'Lokkisanek',
+                        'collection_selected_keys' => ['farming:WHEAT', 'mining:COBBLESTONE'],
+                    ],
+                ],
+            ],
+        ]);
+
+        $response->assertSessionHasNoErrors();
+
+        $dashboard = UserDashboard::query()->where('user_id', $user->id)->where('slot_index', 1)->first();
+
+        $this->assertNotNull($dashboard);
+        $this->assertSame(1, $dashboard->widgets()->count());
+        $this->assertSame('profile_collections_widget', $dashboard->widgets()->first()->type);
+    }
+
     public function test_overlapping_widgets_are_rejected(): void
     {
         $user = User::factory()->create([
@@ -121,7 +211,6 @@ class DashboardFeatureTest extends TestCase
         $response = $this->actingAs($user)
             ->from('/dashboard')
             ->post('/dashboard/save', [
-                'slot_index' => 1,
                 'is_public' => false,
                 'widgets' => [
                     [
@@ -139,8 +228,8 @@ class DashboardFeatureTest extends TestCase
                         'x' => 2,
                         'y' => 2,
                         'w' => 8,
-                        'h' => 6,
-                        'settings' => ['username' => 'B', 'show_hotbar' => false],
+                        'h' => 5,
+                        'settings' => ['username' => 'B'],
                     ],
                 ],
             ]);
@@ -157,7 +246,6 @@ class DashboardFeatureTest extends TestCase
         $response = $this->actingAs($user)
             ->from('/dashboard')
             ->post('/dashboard/save', [
-                'slot_index' => 1,
                 'is_public' => false,
                 'widgets' => [
                     [
@@ -166,8 +254,8 @@ class DashboardFeatureTest extends TestCase
                         'x' => 14,
                         'y' => 1,
                         'w' => 8,
-                        'h' => 6,
-                        'settings' => ['username' => 'Lokkisanek', 'show_hotbar' => false],
+                        'h' => 5,
+                        'settings' => ['username' => 'Lokkisanek'],
                     ],
                 ],
             ]);

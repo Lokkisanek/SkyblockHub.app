@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\BazaarController as ApiBazaarController;
 use App\Http\Controllers\Api\BinSniperAnalysisController;
+use App\Http\Controllers\Api\DashboardSnapshotController;
 use App\Http\Controllers\Api\HypixelProfileController;
 use App\Http\Controllers\Api\LeaderboardController;
 use App\Http\Controllers\CraftingArbitrageController;
@@ -12,6 +13,10 @@ use Illuminate\Support\Facades\Route;
 Route::get('/user', function (Request $request) {
     return $request->user();
 })->middleware('auth:sanctum');
+
+Route::get('/v1/dashboard/snapshot', DashboardSnapshotController::class)
+    ->middleware('throttle:60,1')
+    ->name('api.dashboard.snapshot');
 
 /*
 |--------------------------------------------------------------------------

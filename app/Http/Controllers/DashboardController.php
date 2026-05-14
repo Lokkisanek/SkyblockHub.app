@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\UserDashboard;
-use App\Services\DashboardEntitlementService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -13,7 +12,9 @@ use Inertia\Response;
 class DashboardController extends Controller
 {
     private const GRID_COLUMNS = 20;
+
     private const GRID_ROWS = 20;
+
     private const MAX_WIDGETS = 30;
 
     /**
@@ -22,31 +23,34 @@ class DashboardController extends Controller
     private const ALLOWED_WIDGET_TYPES = [
         'skin_view_widget',
         'inventory_gui_widget',
+        'profile_skills_widget',
+        'profile_slayers_widget',
+        'profile_collections_widget',
+        'profile_networth_widget',
+        'profile_pets_widget',
+        'profile_equipment_widget',
+        'profile_armor_widget',
+        'profile_weapons_widget',
+        'event_timers_widget',
+        'skyblock_calendar_widget',
+        'mayor_status_widget',
+        'bazaar_top_widget',
+        'leaderboard_rank_widget',
     ];
-
-    public function __construct(
-        private readonly DashboardEntitlementService $entitlementService,
-    ) {
-    }
 
     public function index(Request $request): Response
     {
         $user = $request->user();
-        $slotIndex = max((int) $request->query('slot', 1), 1);
-        $limits = $this->entitlementService->getDashboardLimits($user);
-        if (! $this->entitlementService->canAccessSlot($user, $slotIndex)) {
-            $slotIndex = 1;
-        }
+        $slotIndex = 1;
 
         $dashboard = null;
-        $liveWidgetData = $this->buildLiveWidgetData();
 
         if ($user) {
             $dashboard = UserDashboard::query()
                 ->firstOrCreate(
                     ['user_id' => $user->id, 'slot_index' => $slotIndex],
                     [
-                        'name' => $slotIndex === 1 ? 'Main Dashboard' : "Dashboard Slot {$slotIndex}",
+                        'name' => 'Main Dashboard',
                         'grid_columns' => self::GRID_COLUMNS,
                         'grid_rows' => self::GRID_ROWS,
                         'is_public' => false,
@@ -76,7 +80,6 @@ class DashboardController extends Controller
             'canEditDashboard' => (bool) ($user && $user->is_mc_linked),
             'requiresLogin' => ! $user,
             'requiresMinecraftLink' => (bool) ($user && ! $user->is_mc_linked),
-            'activeSlotIndex' => $slotIndex,
             'dashboard' => $dashboard ? [
                 'id' => $dashboard->id,
                 'name' => $dashboard->name,
@@ -95,8 +98,6 @@ class DashboardController extends Controller
                     'settings' => $widget->settings ?? [],
                 ])->values(),
             ] : null,
-            'dashboardLimits' => $limits,
-            'liveWidgetData' => $liveWidgetData,
             'widgetTemplates' => $this->widgetTemplates(),
         ]);
     }
@@ -105,10 +106,10 @@ class DashboardController extends Controller
     {
         $dashboard = UserDashboard::query()
             ->where('is_public', true)
+            ->where('slot_index', 1)
             ->whereHas('user', function ($query) use ($minecraftUuid): void {
                 $query->where('minecraft_uuid', $minecraftUuid);
             })
-            ->orderBy('slot_index')
             ->firstOrFail()
             ->load('widgets');
 
@@ -123,7 +124,6 @@ class DashboardController extends Controller
             'canEditDashboard' => false,
             'requiresLogin' => false,
             'requiresMinecraftLink' => false,
-            'activeSlotIndex' => (int) $dashboard->slot_index,
             'dashboard' => [
                 'id' => $dashboard->id,
                 'name' => $dashboard->name,
@@ -142,13 +142,6 @@ class DashboardController extends Controller
                     'settings' => $widget->settings ?? [],
                 ])->values(),
             ],
-            'dashboardLimits' => [
-                'free_slots' => 1,
-                'total_slots' => 1,
-                'unlocked_slots' => 1,
-                'locked_slots' => [],
-            ],
-            'liveWidgetData' => $this->buildLiveWidgetData(),
             'widgetTemplates' => $this->widgetTemplates(),
         ]);
     }
@@ -156,7 +149,7 @@ class DashboardController extends Controller
     public function save(Request $request): RedirectResponse
     {
         $user = $request->user();
-        $slotIndex = max((int) $request->input('slot_index', 1), 1);
+        $slotIndex = 1;
 
         if (! $user || ! $user->is_mc_linked) {
             return back()->withErrors([
@@ -165,7 +158,6 @@ class DashboardController extends Controller
         }
 
         $data = $request->validate([
-            'slot_index' => ['required', 'integer', 'min:1', 'max:3'],
             'is_public' => ['required', 'boolean'],
             'widgets' => ['required', 'array', 'max:'.self::MAX_WIDGETS],
             'widgets.*.id' => ['nullable', 'integer'],
@@ -246,7 +238,7 @@ class DashboardController extends Controller
             ->firstOrCreate(
                 ['user_id' => $user->id, 'slot_index' => $slotIndex],
                 [
-                    'name' => $slotIndex === 1 ? 'Main Dashboard' : "Dashboard Slot {$slotIndex}",
+                    'name' => 'Main Dashboard',
                     'grid_columns' => self::GRID_COLUMNS,
                     'grid_rows' => self::GRID_ROWS,
                     'is_public' => false,
@@ -321,8 +313,8 @@ class DashboardController extends Controller
                 'type' => 'skin_view_widget',
                 'name' => '3D Skin View',
                 'description' => 'Live rotating 3D model pulled from the linked profile.',
-                'default_size' => ['w' => 3, 'h' => 5],
-                'min_size' => ['w' => 3, 'h' => 5],
+                'default_size' => ['w' => 3, 'h' => 4],
+                'min_size' => ['w' => 3, 'h' => 4],
                 'default_title' => '3D Skin View',
                 'default_settings' => [
                     'username' => '',
@@ -333,26 +325,170 @@ class DashboardController extends Controller
                 'type' => 'inventory_gui_widget',
                 'name' => 'Inventory GUI',
                 'description' => 'A clean inventory window preview with live items.',
-                'default_size' => ['w' => 8, 'h' => 6],
-                'min_size' => ['w' => 8, 'h' => 6],
+                'default_size' => ['w' => 8, 'h' => 4],
+                'min_size' => ['w' => 8, 'h' => 4],
                 'default_title' => 'Inventory GUI',
                 'default_settings' => [
                     'username' => '',
-                    'show_hotbar' => false,
                 ],
                 'preview' => 'inventory',
             ],
-        ];
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function buildLiveWidgetData(): array
-    {
-        return [
-            'items' => [],
-            'event' => null,
+            'profile_skills_widget' => [
+                'type' => 'profile_skills_widget',
+                'name' => 'Skills',
+                'description' => 'Skill levels and XP progress from the selected SkyBlock profile.',
+                'default_size' => ['w' => 6, 'h' => 5],
+                'min_size' => ['w' => 5, 'h' => 4],
+                'default_title' => 'Skills',
+                'default_settings' => [
+                    'username' => '',
+                    'skill_selected_keys' => [],
+                ],
+                'preview' => 'skills',
+            ],
+            'profile_slayers_widget' => [
+                'type' => 'profile_slayers_widget',
+                'name' => 'Slayers',
+                'description' => 'Slayer bosses, levels, and XP progress (pick which bosses to show).',
+                'default_size' => ['w' => 8, 'h' => 4],
+                'min_size' => ['w' => 6, 'h' => 3],
+                'default_title' => 'Slayers',
+                'default_settings' => [
+                    'username' => '',
+                    'slayer_selected_keys' => [],
+                ],
+                'preview' => 'slayers',
+            ],
+            'profile_collections_widget' => [
+                'type' => 'profile_collections_widget',
+                'name' => 'Collections',
+                'description' => 'SkyBlock collection progress for items you pick.',
+                'default_size' => ['w' => 6, 'h' => 5],
+                'min_size' => ['w' => 5, 'h' => 3],
+                'default_title' => 'Collections',
+                'default_settings' => [
+                    'username' => '',
+                    'collection_selected_keys' => [],
+                ],
+                'preview' => 'collections',
+            ],
+            'profile_networth_widget' => [
+                'type' => 'profile_networth_widget',
+                'name' => 'Net worth',
+                'description' => 'Purse, bank, and total net worth.',
+                'default_size' => ['w' => 6, 'h' => 3],
+                'min_size' => ['w' => 6, 'h' => 3],
+                'default_title' => 'Net worth',
+                'default_settings' => [
+                    'username' => '',
+                ],
+                'preview' => 'networth',
+            ],
+            'profile_pets_widget' => [
+                'type' => 'profile_pets_widget',
+                'name' => 'Pets',
+                'description' => 'Top pets by rarity (unique list).',
+                'default_size' => ['w' => 6, 'h' => 5],
+                'min_size' => ['w' => 6, 'h' => 5],
+                'default_title' => 'Pets',
+                'default_settings' => [
+                    'username' => '',
+                ],
+                'preview' => 'pets',
+            ],
+            'profile_equipment_widget' => [
+                'type' => 'profile_equipment_widget',
+                'name' => 'Equipment',
+                'description' => 'Equipment slots (vertical list).',
+                'default_size' => ['w' => 1, 'h' => 4],
+                'min_size' => ['w' => 1, 'h' => 4],
+                'default_title' => 'Equipment',
+                'default_settings' => [
+                    'username' => '',
+                ],
+                'preview' => 'equipment',
+            ],
+            'profile_armor_widget' => [
+                'type' => 'profile_armor_widget',
+                'name' => 'Armor',
+                'description' => 'Armor pieces (vertical list).',
+                'default_size' => ['w' => 1, 'h' => 4],
+                'min_size' => ['w' => 1, 'h' => 4],
+                'default_title' => 'Armor',
+                'default_settings' => [
+                    'username' => '',
+                ],
+                'preview' => 'armor',
+            ],
+            'profile_weapons_widget' => [
+                'type' => 'profile_weapons_widget',
+                'name' => 'Weapons',
+                'description' => 'Detected weapons from the player inventory.',
+                'default_size' => ['w' => 4, 'h' => 1],
+                'min_size' => ['w' => 4, 'h' => 1],
+                'default_title' => 'Weapons',
+                'default_settings' => [
+                    'username' => '',
+                ],
+                'preview' => 'weapons',
+            ],
+            'event_timers_widget' => [
+                'type' => 'event_timers_widget',
+                'name' => 'Event timer',
+                'description' => 'One rotating SkyBlock event (same logic as Event Timer page).',
+                'default_size' => ['w' => 5, 'h' => 4],
+                'min_size' => ['w' => 4, 'h' => 3],
+                'default_title' => 'Event timer',
+                'default_settings' => [
+                    'event_timer_key' => 'dark-auction',
+                ],
+                'preview' => 'events',
+            ],
+            'skyblock_calendar_widget' => [
+                'type' => 'skyblock_calendar_widget',
+                'name' => 'SkyBlock calendar',
+                'description' => 'Current SkyBlock date and notable events today.',
+                'default_size' => ['w' => 6, 'h' => 5],
+                'min_size' => ['w' => 5, 'h' => 4],
+                'default_title' => 'SkyBlock calendar',
+                'default_settings' => [],
+                'preview' => 'calendar',
+            ],
+            'mayor_status_widget' => [
+                'type' => 'mayor_status_widget',
+                'name' => 'Mayor',
+                'description' => 'Current mayor and perks (from Hypixel election API).',
+                'default_size' => ['w' => 3, 'h' => 2],
+                'min_size' => ['w' => 3, 'h' => 2],
+                'default_title' => 'Mayor',
+                'default_settings' => [],
+                'preview' => 'mayor',
+            ],
+            'bazaar_top_widget' => [
+                'type' => 'bazaar_top_widget',
+                'name' => 'Bazaar margins',
+                'description' => 'Top items by instant-sell vs instant-buy margin.',
+                'default_size' => ['w' => 7, 'h' => 6],
+                'min_size' => ['w' => 6, 'h' => 5],
+                'default_title' => 'Bazaar margins',
+                'default_settings' => [
+                    'limit' => 8,
+                ],
+                'preview' => 'bazaar',
+            ],
+            'leaderboard_rank_widget' => [
+                'type' => 'leaderboard_rank_widget',
+                'name' => 'Leaderboard rank',
+                'description' => 'Global rank for a player on the selected leaderboard sort.',
+                'default_size' => ['w' => 3, 'h' => 2],
+                'min_size' => ['w' => 3, 'h' => 2],
+                'default_title' => 'Leaderboard rank',
+                'default_settings' => [
+                    'username' => '',
+                    'sort' => 'level',
+                ],
+                'preview' => 'leaderboard',
+            ],
         ];
     }
 }
