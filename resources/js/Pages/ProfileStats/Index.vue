@@ -33,13 +33,13 @@ let fetchSequence = 0;
 /* ── Tab definitions ─────────────────────────────────────── */
 const tabs = computed(() => [
     { id: 'gear',        name: t('profileStats.tabGear') },
+    { id: 'accessories', name: t('profileStats.tabAccessories') },
     { id: 'inventory',   name: t('profileStats.tabInventory') },
     { id: 'pets',        name: t('profileStats.tabPets') },
     { id: 'skills',      name: t('profileStats.tabSkills') },
     { id: 'dungeons',    name: t('profileStats.tabDungeons') },
     { id: 'slayer',      name: t('profileStats.tabSlayer') },
     { id: 'collections', name: t('profileStats.tabCollections') },
-    { id: 'misc',        name: t('profileStats.tabMisc') },
 ]);
 
 /* ── Inventory sub-tabs with SkyBlock UI style icons ────────── */
@@ -320,9 +320,6 @@ const collectionsData = computed(() => currentData.value?.collections ?? { categ
 const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V'];
 function romanNumeral(n) { return ROMAN[n] || String(n); }
 
-const ROMAN_FULL = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'XIII', 'XIV', 'XV', 'XVI'];
-function romanNumeralFull(n) { return ROMAN_FULL[n] || String(n); }
-
 const COLLECTION_CATEGORY_ICONS = {
     FARMING: '🌾', MINING: '⛏️', COMBAT: '⚔️', FORAGING: '🌲', FISHING: '🎣', RIFT: '🌀', BOSS: '💀',
 };
@@ -354,16 +351,42 @@ function formatXP(skill) {
     return `${fNum(skill.xpCurrent)} / ${fNum(skill.xpForNext)} ${t('profileStats.xp')}`;
 }
 
-function skillBarClass(skill) {
-    if (skill.level >= skill.maxLevel) return 'skill-bar-fill-max';
-    if (skill.level >= 50) return 'skill-bar-fill-gold';
+/** Vanilla `/item/...` paths for Profile Stats skill icons (ring). */
+const SKILL_TEXTURE_PATHS = {
+    farming: '/item/golden_hoe',
+    mining: '/item/iron_pickaxe',
+    combat: '/item/diamond_sword',
+    foraging: '/item/diamond_axe',
+    fishing: '/item/fishing_rod_uncast',
+    enchanting: '/item/book_enchanted',
+    alchemy: '/item/brewing_stand',
+    carpentry: '/item/iron_axe',
+    taming: '/item/bone',
+    runecrafting: '/item/ender_eye',
+    social: '/item/cake',
+    hunting: '/item/feather',
+};
+
+const SB_LEVEL_TEXTURE_ITEM = { texture_path: '/item/experience_bottle' };
+
+function skillTextureItem(skillName) {
+    const path = SKILL_TEXTURE_PATHS[skillName];
+    return path ? { texture_path: path } : null;
+}
+
+function skillTextureUrl(skillName) {
+    return getItemTextureUrl(skillTextureItem(skillName));
+}
+
+/** Pill fill modifier classes for the Skills tab (green in progress, orange when maxed — matches in-game list UI). */
+function skillPillFillClass(skill) {
+    if (skill.level >= skill.maxLevel) return 'ps-skill-pill-fill--max';
     return '';
 }
 
-function skillLevelClass(skill) {
-    if (skill.level >= skill.maxLevel) return 'skill-level-max';
-    if (skill.level >= 50) return 'skill-level-gold';
-    return '';
+function formatSkyblockLevelXP(sb) {
+    if (!sb) return '';
+    return `${fNum(sb.xpCurrent)} / ${fNum(sb.xpForNext)} ${t('profileStats.xp')}`;
 }
 
 function timeAgo(ts) {
@@ -381,6 +404,11 @@ function timeAgo(ts) {
 
 function capitalize(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
 function petName(t) { return t.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, c => c.toUpperCase()); }
+
+/** Minimal item shape for {@link getItemTextureUrl} from API `texture_path`. */
+function collectionTextureItem(item) {
+    return item?.texture_path ? { texture_path: item.texture_path } : null;
+}
 
 // ── Dungeon helpers ──
 function formatDungeonXP(level) {
@@ -553,8 +581,8 @@ onMounted(async () => {
                     <div v-if="hasLoadedProfile" class="w-full">
 
                     <!-- ═══ STATS SUMMARY BAR ═══ -->
-                    <div v-if="currentData" class="border border-profit/30 bg-profit/5 rounded px-4 py-2 mb-4">
-                        <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
+                    <div v-if="currentData" class="border border-profit/30 bg-profit/5 rounded px-3 py-2 mb-4 sm:px-4">
+                        <div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] sm:gap-x-4 sm:text-xs">
                             <span class="text-neutral">{{ t('profileStats.joined') }} <b class="text-white">{{ timeAgo(currentData.first_join) }}</b></span>
                             <span class="text-border-light">·</span>
                             <span class="text-neutral">{{ t('profileStats.purse') }} <b class="text-rarity-legendary">{{ fNum(currentData.networth?.purse) }} {{ t('profileStats.coins') }}</b></span>
@@ -588,7 +616,7 @@ onMounted(async () => {
                     </div>
 
                     <!-- ═══ MAIN TAB NAVIGATION (SkyBlock UI style underline) ═══ -->
-                    <div class="flex border-b border-border mb-6 overflow-x-auto">
+                    <div class="flex border-b border-border mb-6 overflow-x-auto overscroll-x-contain -mx-1 px-1 sm:mx-0 sm:px-0">
                         <button v-for="tab in tabs" :key="tab.id"
                             @click="activeTab = tab.id"
                             class="px-4 py-2.5 text-xs font-semibold uppercase tracking-wider whitespace-nowrap border-b-2 transition"
@@ -603,11 +631,10 @@ onMounted(async () => {
                     <!--  GEAR TAB (SkyBlock UI style)                         -->
                     <!-- ═══════════════════════════════════════════════════ -->
                     <div v-if="activeTab === 'gear'">
-                        <div class="flex gap-8">
-                            <!-- Left: 3D Player Model (interactive, SkyBlock UI style) -->
+                        <div class="flex flex-col gap-6 lg:flex-row lg:gap-8">
+                            <!-- Desktop: sticky 3D model -->
                             <div class="hidden lg:block w-52 shrink-0">
                                 <div class="sticky top-20">
-                                    <!-- Username + Rank badge -->
                                     <div class="player-name-rank">
                                         <template v-if="profileData?.rank?.prefix">
                                             <span class="rank-prefix" :style="{ color: profileData.rank.color }">
@@ -623,8 +650,23 @@ onMounted(async () => {
                                 </div>
                             </div>
 
-                            <!-- Right: Gear sections -->
-                            <div class="flex-1 min-w-0 space-y-10">
+                            <!-- Mobile / tablet: compact model above gear -->
+                            <div class="flex flex-col items-center lg:hidden">
+                                <div class="player-name-rank">
+                                    <template v-if="profileData?.rank?.prefix">
+                                        <span class="rank-prefix" :style="{ color: profileData.rank.color }">
+                                            {{ rankTextBefore }}<!--
+                                        --><span v-if="rankPlusText" class="rank-plus" :style="{ color: profileData.rank.plusColor }">{{ rankPlusText }}</span><!--
+                                        --><span v-if="rankTextAfter" :style="{ color: profileData.rank.color }">{{ rankTextAfter }}</span>
+                                        </span>
+                                        <span class="player-username" :style="{ color: profileData.rank.color }">{{ profileData.username }}</span>
+                                    </template>
+                                    <span v-else class="player-username" style="color: #AAAAAA">{{ profileData?.username }}</span>
+                                </div>
+                                <PlayerModel :uuid="profileData?.uuid" :width="144" :height="280" />
+                            </div>
+
+                            <div class="flex-1 min-w-0 space-y-8 lg:space-y-10">
 
                                 <!-- ARMOR -->
                                 <section v-if="currentData?.armor?.length">
@@ -693,6 +735,40 @@ onMounted(async () => {
                                     {{ t('profileStats.noGearData') }}
                                 </div>
                             </div>
+                        </div>
+                    </div>
+
+                    <!-- ═══════════════════════════════════════════════════ -->
+                    <!--  ACCESSORIES TAB                                    -->
+                    <!-- ═══════════════════════════════════════════════════ -->
+                    <div v-if="activeTab === 'accessories'">
+                        <div v-if="currentData?.accessories?.length">
+                            <div class="mb-6 space-y-1 text-sm font-semibold">
+                                <div>
+                                    <span class="text-neutral">{{ t('profileStats.uniqueAccessories') }}</span>
+                                    <span class="text-white">{{ accessoryStats.unique }} / {{ accessoryStats.total }}</span>
+                                </div>
+                                <div>
+                                    <span class="text-neutral">{{ t('profileStats.recombobulated') }}</span>
+                                    <span class="text-white">{{ accessoryStats.recombobulated }} / {{ accessoryStats.total }}</span>
+                                </div>
+                                <div v-if="accessoryBag.selected_power">
+                                    <span class="text-neutral">{{ t('profileStats.selectedPower') }}</span>
+                                    <span class="text-profit">{{ capitalize(accessoryBag.selected_power) }}</span>
+                                </div>
+                                <div v-if="accessoryBag.highest_magical_power">
+                                    <span class="text-neutral">{{ t('profileStats.magicalPower') }}</span>
+                                    <span class="text-rarity-mythic">{{ accessoryBag.highest_magical_power }}</span>
+                                </div>
+                            </div>
+
+                            <h3 class="stat-header">{{ t('profileStats.activeAccessories') }}</h3>
+                            <div class="pieces">
+                                <ItemSlot v-for="(item, i) in currentData.accessories" :key="i" :item="item" />
+                            </div>
+                        </div>
+                        <div v-else class="text-neutral text-sm py-8 text-center">
+                            {{ t('profileStats.noAccessoryData') }}
                         </div>
                     </div>
 
@@ -874,42 +950,6 @@ onMounted(async () => {
                     </div>
 
                     <!-- ═══════════════════════════════════════════════════ -->
-                    <!--  ACCESSORIES TAB (SkyBlock UI style)                  -->
-                    <!-- ═══════════════════════════════════════════════════ -->
-                    <div v-if="activeTab === 'accessories'">
-                        <div v-if="currentData?.accessories?.length">
-                            <!-- Summary stats -->
-                            <div class="mb-6 space-y-1 text-sm font-semibold">
-                                <div>
-                                    <span class="text-neutral">{{ t('profileStats.uniqueAccessories') }}</span>
-                                    <span class="text-white">{{ accessoryStats.unique }} / {{ accessoryStats.total }}</span>
-                                </div>
-                                <div>
-                                    <span class="text-neutral">{{ t('profileStats.recombobulated') }}</span>
-                                    <span class="text-white">{{ accessoryStats.recombobulated }} / {{ accessoryStats.total }}</span>
-                                </div>
-                                <div v-if="accessoryBag.selected_power">
-                                    <span class="text-neutral">{{ t('profileStats.selectedPower') }}</span>
-                                    <span class="text-profit">{{ capitalize(accessoryBag.selected_power) }}</span>
-                                </div>
-                                <div v-if="accessoryBag.highest_magical_power">
-                                    <span class="text-neutral">{{ t('profileStats.magicalPower') }}</span>
-                                    <span class="text-rarity-mythic">{{ accessoryBag.highest_magical_power }}</span>
-                                </div>
-                            </div>
-
-                            <!-- Active Accessories (equipment slot style) -->
-                            <h3 class="stat-header">{{ t('profileStats.activeAccessories') }}</h3>
-                            <div class="pieces">
-                                <ItemSlot v-for="(item, i) in currentData.accessories" :key="i" :item="item" />
-                            </div>
-                        </div>
-                        <div v-else class="text-neutral text-sm py-8 text-center">
-                            {{ t('profileStats.noAccessoryData') }}
-                        </div>
-                    </div>
-
-                    <!-- ═══════════════════════════════════════════════════ -->
                     <!--  PETS TAB                                          -->
                     <!-- ═══════════════════════════════════════════════════ -->
                     <div v-if="activeTab === 'pets'">
@@ -1005,7 +1045,7 @@ onMounted(async () => {
                     <!--  SKILLS TAB                                        -->
                     <!-- ═══════════════════════════════════════════════════ -->
                     <div v-if="activeTab === 'skills'">
-                        <div class="flex gap-8">
+                        <div class="flex flex-col gap-6 lg:flex-row lg:gap-8">
                             <div class="hidden lg:block w-52 shrink-0">
                                 <div class="sticky top-20">
                                     <div class="player-name-rank">
@@ -1023,56 +1063,114 @@ onMounted(async () => {
                                 </div>
                             </div>
 
-                            <div class="flex-1 min-w-0">
-                                <!-- SkyBlock Level bar -->
-                                <div v-if="currentData?.skyblock_level" class="skill-row mb-4">
-                                    <div class="skill-label">
-                                        <span class="skill-icon">✫</span>
-                                        <span class="skill-name" style="color: #FFAA00">{{ t('profileStats.level') }}</span>
-                                        <span class="skill-level" style="color: #FFAA00">{{ currentData.skyblock_level.level }}</span>
-                                    </div>
-                                    <div class="skill-bar-track">
-                                        <div class="skill-bar-fill skill-bar-fill-gold"
-                                             :style="{ width: (currentData.skyblock_level.progress * 100) + '%' }"></div>
-                                        <span class="skill-bar-text">
-                                            {{ currentData.skyblock_level.xpCurrent }} / {{ currentData.skyblock_level.xpForNext }} {{ t('profileStats.xp') }}
+                            <div class="flex flex-col items-center lg:hidden">
+                                <div class="player-name-rank">
+                                    <template v-if="profileData?.rank?.prefix">
+                                        <span class="rank-prefix" :style="{ color: profileData.rank.color }">
+                                            {{ rankTextBefore }}<!--
+                                        --><span v-if="rankPlusText" class="rank-plus" :style="{ color: profileData.rank.plusColor }">{{ rankPlusText }}</span><!--
+                                        --><span v-if="rankTextAfter" :style="{ color: profileData.rank.color }">{{ rankTextAfter }}</span>
                                         </span>
+                                        <span class="player-username" :style="{ color: profileData.rank.color }">{{ profileData.username }}</span>
+                                    </template>
+                                    <span v-else class="player-username" style="color: #AAAAAA">{{ profileData?.username }}</span>
+                                </div>
+                                <PlayerModel :uuid="profileData?.uuid" :width="144" :height="280" />
+                            </div>
+
+                            <div class="flex-1 min-w-0 ps-skills-panel">
+                                <!-- SkyBlock Level (full width) -->
+                                <div v-if="currentData?.skyblock_level" class="ps-skill-block ps-skill-block--level">
+                                    <div class="ps-skill-icon-ring ps-skill-icon-ring--amber">
+                                        <img
+                                            v-if="getItemTextureUrl(SB_LEVEL_TEXTURE_ITEM)"
+                                            :src="getItemTextureUrl(SB_LEVEL_TEXTURE_ITEM)"
+                                            class="ps-skill-icon-img"
+                                            alt=""
+                                            loading="lazy"
+                                            draggable="false"
+                                        />
+                                        <span v-else class="ps-skill-icon-emoji" aria-hidden="true">✫</span>
+                                    </div>
+                                    <div class="ps-skill-head ps-skill-head--level">
+                                        {{ t('profileStats.level') }}
+                                        <span class="ps-skill-head-lvl">{{ currentData.skyblock_level.level }}</span>
+                                    </div>
+                                    <div class="ps-skill-pill">
+                                        <div
+                                            class="ps-skill-pill-fill ps-skill-pill-fill--gold"
+                                            :style="{ width: (currentData.skyblock_level.progress * 100) + '%' }"
+                                        />
+                                        <span class="ps-skill-pill-xp">{{ formatSkyblockLevelXP(currentData.skyblock_level) }}</span>
                                     </div>
                                 </div>
 
-                                <!-- Skills 2-column grid (SkyBlock UI style) -->
-                                <div class="skills-grid">
-                                    <div v-for="skill in leftSkills" :key="skill.name" class="skill-row">
-                                        <div class="skill-label">
-                                            <span class="skill-icon">{{ SKILL_ICONS[skill.name] || '❓' }}</span>
-                                            <span class="skill-name">{{ capitalize(skill.name) }}</span>
-                                            <span class="skill-level" :class="skillLevelClass(skill)">{{ skill.level >= skill.maxLevel ? skill.maxLevel : skill.level }}</span>
+                                <div class="skills-grid ps-skills-grid">
+                                    <div v-for="skill in leftSkills" :key="skill.name" class="ps-skill-block">
+                                        <div
+                                            class="ps-skill-icon-ring"
+                                            :class="{
+                                                'ps-skill-icon-ring--max': skill.level >= skill.maxLevel,
+                                            }"
+                                        >
+                                            <img
+                                                v-if="skillTextureUrl(skill.name)"
+                                                :src="skillTextureUrl(skill.name)"
+                                                class="ps-skill-icon-img"
+                                                alt=""
+                                                loading="lazy"
+                                                draggable="false"
+                                            />
+                                            <span v-else class="ps-skill-icon-emoji" aria-hidden="true">{{ SKILL_ICONS[skill.name] || '❓' }}</span>
                                         </div>
-                                        <div class="skill-bar-track">
-                                            <div class="skill-bar-fill"
-                                                 :class="skillBarClass(skill)"
-                                                 :style="{ width: (skill.level >= skill.maxLevel ? 100 : skill.progress * 100) + '%' }"></div>
-                                            <span class="skill-bar-text">{{ formatXP(skill) }}</span>
+                                        <div class="ps-skill-head">
+                                            {{ capitalize(skill.name) }}
+                                            <span class="ps-skill-head-lvl">{{ skill.level >= skill.maxLevel ? skill.maxLevel : skill.level }}</span>
+                                        </div>
+                                        <div class="ps-skill-pill">
+                                            <div
+                                                class="ps-skill-pill-fill"
+                                                :class="skillPillFillClass(skill)"
+                                                :style="{ width: (skill.level >= skill.maxLevel ? 100 : skill.progress * 100) + '%' }"
+                                            />
+                                            <span class="ps-skill-pill-xp">{{ formatXP(skill) }}</span>
                                         </div>
                                     </div>
-                                    <div v-for="skill in rightSkills" :key="skill.name" class="skill-row">
-                                        <div class="skill-label">
-                                            <span class="skill-icon">{{ SKILL_ICONS[skill.name] || '❓' }}</span>
-                                            <span class="skill-name">{{ capitalize(skill.name) }}</span>
-                                            <span class="skill-level" :class="skillLevelClass(skill)">{{ skill.level >= skill.maxLevel ? skill.maxLevel : skill.level }}</span>
+                                    <div v-for="skill in rightSkills" :key="skill.name" class="ps-skill-block">
+                                        <div
+                                            class="ps-skill-icon-ring"
+                                            :class="{
+                                                'ps-skill-icon-ring--max': skill.level >= skill.maxLevel,
+                                            }"
+                                        >
+                                            <img
+                                                v-if="skillTextureUrl(skill.name)"
+                                                :src="skillTextureUrl(skill.name)"
+                                                class="ps-skill-icon-img"
+                                                alt=""
+                                                loading="lazy"
+                                                draggable="false"
+                                            />
+                                            <span v-else class="ps-skill-icon-emoji" aria-hidden="true">{{ SKILL_ICONS[skill.name] || '❓' }}</span>
                                         </div>
-                                        <div class="skill-bar-track">
-                                            <div class="skill-bar-fill"
-                                                 :class="skillBarClass(skill)"
-                                                 :style="{ width: (skill.level >= skill.maxLevel ? 100 : skill.progress * 100) + '%' }"></div>
-                                            <span class="skill-bar-text">{{ formatXP(skill) }}</span>
+                                        <div class="ps-skill-head">
+                                            {{ capitalize(skill.name) }}
+                                            <span class="ps-skill-head-lvl">{{ skill.level >= skill.maxLevel ? skill.maxLevel : skill.level }}</span>
+                                        </div>
+                                        <div class="ps-skill-pill">
+                                            <div
+                                                class="ps-skill-pill-fill"
+                                                :class="skillPillFillClass(skill)"
+                                                :style="{ width: (skill.level >= skill.maxLevel ? 100 : skill.progress * 100) + '%' }"
+                                            />
+                                            <span class="ps-skill-pill-xp">{{ formatXP(skill) }}</span>
                                         </div>
                                     </div>
                                 </div>
 
-                                <!-- Player Stats (SkyBlock UI style stat grid) -->
+                                <!-- Player Stats -->
                                 <div v-if="currentData?.player_stats?.length" class="stats-section">
-                                    <div class="stats-grid">
+                                    <div class="stats-grid ps-stats-grid">
                                         <span v-for="stat in currentData.player_stats" :key="stat.name"
                                               class="stat-chip"
                                               :style="{ '--stat-color': stat.color }">
@@ -1096,7 +1194,7 @@ onMounted(async () => {
                                 {{ t('profileStats.totalSlayerXP') }} <b class="text-white">{{ Number(slayerData.total_slayer_xp).toLocaleString() }}</b>
                             </div>
 
-                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            <div class="grid grid-cols-1 gap-3 min-w-0 md:grid-cols-2 md:gap-4 lg:grid-cols-3">
                                 <div v-for="(slayer, key) in slayerData.slayers" :key="key"
                                      class="slayer-card">
                                     <!-- Header: icon + boss name -->
@@ -1368,23 +1466,36 @@ onMounted(async () => {
                                     <!-- Collection items flow -->
                                     <div class="collection-items-grid">
                                         <div v-for="item in cat.collections" :key="item.id"
-                                             class="collection-chip"
-                                             :class="{ 'collection-chip-maxed': item.maxed, 'collection-chip-locked': !item.unlocked }">
-                                            <div class="collection-chip-top">
-                                                <span class="collection-chip-name" :class="{ 'text-green-400': item.maxed }">{{ item.name }}</span>
-                                                <span class="collection-chip-tier" :class="item.maxed ? 'text-amber-400' : 'text-neutral'">{{ romanNumeralFull(item.tier) }}</span>
+                                             class="collection-row-card"
+                                             :class="{ 'collection-row-card--locked': !item.unlocked || item.amount === 0 }">
+                                            <div class="collection-row-icon-wrap"
+                                                 :class="{ 'collection-row-icon-wrap--muted': !item.unlocked || item.amount === 0 }">
+                                                <img v-if="getItemTextureUrl(collectionTextureItem(item))"
+                                                     :src="getItemTextureUrl(collectionTextureItem(item))"
+                                                     class="collection-row-icon"
+                                                     alt=""
+                                                     loading="lazy"
+                                                     draggable="false" />
+                                                <div v-else class="collection-row-icon collection-row-icon--placeholder" aria-hidden="true" />
                                             </div>
-                                            <!-- Progress bar -->
-                                            <div class="collection-progress-track">
-                                                <div class="collection-progress-fill"
-                                                     :class="item.maxed ? 'bar-maxed' : ''"
-                                                     :style="{ width: (item.progress * 100) + '%' }"></div>
-                                            </div>
-                                            <div class="collection-chip-amount">
-                                                {{ item.amount > 0 ? Number(item.amount).toLocaleString() : '—' }}
-                                                <template v-if="item.nextTierAmount && !item.maxed">
-                                                    <span class="text-neutral/40">/ {{ Number(item.nextTierAmount).toLocaleString() }}</span>
-                                                </template>
+                                            <div class="collection-row-text">
+                                                <div class="collection-row-titleline">
+                                                    <span class="collection-row-name"
+                                                          :class="(item.unlocked && item.amount > 0) ? 'collection-row-name--active' : 'collection-row-name--muted'">
+                                                        {{ item.name }}
+                                                    </span>
+                                                    <span class="collection-row-tiernum"
+                                                          :class="(item.unlocked && item.amount > 0) ? 'collection-row-tiernum--active' : 'collection-row-tiernum--muted'">
+                                                        {{ item.tier }}
+                                                    </span>
+                                                </div>
+                                                <div class="collection-row-amountline">
+                                                    <span class="collection-row-amount-label">{{ t('profileStats.collectionAmount') }}</span>
+                                                    <span class="collection-row-amount-value"
+                                                          :class="{ 'collection-row-amount-value--muted': !item.unlocked || item.amount === 0 }">
+                                                        {{ Number(item.amount ?? 0).toLocaleString() }}
+                                                    </span>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -1392,15 +1503,6 @@ onMounted(async () => {
                             </div>
                         </div>
                         <div v-else class="text-neutral text-sm py-8 text-center">{{ t('profileStats.noCollectionData') }}</div>
-                    </div>
-
-                    <!-- ═══════════════════════════════════════════════════ -->
-                    <!--  COMING SOON TABS                                  -->
-                    <!-- ═══════════════════════════════════════════════════ -->
-                    <div v-if="['misc'].includes(activeTab)"
-                         class="border border-border bg-surface-800 rounded p-8 text-center">
-                        <p class="text-neutral text-sm">{{ capitalize(activeTab) }} - {{ t('profileStats.comingSoon') }}</p>
-                        <p class="text-neutral/50 text-xs mt-1">{{ t('profileStats.comingSoonDesc') }}</p>
                     </div>
                     </div>
                 </div>

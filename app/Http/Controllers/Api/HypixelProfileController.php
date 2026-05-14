@@ -1058,6 +1058,7 @@ class HypixelProfileController extends Controller
                     'unlocked' => $amount > 0,
                     'progress' => $progress,
                     'nextTierAmount' => $nextTierAmount,
+                    'texture_path' => ItemParser::texturePathForCollectionKey($itemId),
                 ];
 
                 $categoryTotal++;

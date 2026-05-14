@@ -332,11 +332,91 @@ class ItemParser
         '351:13' => 'magenta_dye',
         '351:14' => 'orange_dye',
         '351:15' => 'bone_meal',
+        '12:1'   => 'red_sand',
+        '17:0'   => 'oak_log',
+        '17:1'   => 'spruce_log',
+        '17:2'   => 'birch_log',
+        '17:3'   => 'jungle_log',
+        '162:0'  => 'acacia_log',
+        '162:1'  => 'dark_oak_log',
         '322:1'  => 'enchanted_golden_apple',
         '397:1'  => 'wither_skeleton_skull',
         '397:2'  => 'zombie_head',
         '397:3'  => 'player_head',
         '397:4'  => 'creeper_head',
+    ];
+
+    /**
+     * Bukkit legacy material bases whose Hypixel collection keys use {@code BASE:meta} (meta = damage).
+     *
+     * @var array<string, int>
+     */
+    private const COLLECTION_DAMAGE_MATERIAL_BASE = [
+        'LOG' => 17,
+        'LOG_2' => 162,
+        'LEAVES' => 18,
+        'LEAVES_2' => 161,
+        'SAPLING' => 6,
+        'INK_SACK' => 351,
+        'DYE' => 351,
+        'RAW_FISH' => 349,
+        'COOKED_FISH' => 350,
+        'SAND' => 12,
+        'LONG_GRASS' => 31,
+        'DOUBLE_PLANT' => 175,
+        'STONE' => 1,
+        'WOOD' => 5,
+        'WOOD_STEP' => 126,
+        'STEP' => 44,
+        'MONSTER_EGGS' => 97,
+        'ANVIL' => 145,
+        'SKULL' => 397,
+        'RED_ROSE' => 38,
+        'QUARTZ_BLOCK' => 155,
+        'STAINED_GLASS' => 95,
+        'STAINED_GLASS_PANE' => 160,
+        'SNOW' => 78,
+        'PRISMARINE' => 168,
+    ];
+
+    /**
+     * Collection keys that do not resolve via damage-base or exact texture-name match.
+     *
+     * @var array<string, string>
+     */
+    private const COLLECTION_TEXTURE_OVERRIDES = [
+        'PORK' => '/item/raw_porkchop',
+        'MUTTON' => '/item/raw_mutton',
+        'RAW_CHICKEN' => '/item/raw_chicken',
+        'RABBIT' => '/item/raw_rabbit',
+        'POTATO_ITEM' => '/item/potato',
+        'CARROT_ITEM' => '/item/carrot',
+        'NETHER_STALK' => '/item/nether_wart',
+        'SULPHUR' => '/item/gunpowder',
+        'MUSHROOM_COLLECTION' => '/item/brown_mushroom',
+        'GEMSTONE_COLLECTION' => '/item/prismarine_shard',
+        'CHILI_PEPPER' => '/item/blaze_powder',
+        'MAGMA_FISH' => '/item/magma_cream',
+        'HEMOVIBE' => '/item/ghast_tear',
+        'WILTED_BERBERIS' => '/item/dead_bush',
+        'CADUCOUS_STEM' => '/item/dead_bush',
+        'AGARICUS_CAP' => '/item/brown_mushroom',
+        'METAL_HEART' => '/item/iron_ingot',
+        'HALF_EATEN_CARROT' => '/item/carrot',
+        'TIMITE' => '/item/clock',
+        'SEA_LUMIES' => '/item/prismarine_crystals',
+        'VINESAP' => '/item/vine',
+        'LUSHLILAC' => '/item/poppy',
+        'TENDER_WOOD' => '/item/oak_log',
+        'WILD_ROSE' => '/item/poppy',
+        'MOONFLOWER' => '/item/poppy',
+        'UMBER' => '/item/coal',
+        'TUNGSTEN' => '/item/iron_ingot',
+        'GLACITE' => '/item/ice',
+        'SULPHUR_ORE' => '/item/glowstone_dust',
+        'HARD_STONE' => '/item/stone',
+        'MITHRIL_ORE' => '/item/emerald',
+        'MYCEL' => '/item/mycelium',
     ];
 
     /** Potion damage → color mapping (vanilla-style). */
@@ -773,6 +853,50 @@ class ItemParser
         // Enchanted book special case
         if ($minecraftId === 403) {
             return '/item/enchanted_book';
+        }
+
+        return null;
+    }
+
+    /**
+     * Resolve a local {@code /item/...} (or head) texture path for a Hypixel
+     * {@code /resources/skyblock/collections} item key (e.g. {@code ENDER_PEARL}, {@code INK_SACK:3}).
+     */
+    public static function texturePathForCollectionKey(string $key): ?string
+    {
+        $key = strtoupper(trim($key));
+        if ($key === '') {
+            return null;
+        }
+
+        if (isset(self::COLLECTION_TEXTURE_OVERRIDES[$key])) {
+            return self::COLLECTION_TEXTURE_OVERRIDES[$key];
+        }
+
+        $colonPos = strpos($key, ':');
+        $base = $colonPos !== false ? substr($key, 0, $colonPos) : $key;
+        $damage = $colonPos !== false ? (int) substr($key, $colonPos + 1) : 0;
+
+        if (isset(self::COLLECTION_DAMAGE_MATERIAL_BASE[$base])) {
+            return self::resolveTexturePath(self::COLLECTION_DAMAGE_MATERIAL_BASE[$base], $damage, null, null, []);
+        }
+
+        $snake = strtolower($base);
+        foreach (self::MC_ITEM_TEXTURES as $id => $texName) {
+            if ($texName === $snake) {
+                return self::resolveTexturePath((int) $id, $damage, null, null, []);
+            }
+        }
+
+        foreach (['_COLLECTION', '_ORE'] as $suffix) {
+            if (str_ends_with($base, $suffix)) {
+                $trim = strtolower(substr($base, 0, -strlen($suffix)));
+                foreach (self::MC_ITEM_TEXTURES as $id => $texName) {
+                    if ($texName === $trim) {
+                        return self::resolveTexturePath((int) $id, 0, null, null, []);
+                    }
+                }
+            }
         }
 
         return null;

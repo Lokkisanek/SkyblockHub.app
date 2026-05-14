@@ -1008,16 +1008,14 @@
         "maxedCollections": "Maxed Collections: ",
         "maxLabel": "MAX!",
         "noCollectionData": "No collection data available.",
-        "comingSoon": "Coming soon",
-        "comingSoonDesc": "This section is under development.",
         "tabGear": "Gear",
+        "tabAccessories": "Accessories",
         "tabInventory": "Inventory",
         "tabPets": "Pets",
         "tabSkills": "Skills",
         "tabDungeons": "Dungeons",
         "tabSlayer": "Slayer",
         "tabCollections": "Collections",
-        "tabMisc": "Misc",
         "subInventory": "Inventory",
         "subBackpack": "Backpack",
         "subEnderchest": "Enderchest",
@@ -1042,6 +1040,7 @@
         "total": "TOTAL",
         "noSlayerData": "No slayer data available.",
         "none": "none",
-        "maxShort": "max"
+        "maxShort": "max",
+        "collectionAmount": "Amount:"
     }
 }
