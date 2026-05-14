@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\ProfileCache;
 use App\Models\ProfileSearch;
 use App\Services\HypixelApiProxy;
+use App\Support\NetworthEnvironment;
 use App\Utils\ItemParser;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -1320,6 +1321,21 @@ class HypixelProfileController extends Controller
     // ─── Networth (via SkyHelper-Networth Node.js) ─────────────────
 
     /**
+     * Log and return fallback item pricing when the skyhelper Node script cannot run.
+     *
+     * @param  array<string, mixed>  $context
+     */
+    private function networthNodeFailed(float $purse, float $bankBalance, ?array $member, string $reason, array $context = []): array
+    {
+        Log::warning('Networth: skyhelper Node path failed — using bazaar/BIN base prices only (no enchants, stars, gems, etc.)', array_merge([
+            'reason' => $reason,
+            'skyhelper_installed' => NetworthEnvironment::skyhelperInstalled(base_path()),
+        ], $context));
+
+        return $this->fallbackNetworth($purse, $bankBalance, $member);
+    }
+
+    /**
      * Calculate networth by invoking the SkyHelper-Networth Node.js script.
      *
      * Uses file-based I/O (temp files for input and output) instead of pipes
@@ -1341,23 +1357,20 @@ class HypixelProfileController extends Controller
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
         if ($input === false) {
-            Log::warning('Networth: failed to encode input JSON');
-
-            return $this->fallbackNetworth($purse, $bankBalance, $member);
+            return $this->networthNodeFailed($purse, $bankBalance, $member, 'json_encode_failed', []);
         }
 
         $scriptPath = base_path('scripts/networth.cjs');
-        $nodePath = 'node';
+        $nodePath = NetworthEnvironment::resolveNodeBinary();
         $tmpOutFile = tempnam(sys_get_temp_dir(), 'sbh_nw_out_');
         $tmpInFile = tempnam(sys_get_temp_dir(), 'sbh_nw_in_');
 
         // Write input to a temp file to avoid pipe deadlocks on Windows.
         if (! @file_put_contents($tmpInFile, $input)) {
-            Log::warning('Networth: failed to write input temp file');
             @unlink($tmpInFile);
             @unlink($tmpOutFile);
 
-            return $this->fallbackNetworth($purse, $bankBalance, $member);
+            return $this->networthNodeFailed($purse, $bankBalance, $member, 'input_temp_write_failed', ['tmp_in' => $tmpInFile]);
         }
 
         // Start Node.js with file paths: argv[2] = output file, argv[3] = input file.
@@ -1381,15 +1394,20 @@ class HypixelProfileController extends Controller
         );
 
         if (! is_resource($process)) {
-            Log::warning('Networth: failed to start Node.js process');
             @unlink($tmpInFile);
             @unlink($tmpOutFile);
 
-            return $this->fallbackNetworth($purse, $bankBalance, $member);
+            return $this->networthNodeFailed($purse, $bankBalance, $member, 'proc_open_failed', [
+                'node' => $nodePath,
+                'script' => $scriptPath,
+                'hint' => 'Set HYPIXEL_NETWORTH_NODE_BINARY=/usr/bin/node if php-fpm PATH has no node; check disable_functions / open_basedir',
+            ]);
         }
 
         // Poll for process completion instead of stream_select (broken on Windows).
-        $deadline = microtime(true) + 4.0;
+        // Cold starts may download skyhelper items/prices from GitHub (often >4s).
+        $timeoutSec = max(1.0, (float) config('hypixel.networth_node_timeout_sec', 30));
+        $deadline = microtime(true) + $timeoutSec;
         $finished = false;
 
         while (microtime(true) < $deadline) {
@@ -1428,27 +1446,33 @@ class HypixelProfileController extends Controller
             @unlink($tmpOutFile);
 
             $elapsed = round(microtime(true) - $startTime, 2);
-            Log::warning("Networth: Node.js process timeout after {$elapsed}s", [
-                'stderr' => mb_substr($stderr, 0, 500),
-            ]);
 
-            return $this->fallbackNetworth($purse, $bankBalance, $member);
+            return $this->networthNodeFailed($purse, $bankBalance, $member, 'node_timeout', [
+                'stderr' => mb_substr($stderr, 0, 500),
+                'node' => $nodePath,
+                'timeout_sec' => $timeoutSec,
+                'elapsed_sec' => $elapsed,
+            ]);
         }
 
         $exitCode = proc_close($process);
         @unlink($tmpInFile);
 
         $elapsed = round(microtime(true) - $startTime, 2);
-        Log::info("Networth: Node.js completed in {$elapsed}s (exit={$exitCode})");
+        Log::info('Networth: Node.js completed', [
+            'elapsed_sec' => $elapsed,
+            'exit' => $exitCode,
+            'node' => $nodePath,
+        ]);
 
         if ($exitCode !== 0) {
-            Log::warning('Networth: Node.js script failed', [
-                'exitCode' => $exitCode,
-                'stderr' => mb_substr($stderr, 0, 500),
-            ]);
             @unlink($tmpOutFile);
 
-            return $this->fallbackNetworth($purse, $bankBalance, $member);
+            return $this->networthNodeFailed($purse, $bankBalance, $member, 'node_nonzero_exit', [
+                'exitCode' => $exitCode,
+                'stderr' => mb_substr($stderr, 0, 500),
+                'node' => $nodePath,
+            ]);
         }
 
         // Read result from the output file.
@@ -1460,15 +1484,17 @@ class HypixelProfileController extends Controller
                 try {
                     $result = json_decode($filePayload, true, 512, JSON_THROW_ON_ERROR | JSON_INVALID_UTF8_SUBSTITUTE);
                 } catch (\Throwable $e) {
-                    Log::warning('Networth: JSON decode failed', ['error' => $e->getMessage()]);
+                    return $this->networthNodeFailed($purse, $bankBalance, $member, 'output_json_decode_failed', [
+                        'error' => $e->getMessage(),
+                    ]);
                 }
             }
         }
 
         if (! $result || ! isset($result['networth'])) {
-            Log::warning('Networth: invalid output from Node.js');
-
-            return $this->fallbackNetworth($purse, $bankBalance, $member);
+            return $this->networthNodeFailed($purse, $bankBalance, $member, 'invalid_node_output', [
+                'has_result' => $result !== null,
+            ]);
         }
 
         return [

@@ -74,11 +74,12 @@ async function getOrFetchPrices() {
     return prices;
 }
 
-// Hard safety timeout – force-exit if anything hangs (unclosed handles, etc.)
+// Hard safety timeout – must stay above PHP's networth wait + cold-start work
+// (first-run item/price fetch can take 10–40s on slow hosts).
 const _forceExitTimer = setTimeout(() => {
     process.stderr.write('Force exit: hard timeout\n');
     process.exit(2);
-}, 5000);
+}, 90_000);
 _forceExitTimer.unref();
 
 // Read input from file (argv[3]) or stdin
@@ -198,12 +199,14 @@ readInput().then(async (input) => {
             fs.writeFileSync(outFile, jsonOutput, 'utf8');
             // File IPC written – skip stdout to avoid pipe buffer deadlocks.
             process.stdout.write = originalStdoutWrite;
+            clearTimeout(_forceExitTimer);
             process.exit(0);
         } else {
             // No file output: emit marker-wrapped base64 to stdout.
             process.stdout.write = originalStdoutWrite;
             const payload = Buffer.from(jsonOutput, 'utf8').toString('base64');
             process.stdout.write(`__SKYBLOCKHUB_JSON_START__${payload}__SKYBLOCKHUB_JSON_END__`);
+            clearTimeout(_forceExitTimer);
             process.exit(0);
         }
     } catch (err) {

@@ -36,6 +36,26 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Profile networth (Node.js skyhelper-networth)
+    |--------------------------------------------------------------------------
+    |
+    | Seconds PHP waits for scripts/networth.cjs. If the process times out or
+    | Node is missing, item values fall back to bazaar/BIN base prices only
+    | (no enchants, stars, gems, etc.).
+    |
+    */
+    'networth_node_timeout_sec' => (float) env('HYPIXEL_NETWORTH_NODE_TIMEOUT_SEC', 30),
+
+    /*
+    | Absolute path to the Node binary for scripts/networth.cjs. Leave empty to
+    | auto-detect (/usr/bin/node, /usr/local/bin/node). php-fpm often has a
+    | minimal PATH, so bare "node" fails even when Node is installed.
+    |
+    */
+    'networth_node_binary' => env('HYPIXEL_NETWORTH_NODE_BINARY', ''),
+
+    /*
+    |--------------------------------------------------------------------------
     | Per-endpoint Cache TTLs (seconds)
     |--------------------------------------------------------------------------
     |
