@@ -28,6 +28,18 @@ class NetworthProbeCommand extends Command
         $skyhelper = NetworthEnvironment::skyhelperInstalled($base);
         $this->line('skyhelper-networth in node_modules: '.($skyhelper ? 'yes' : 'NO — run npm ci in project root'));
 
+        $skyhelperDir = $base.'/node_modules/skyhelper-networth';
+        if ($skyhelper && is_dir($skyhelperDir)) {
+            $writable = @is_writable($skyhelperDir);
+            $this->line('node_modules/skyhelper-networth writable (.itemsBackup.json): '.($writable ? 'yes' : 'NO'));
+            if (! $writable) {
+                $this->error('SkyHelper must write .itemsBackup.json here; EACCES breaks full networth. Example fix:');
+                $this->line('  sudo chown -R www-data:www-data '.escapeshellarg($skyhelperDir));
+
+                return self::FAILURE;
+            }
+        }
+
         $node = NetworthEnvironment::resolveNodeBinary();
         $this->line('Resolved Node binary: '.$node);
         $this->line('is_executable: '.(@is_executable($node) ? 'yes' : 'no'));

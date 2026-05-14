@@ -1,6 +1,11 @@
 /**
  * Node.js script to calculate SkyBlock profile networth using SkyHelper-Networth.
  *
+ * Production: skyhelper-networth writes `node_modules/skyhelper-networth/.itemsBackup.json`
+ * after fetching Hypixel items. php-fpm (www-data) must be able to write that directory.
+ * If `npm ci` ran as root: `sudo chown -R www-data:www-data node_modules/skyhelper-networth`
+ * (or the whole app tree the web user owns.)
+ *
  * Called from PHP via:
  *   echo $json | node scripts/networth.cjs
  *
