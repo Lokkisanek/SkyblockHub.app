@@ -13,8 +13,8 @@ use Illuminate\Support\Facades\Log;
  * Every outgoing request goes through this service which provides:
  *  - Per-endpoint response caching with configurable TTL
  *  - Stale-while-revalidate: serves expired cache on API failure
- *  - Global rate limiting (sliding window, token bucket)
- *  - Retry with exponential back-off & 429/5xx handling
+ *  - Global rate limiting (sliding window) on every outbound Hypixel request
+ *  - Retry with backoff for 5xx and transport errors only (429 → stale, no retry)
  *  - Structured logging for monitoring
  */
 class HypixelApiProxy
@@ -87,7 +87,7 @@ class HypixelApiProxy
     {
         return $this->cachedRequest('auctions', '/v2/skyblock/auctions', [
             'page' => $page,
-        ], needsKey: false, cacheKeySuffix: "page:{$page}", cacheTtlOverride: 30);
+        ], needsKey: false, cacheKeySuffix: "page:{$page}");
     }
 
     /**
@@ -162,8 +162,8 @@ class HypixelApiProxy
             }
         }
 
-        // ── 2. Rate limit check ──────────────────────────────────────
-        if ($needsKey && ! $this->consumeRateToken()) {
+        // ── 2. Rate limit check (all endpoints — keyless auction scans must count too)
+        if (! $this->consumeRateToken()) {
             Log::warning('HypixelApiProxy: rate limit exhausted, serving stale', [
                 'endpoint' => $endpoint,
                 'suffix' => $cacheKeySuffix,
@@ -201,21 +201,10 @@ class HypixelApiProxy
                     ->get(self::BASE_URL.$path, $queryParams);
 
                 if ($response->status() === 429) {
-                    $wait = min(5, max(1, (int) $response->header('Retry-After', pow(2, $attempt))));
-                    Log::warning('HypixelApiProxy: 429 rate-limited', [
+                    Log::warning('HypixelApiProxy: 429 rate-limited — stopping retries, serving stale only', [
                         'endpoint' => $endpoint,
-                        'wait' => $wait,
-                        'attempt' => $attempt + 1,
                     ]);
-
-                    // Mark tokens as depleted for the remainder of this window.
                     $this->depleteRateTokens();
-
-                    if ($attempt < $maxRetries) {
-                        sleep($wait);
-
-                        continue;
-                    }
 
                     return $this->getStaleData($cacheKey, $staleGrace);
                 }
@@ -247,13 +236,25 @@ class HypixelApiProxy
                     return $this->getStaleData($cacheKey, $staleGrace);
                 }
 
-                $json = $response->json();
+                $json = $response->json() ?? [];
 
                 if (($json['success'] ?? true) === false) {
-                    Log::error('HypixelApiProxy: API returned success=false', [
-                        'endpoint' => $endpoint,
-                        'cause' => $json['cause'] ?? 'unknown',
-                    ]);
+                    $cause = (string) ($json['cause'] ?? 'unknown');
+                    $isThrottle = ($json['throttle'] ?? false) === true
+                        || stripos($cause, 'throttle') !== false;
+
+                    if ($isThrottle) {
+                        Log::warning('HypixelApiProxy: API throttle (success=false)', [
+                            'endpoint' => $endpoint,
+                            'cause' => $cause,
+                        ]);
+                        $this->depleteRateTokens();
+                    } else {
+                        Log::error('HypixelApiProxy: API returned success=false', [
+                            'endpoint' => $endpoint,
+                            'cause' => $cause,
+                        ]);
+                    }
 
                     return $this->getStaleData($cacheKey, $staleGrace);
                 }

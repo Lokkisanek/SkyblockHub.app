@@ -2,8 +2,8 @@
 
 namespace Database\Seeders;
 
+use App\Services\HypixelApiProxy;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\DB;
 
 class NpcPricesSeeder extends Seeder
@@ -21,13 +21,15 @@ class NpcPricesSeeder extends Seeder
         if ($npcPrices === []) {
             $jsonPath = database_path('data/npc_prices.json');
             if (! is_file($jsonPath)) {
-                $this->command->error('NPC prices JSON not found at: ' . $jsonPath);
+                $this->command->error('NPC prices JSON not found at: '.$jsonPath);
+
                 return;
             }
 
             $decoded = json_decode((string) file_get_contents($jsonPath), true);
             if (! is_array($decoded)) {
                 $this->command->error('NPC prices JSON is invalid.');
+
                 return;
             }
 
@@ -63,8 +65,7 @@ class NpcPricesSeeder extends Seeder
                         ->where('product_id', $productId)
                         ->update(['npc_sell_price' => $npcPrices[$baseId]]);
                     $updated++;
-                }
-                else {
+                } else {
                     // Keep unknown NPC prices as zero in DB.
                     DB::table('bazaar_products')
                         ->where('product_id', $productId)
@@ -83,15 +84,13 @@ class NpcPricesSeeder extends Seeder
     private function loadNpcPricesFromHypixel(): array
     {
         try {
-            $response = Http::timeout(20)
-                ->retry(2, 300)
-                ->get('https://api.hypixel.net/v2/resources/skyblock/items');
+            $data = app(HypixelApiProxy::class)->getItems();
 
-            if (! $response->ok() || ! $response->json('success')) {
+            if (! $data || ! ($data['success'] ?? false)) {
                 return [];
             }
 
-            $items = (array) $response->json('items', []);
+            $items = (array) ($data['items'] ?? []);
             $result = [];
 
             foreach ($items as $item) {
@@ -115,4 +114,3 @@ class NpcPricesSeeder extends Seeder
         }
     }
 }
-

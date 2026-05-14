@@ -28,27 +28,38 @@ class FetchLowestBinData extends Command
             }
 
             $totalPages = (int) ($data['totalPages'] ?? 1);
+            $maxPages = max(1, (int) config('hypixel.auction_fetch_max_pages', 120));
+            $pagesToFetch = min($totalPages, $maxPages);
+            $delayUs = max(0, (int) config('hypixel.auction_fetch_delay_ms', 650)) * 1000;
 
             $now = now();
             $inserted = 0;
 
             $inserted += $this->processAuctionsPage($data['auctions'] ?? [], $now);
 
-            for ($page = 1; $page < $totalPages; $page++) {
+            for ($page = 1; $page < $pagesToFetch; $page++) {
                 $pageData = $proxy->getAuctions($page);
                 if ($pageData === null) {
-                    usleep(200_000);
+                    if ($delayUs > 0) {
+                        usleep($delayUs);
+                    }
 
                     continue;
                 }
 
                 $inserted += $this->processAuctionsPage($pageData['auctions'] ?? [], $now);
-                usleep(200_000);
+                if ($delayUs > 0) {
+                    usleep($delayUs);
+                }
+            }
+
+            if ($totalPages > $maxPages) {
+                $this->warn("Auction pages capped at {$maxPages} of {$totalPages} (HYPIXEL_AUCTION_FETCH_MAX_PAGES).");
             }
 
             BinSnapshot::where('recorded_at', '<', now()->subHours(30))->delete();
 
-            $this->info("Processed {$inserted} BIN auctions across {$totalPages} pages.");
+            $this->info("Processed {$inserted} BIN auctions across {$pagesToFetch} of {$totalPages} pages.");
 
             return self::SUCCESS;
 

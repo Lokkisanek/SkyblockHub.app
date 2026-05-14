@@ -82,7 +82,8 @@ class PlayerBazaarTaxService
     {
         $cacheKey = 'hypixel:trading_level:'.$uuid;
 
-        return Cache::remember($cacheKey, 300, function () use ($uuid) {
+        // Trading level changes rarely; long TTL avoids duplicate profile pulls on every Bazaar visit.
+        return Cache::remember($cacheKey, 3600, function () use ($uuid) {
             $data = $this->hypixelApi->getProfiles($uuid);
 
             if (! $data || ! ($data['success'] ?? false)) {

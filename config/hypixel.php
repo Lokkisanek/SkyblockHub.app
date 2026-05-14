@@ -14,11 +14,25 @@ return [
     | Global Rate Limiting
     |--------------------------------------------------------------------------
     |
-    | Maximum outgoing requests per minute to the Hypixel API.
-    | Hypixel allows 300/min per key. We stay well below that.
+    | Maximum outgoing HTTP requests per minute to api.hypixel.net (all
+    | endpoints, keyed and keyless). Prevents e.g. auction page scans from
+    | bypassing limits. Hypixel allows 300/min per key; stay well below.
     |
     */
     'rate_limit' => (int) env('HYPIXEL_RATE_LIMIT', 120),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Auction house scan (bin:fetch)
+    |--------------------------------------------------------------------------
+    |
+    | Caps and pacing for paginated /v2/skyblock/auctions — each page is one
+    | HTTP call. Without a cap, a single scheduler run can issue hundreds of
+    | requests in a few minutes.
+    |
+    */
+    'auction_fetch_max_pages' => (int) env('HYPIXEL_AUCTION_FETCH_MAX_PAGES', 120),
+    'auction_fetch_delay_ms' => (int) env('HYPIXEL_AUCTION_FETCH_DELAY_MS', 650),
 
     /*
     |--------------------------------------------------------------------------
@@ -92,6 +106,7 @@ return [
     */
     'timeout' => (int) env('HYPIXEL_TIMEOUT', 8),
     'connect_timeout' => (int) env('HYPIXEL_CONNECT_TIMEOUT', 3),
+    /* Retries: transport failures and 5xx only (429 returns stale immediately, no retry). */
     'max_retries' => (int) env('HYPIXEL_MAX_RETRIES', 2),
     'user_agent' => env('HYPIXEL_USER_AGENT', 'SkyblockHub/1.0'),
 
