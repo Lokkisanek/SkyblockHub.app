@@ -1459,21 +1459,23 @@ class HypixelProfileController extends Controller
         @unlink($tmpInFile);
 
         $elapsed = round(microtime(true) - $startTime, 2);
-        Log::info('Networth: Node.js completed', [
-            'elapsed_sec' => $elapsed,
-            'exit' => $exitCode,
-            'node' => $nodePath,
-        ]);
 
         if ($exitCode !== 0) {
             @unlink($tmpOutFile);
 
             return $this->networthNodeFailed($purse, $bankBalance, $member, 'node_nonzero_exit', [
                 'exitCode' => $exitCode,
-                'stderr' => mb_substr($stderr, 0, 500),
+                'stderr' => mb_substr($stderr, 0, 2000),
                 'node' => $nodePath,
+                'elapsed_sec' => $elapsed,
             ]);
         }
+
+        Log::info('Networth: Node.js completed', [
+            'elapsed_sec' => $elapsed,
+            'exit' => $exitCode,
+            'node' => $nodePath,
+        ]);
 
         // Read result from the output file.
         $result = null;
