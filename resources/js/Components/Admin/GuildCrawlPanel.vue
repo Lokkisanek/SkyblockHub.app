@@ -191,10 +191,43 @@ onBeforeUnmount(stopPolling);
             <div><dt>API calls</dt><dd>{{ status.api_calls }}</dd></div>
         </dl>
 
+        <div v-if="status.guild_lookups?.length" class="guild-crawl-lookups">
+            <p class="guild-crawl-lookups__title">Per-guild lookup</p>
+            <div class="guild-crawl-lookups__table-wrap">
+                <table class="guild-crawl-lookups__table">
+                    <thead>
+                        <tr>
+                            <th>Name sent</th>
+                            <th>Result</th>
+                            <th>Members</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr
+                            v-for="row in status.guild_lookups"
+                            :key="row.name"
+                            :class="row.ok ? 'guild-crawl-lookups__row--ok' : 'guild-crawl-lookups__row--fail'"
+                        >
+                            <td>{{ row.name }}</td>
+                            <td>
+                                <template v-if="row.ok">
+                                    OK<span v-if="row.hypixel_name && row.hypixel_name !== row.name"> → {{ row.hypixel_name }}</span>
+                                </template>
+                                <template v-else>
+                                    {{ row.cause === 'no_response' ? 'No response (rate limit?)' : row.cause }}
+                                </template>
+                            </td>
+                            <td>{{ row.ok ? row.members : '—' }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
         <div class="guild-crawl-form">
             <label class="guild-crawl-label">
                 Guild names
-                <span class="guild-crawl-hint">One per line or comma-separated — exact Hypixel guild name</span>
+                            <span class="guild-crawl-hint">One per line or comma-separated — exact Hypixel guild name. Use Delay ≥ 2000 ms for many guilds (rate limit).</span>
                 <textarea
                     v-model="guildList"
                     class="guild-crawl-textarea"
@@ -364,6 +397,59 @@ onBeforeUnmount(stopPolling);
     font-size: 1.1rem;
     font-weight: 700;
     color: #fff;
+}
+
+.guild-crawl-lookups {
+    margin-top: 1rem;
+}
+
+.guild-crawl-lookups__title {
+    margin: 0 0 0.5rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: rgba(148, 163, 184, 0.95);
+}
+
+.guild-crawl-lookups__table-wrap {
+    max-height: 220px;
+    overflow: auto;
+    border-radius: 10px;
+    border: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.guild-crawl-lookups__table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.78rem;
+}
+
+.guild-crawl-lookups__table th {
+    position: sticky;
+    top: 0;
+    background: rgba(15, 23, 42, 0.98);
+    text-align: left;
+    padding: 0.45rem 0.65rem;
+    color: rgba(148, 163, 184, 0.95);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 0.65rem;
+}
+
+.guild-crawl-lookups__table td {
+    padding: 0.4rem 0.65rem;
+    border-top: 1px solid rgba(148, 163, 184, 0.12);
+    color: rgba(226, 232, 240, 0.92);
+}
+
+.guild-crawl-lookups__row--ok td:nth-child(2) {
+    color: #86efac;
+}
+
+.guild-crawl-lookups__row--fail td:nth-child(2) {
+    color: #fca5a5;
 }
 
 .guild-crawl-form {

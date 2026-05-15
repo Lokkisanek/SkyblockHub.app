@@ -48,11 +48,14 @@ class AdminGuildCrawlController extends Controller
             ], 422);
         }
 
+        $delayMs = (int) ($validated['delay_ms'] ?? config('hypixel.profile_ingest.delay_ms', 2000));
+
         $options = [
             'max_guilds' => (int) ($validated['max_guilds'] ?? config('hypixel.profile_ingest.guild_crawl.max_guilds_per_run', 15)),
             'seed_limit' => (int) ($validated['seed_limit'] ?? config('hypixel.profile_ingest.guild_crawl.seed_limit', 60)),
             'member_limit' => (int) ($validated['member_limit'] ?? config('hypixel.profile_ingest.guild_crawl.max_members_per_run', 500)),
-            'delay_ms' => (int) ($validated['delay_ms'] ?? config('hypixel.profile_ingest.delay_ms', 2000)),
+            'delay_ms' => $delayMs,
+            'guild_lookup_delay_ms' => min(800, max(350, (int) floor($delayMs / 4))),
             'new_only' => (bool) ($validated['new_only'] ?? true),
         ];
 

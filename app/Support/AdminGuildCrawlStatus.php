@@ -75,6 +75,7 @@ final class AdminGuildCrawlStatus
             'finished_at' => null,
             'current_uuid' => null,
             'recent_log' => [],
+            'guild_lookups' => [],
         ]);
     }
 
@@ -144,6 +145,7 @@ final class AdminGuildCrawlStatus
             'updated_at' => null,
             'current_uuid' => null,
             'recent_log' => [],
+            'guild_lookups' => [],
         ];
     }
 }

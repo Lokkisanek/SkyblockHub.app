@@ -33,9 +33,10 @@ class ProcessGuildCrawlJob
         }
 
         $maxGuilds = max(1, (int) ($this->options['max_guilds'] ?? 15));
-        $seedLimit = max(1, (int) ($this->options['seed_limit'] ?? 60));
+        $seedLimit = max(0, (int) ($this->options['seed_limit'] ?? 60));
         $memberLimit = max(1, (int) ($this->options['member_limit'] ?? 500));
         $delayMs = max(0, (int) ($this->options['delay_ms'] ?? 2000));
+        $guildLookupDelayMs = max(0, (int) ($this->options['guild_lookup_delay_ms'] ?? min(500, $delayMs)));
         $newOnly = (bool) ($this->options['new_only'] ?? true);
         $lightweight = (bool) config('hypixel.profile_ingest.lightweight_bulk', true);
 
@@ -51,14 +52,18 @@ class ProcessGuildCrawlJob
                 $seedLimit,
                 $newOnly,
                 $this->guildNames,
+                $guildLookupDelayMs,
             );
 
             $members = array_slice($result['member_uuids'], 0, $memberLimit);
+            $guildLookups = is_array($result['guild_lookups'] ?? null) ? $result['guild_lookups'] : [];
+            $lookupHint = GuildCrawlService::summarizeGuildLookupFailures($guildLookups);
 
             AdminGuildCrawlStatus::merge([
                 'guilds_found' => $result['guilds_found'],
                 'seeds_scanned' => $result['seeds_scanned'],
                 'api_calls' => $result['api_calls'],
+                'guild_lookups' => $guildLookups,
                 'total_members' => count($members),
                 'processed' => 0,
                 'ok' => 0,
@@ -71,10 +76,17 @@ class ProcessGuildCrawlJob
             ));
 
             if ($members === []) {
-                AdminGuildCrawlStatus::finish(
-                    'completed',
-                    'No guild members to ingest. Check guild names (exact Hypixel spelling).',
-                );
+                $message = $result['guilds_found'] === 0
+                    ? sprintf(
+                        'Hypixel returned 0 / %d guild(s). %s',
+                        count($this->guildNames),
+                        $lookupHint !== '' ? $lookupHint : 'Check exact guild names (case & spaces).'
+                    )
+                    : ($newOnly
+                        ? 'All members are already in cache (new-only enabled). Disable "Only players not in cache" or clear filter.'
+                        : 'Guilds found but no member UUIDs parsed.');
+
+                AdminGuildCrawlStatus::finish('completed', $message);
 
                 return;
             }

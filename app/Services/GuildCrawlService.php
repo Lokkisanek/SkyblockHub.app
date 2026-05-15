@@ -21,6 +21,7 @@ final class GuildCrawlService
      *     seeds_scanned: int,
      *     api_calls: int,
      *     seed_sources: array<string, int>,
+     *     guild_lookups: array<int, array{name: string, ok: bool, cause: string|null, members: int, hypixel_name: string|null}>,
      * }
      */
     public function collectMemberUuids(
@@ -28,36 +29,52 @@ final class GuildCrawlService
         int $seedLimit,
         bool $newPlayersOnly = false,
         array $guildNames = [],
+        int $guildLookupDelayMs = 0,
     ): array {
         $maxGuilds = max(1, $maxGuilds);
-        $seedLimit = max(1, $seedLimit);
+        $seedLimit = max(0, $seedLimit);
+        $guildLookupDelayMs = max(0, $guildLookupDelayMs);
 
         $cached = $newPlayersOnly ? $this->cachedMinecraftUuidSet() : [];
         $guildsById = [];
         $apiCalls = 0;
+        $guildLookups = [];
 
-        foreach ($guildNames as $guildName) {
-            $guildName = trim($guildName);
-            if ($guildName === '' || count($guildsById) >= $maxGuilds) {
-                continue;
-            }
+        $requestedNames = array_values(array_filter(array_map('trim', $guildNames), static fn (string $n): bool => $n !== ''));
 
-            $payload = $this->hypixelApi->getGuild(name: $guildName);
-            $apiCalls++;
-            $this->storeGuildPayload($guildsById, $payload);
-        }
-
-        $seedBundle = $this->seedPlayerUuids($seedLimit);
-        $seeds = $seedBundle['uuids'];
-
-        foreach ($seeds as $seedUuid) {
+        foreach ($requestedNames as $index => $guildName) {
             if (count($guildsById) >= $maxGuilds) {
                 break;
             }
 
-            $payload = $this->hypixelApi->getGuild(player: $seedUuid);
+            if ($index > 0 && $guildLookupDelayMs > 0) {
+                usleep($guildLookupDelayMs * 1000);
+            }
+
+            $payload = $this->hypixelApi->getGuild(name: $guildName);
             $apiCalls++;
+            $lookup = self::describeGuildLookup($guildName, $payload);
+            $guildLookups[] = $lookup;
             $this->storeGuildPayload($guildsById, $payload);
+        }
+
+        $seeds = [];
+        $seedSources = [];
+
+        if ($seedLimit > 0) {
+            $seedBundle = $this->seedPlayerUuids($seedLimit);
+            $seeds = $seedBundle['uuids'];
+            $seedSources = $seedBundle['sources'];
+
+            foreach ($seeds as $seedUuid) {
+                if (count($guildsById) >= $maxGuilds) {
+                    break;
+                }
+
+                $payload = $this->hypixelApi->getGuild(player: $seedUuid);
+                $apiCalls++;
+                $this->storeGuildPayload($guildsById, $payload);
+            }
         }
 
         $memberUuids = [];
@@ -81,8 +98,83 @@ final class GuildCrawlService
             'member_uuids' => $memberUuids,
             'seeds_scanned' => count($seeds),
             'api_calls' => $apiCalls,
-            'seed_sources' => $seedBundle['sources'],
+            'seed_sources' => $seedSources,
+            'guild_lookups' => $guildLookups,
         ];
+    }
+
+    /**
+     * @return array{name: string, ok: bool, cause: string|null, members: int, hypixel_name: string|null}
+     */
+    public static function describeGuildLookup(string $requestedName, ?array $payload): array
+    {
+        if (! is_array($payload)) {
+            return [
+                'name' => $requestedName,
+                'ok' => false,
+                'cause' => 'no_response',
+                'members' => 0,
+                'hypixel_name' => null,
+            ];
+        }
+
+        if (($payload['success'] ?? false) !== true) {
+            $cause = trim((string) ($payload['cause'] ?? 'api_error'));
+
+            return [
+                'name' => $requestedName,
+                'ok' => false,
+                'cause' => $cause !== '' ? $cause : 'api_error',
+                'members' => 0,
+                'hypixel_name' => null,
+            ];
+        }
+
+        $guild = $payload['guild'] ?? null;
+        if (! is_array($guild)) {
+            return [
+                'name' => $requestedName,
+                'ok' => false,
+                'cause' => 'empty_guild',
+                'members' => 0,
+                'hypixel_name' => null,
+            ];
+        }
+
+        $hypixelName = isset($guild['name']) ? (string) $guild['name'] : null;
+        $members = count(self::memberUuidsFromGuild($guild));
+
+        return [
+            'name' => $requestedName,
+            'ok' => true,
+            'cause' => null,
+            'members' => $members,
+            'hypixel_name' => $hypixelName,
+        ];
+    }
+
+    /**
+     * @param  array<int, array{name: string, ok: bool, cause: string|null, members: int, hypixel_name: string|null}>  $lookups
+     */
+    public static function summarizeGuildLookupFailures(array $lookups): string
+    {
+        $failed = array_values(array_filter($lookups, static fn (array $row): bool => ! ($row['ok'] ?? false)));
+        if ($failed === []) {
+            return '';
+        }
+
+        $noResponse = count(array_filter($failed, static fn (array $r): bool => ($r['cause'] ?? '') === 'no_response'));
+
+        if ($noResponse >= max(1, (int) floor(count($lookups) * 0.5))) {
+            return 'Most lookups returned no data — likely Hypixel rate limit. Increase Delay (ms) and retry, or wait a minute.';
+        }
+
+        $samples = array_slice(array_map(
+            static fn (array $r): string => sprintf('%s (%s)', $r['name'], $r['cause'] ?? '?'),
+            $failed,
+        ), 0, 4);
+
+        return 'Failed guilds: '.implode('; ', $samples).(count($failed) > 4 ? '…' : '');
     }
 
     /**

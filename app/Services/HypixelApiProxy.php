@@ -283,6 +283,15 @@ class HypixelApiProxy
                         ]);
                     }
 
+                    // Guild name lookups: return the API body so callers can show "Guild not found" etc.
+                    if ($endpoint === 'guild' && ! $isThrottle) {
+                        if ($ttl > 0) {
+                            $this->putToCache($cacheKey, $json, min($ttl, 120));
+                        }
+
+                        return $json;
+                    }
+
                     return $this->getStaleData($cacheKey, $staleGrace);
                 }
 
