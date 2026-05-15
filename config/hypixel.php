@@ -73,6 +73,7 @@ return [
         'collections' => (int) env('HYPIXEL_CACHE_COLLECTIONS', 86400), // 24h
         'items' => (int) env('HYPIXEL_CACHE_ITEMS', 86400),       // 24h
         'leaderboards' => (int) env('HYPIXEL_CACHE_LEADERBOARDS', 900), // 15 min (ingest uses snapshot)
+        'guild' => (int) env('HYPIXEL_CACHE_GUILD', 3600), // 1 h
     ],
 
     /*
@@ -84,12 +85,16 @@ return [
     | (1) top rows from our site leaderboard (profiles_cache), (2) Hypixel /v2/leaderboards SKYBLOCK
     | UUIDs, (3) linked app accounts, (4) stale cache rows, (5) PROFILE_INGEST_EXTRA_UUIDS.
     | Use `php artisan profiles:ingest-bulk` for large one-off backfills (see bulk_safe_cap).
+    | Add `--new-only` to ingest only UUIDs not yet in profiles_cache (Hypixel SKYBLOCK leaderboards).
+    | Guild crawl: `php artisan profiles:crawl-guilds` or PROFILE_INGEST_GUILD_CRAWL=true (uses seeds → /v2/guild).
     |
     */
     'profile_ingest' => [
         'enabled' => (bool) env('PROFILE_INGEST_ENABLED', false),
         // UUIDs refreshed per `profiles:ingest-scheduled` run (each does ~2 Hypixel calls: profiles + player).
         'max_per_run' => (int) env('PROFILE_INGEST_MAX_PER_RUN', 100),
+        // Bulk/guild crawl: skip inventories + Node networth (leaderboard stats only; full data on profile view).
+        'lightweight_bulk' => (bool) env('PROFILE_INGEST_LIGHTWEIGHT_BULK', true),
         'delay_ms' => (int) env('PROFILE_INGEST_DELAY_MS', 500),
         'stale_after_days' => (int) env('PROFILE_INGEST_STALE_DAYS', 7),
         'include_hypixel_leaderboards' => (bool) env('PROFILE_INGEST_HYPIXEL_LEADERBOARDS', true),
@@ -106,6 +111,14 @@ return [
             static fn (string $s): string => strtolower(preg_replace('/[^0-9a-fA-F]/', '', $s)),
             array_map('trim', explode(',', (string) env('PROFILE_INGEST_EXTRA_UUIDS', '')))
         ), static fn (string $s): bool => strlen($s) === 32 && ctype_xdigit($s))),
+        'include_guild_crawl' => (bool) env('PROFILE_INGEST_GUILD_CRAWL', false),
+        'guild_crawl' => [
+            'max_guilds_per_run' => (int) env('PROFILE_INGEST_GUILD_MAX_GUILDS', 15),
+            'seed_limit' => (int) env('PROFILE_INGEST_GUILD_SEED_LIMIT', 60),
+            'max_members_per_run' => (int) env('PROFILE_INGEST_GUILD_MAX_MEMBERS', 500),
+            'include_profiles_cache_seeds' => (bool) env('PROFILE_INGEST_GUILD_CACHE_SEEDS', true),
+            'guild_names' => (string) env('PROFILE_INGEST_GUILD_NAMES', ''),
+        ],
     ],
 
     /*

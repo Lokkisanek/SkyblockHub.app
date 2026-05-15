@@ -12,6 +12,8 @@ class IngestProfileCacheBulkCommand extends Command
     protected $signature = 'profiles:ingest-bulk
                             {--limit=5000 : Max profiles to refresh this run (capped by profile_ingest.bulk_safe_cap)}
                             {--delay-ms= : Milliseconds between players (default: profile_ingest.delay_ms)}
+                            {--new-only : Only ingest UUIDs not yet in profiles_cache (leaderboards + guild crawl if enabled + extras)}
+                            {--guilds : Include guild member UUIDs from a crawl (same as PROFILE_INGEST_GUILD_CRAWL for this run)}
                             {--dry-run : Show queue size and sample UUIDs without calling Hypixel}';
 
     protected $description = 'Bulk refresh profiles_cache from Hypixel (site top + Hypixel boards + linked + stale), for large backfills.';
@@ -34,15 +36,25 @@ class IngestProfileCacheBulkCommand extends Command
             $this->warn("Requested --limit={$requested} exceeds bulk_safe_cap ({$cap}); using {$cap}.");
         }
 
-        $queue = $ingestService->buildIngestQueue($limit);
+        $newOnly = (bool) $this->option('new-only');
+        if ($this->option('guilds')) {
+            config(['hypixel.profile_ingest.include_guild_crawl' => true]);
+        }
+        $queue = $ingestService->buildIngestQueue($limit, $newOnly);
 
         if ($queue === []) {
-            $this->info('No candidate UUIDs in queue.');
+            $this->info($newOnly
+                ? 'No new player UUIDs in queue (all Hypixel leaderboard candidates are already cached).'
+                : 'No candidate UUIDs in queue.');
 
             return self::SUCCESS;
         }
 
-        $this->info(sprintf('Bulk ingest queue: %d player(s).', count($queue)));
+        $this->info(sprintf(
+            'Bulk ingest queue: %d player(s)%s.',
+            count($queue),
+            $newOnly ? ' (new — not in profiles_cache yet)' : ''
+        ));
 
         if ($this->option('dry-run')) {
             foreach (array_slice($queue, 0, 25) as $uuid) {
@@ -69,7 +81,8 @@ class IngestProfileCacheBulkCommand extends Command
             }
 
             try {
-                if ($hypixelProfiles->ingestProfilesCacheForUuid($uuid)) {
+                $lightweight = (bool) config('hypixel.profile_ingest.lightweight_bulk', true);
+                if ($hypixelProfiles->ingestProfilesCacheForUuid($uuid, lightweight: $lightweight)) {
                     $ok++;
                 } else {
                     $fail++;
@@ -80,6 +93,10 @@ class IngestProfileCacheBulkCommand extends Command
                     'uuid' => $uuid,
                     'message' => $e->getMessage(),
                 ]);
+            }
+
+            if (function_exists('gc_collect_cycles')) {
+                gc_collect_cycles();
             }
         }
 

@@ -513,8 +513,10 @@ class HypixelProfileController extends Controller
     /**
      * Fetch SkyBlock profiles from Hypixel, transform, and upsert profiles_cache.
      * Intended for scheduled ingest — does not write ProfileSearch or the per-username HTTP profile cache.
+     *
+     * @param  bool  $lightweight  Leaderboard-only payload (no inventories / Node networth) — use for bulk & guild crawl.
      */
-    public function ingestProfilesCacheForUuid(string $uuid): bool
+    public function ingestProfilesCacheForUuid(string $uuid, bool $lightweight = false): bool
     {
         $uuid = strtolower(preg_replace('/[^0-9a-fA-F]/', '', $uuid));
         if (strlen($uuid) !== 32 || ! ctype_xdigit($uuid)) {
@@ -534,14 +536,105 @@ class HypixelProfileController extends Controller
         $playerData = $this->hypixelApi->getPlayer($uuid);
         $username = $this->resolveUsernameForIngest($playerData, $uuid);
         $rankData = $this->parseRank($playerData);
-        $museumDataByProfile = [];
 
-        $data = $this->transformProfiles($rawProfiles, $uuid, $username, $museumDataByProfile);
+        if ($lightweight) {
+            $data = $this->buildLightweightIngestPayload($rawProfiles, $uuid, $username);
+        } else {
+            $museumDataByProfile = [];
+            $data = $this->transformProfiles($rawProfiles, $uuid, $username, $museumDataByProfile);
+        }
+
         $data['rank'] = $rankData;
         $data = $this->sanitizeForJson($data);
         $this->persistProfilesCache($data, $playerData);
 
+        unset($profilesResponse, $rawProfiles, $playerData, $data);
+
         return true;
+    }
+
+    /**
+     * Minimal profile payload for leaderboard ingest (avoids inventories + Node networth OOM on bulk runs).
+     *
+     * @param  array<int|string, array<string, mixed>>  $rawProfiles
+     * @return array{uuid: string, username: string, profiles: array<string, array<string, mixed>>}
+     */
+    private function buildLightweightIngestPayload(array $rawProfiles, string $uuid, string $username): array
+    {
+        $profiles = [];
+
+        foreach ($rawProfiles as $profile) {
+            if (! is_array($profile)) {
+                continue;
+            }
+
+            $profileId = $profile['profile_id'] ?? null;
+            if (! is_string($profileId) || $profileId === '') {
+                continue;
+            }
+
+            $member = $profile['members'][$uuid] ?? null;
+            if (! is_array($member)) {
+                continue;
+            }
+
+            $skills = $this->parseSkills($member);
+            $countable = array_filter(
+                $skills,
+                static fn ($v, $k): bool => ! in_array($k, ['runecrafting', 'social'], true),
+                ARRAY_FILTER_USE_BOTH
+            );
+            $avgSkillLevel = count($countable) > 0
+                ? round(array_sum(array_column($countable, 'level')) / count($countable), 2)
+                : 0.0;
+
+            $bankBalance = (float) ($profile['banking']['balance'] ?? 0);
+            $purse = (float) ($member['currencies']['coin_purse'] ?? 0);
+            $slayers = $this->parseSlayers($member);
+
+            $profiles[$profileId] = [
+                'cute_name' => $profile['cute_name'] ?? 'Unknown',
+                'selected' => (bool) ($profile['selected'] ?? false),
+                'game_mode' => $profile['game_mode'] ?? 'normal',
+                'data' => [
+                    'skyblock_level' => $this->parseSkyblockLevel($member),
+                    'first_join' => $member['profile']['first_join'] ?? null,
+                    'average_skill_level' => $avgSkillLevel,
+                    'skills' => [],
+                    'slayers' => [
+                        'slayers' => [],
+                        'total_slayer_xp' => (int) ($slayers['total_slayer_xp'] ?? 0),
+                        'total_coins_spent' => 0,
+                    ],
+                    'networth' => $this->ingestNetworthFromPurseAndBank($purse, $bankBalance),
+                ],
+            ];
+        }
+
+        return [
+            'uuid' => $uuid,
+            'username' => $username,
+            'profiles' => $profiles,
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function ingestNetworthFromPurseAndBank(float $purse, float $bank): array
+    {
+        $total = (int) round($purse + $bank);
+
+        return [
+            'networth' => $total,
+            'unsoulboundNetworth' => $total,
+            'networth_no_cosmetics' => $total,
+            'purse' => $purse,
+            'bank' => $bank,
+            'personalBank' => 0,
+            'noInventory' => true,
+            'categories' => [],
+        ];
     }
 
     /**

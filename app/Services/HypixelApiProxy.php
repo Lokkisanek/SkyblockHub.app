@@ -128,6 +128,33 @@ class HypixelApiProxy
             needsKey: true, cacheKeySuffix: 'global');
     }
 
+    /**
+     * GET /v2/guild — guild by player UUID, guild id, or name (exactly one param).
+     *
+     * @return array{success?: bool, guild?: array<string, mixed>}|null
+     */
+    public function getGuild(?string $player = null, ?string $id = null, ?string $name = null): ?array
+    {
+        $params = array_filter([
+            'player' => $player,
+            'id' => $id,
+            'name' => $name,
+        ], static fn ($v): bool => $v !== null && $v !== '');
+
+        if (count($params) !== 1) {
+            return null;
+        }
+
+        $suffix = match (true) {
+            $player !== null && $player !== '' => 'player:'.strtolower(preg_replace('/[^0-9a-fA-F]/', '', $player)),
+            $id !== null && $id !== '' => 'id:'.$id,
+            default => 'name:'.mb_strtolower((string) $name),
+        };
+
+        return $this->cachedRequest('guild', '/v2/guild', $params,
+            needsKey: true, cacheKeySuffix: $suffix);
+    }
+
     // ─── Internals ───────────────────────────────────────────────────
 
     /**
