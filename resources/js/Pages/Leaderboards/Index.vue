@@ -385,6 +385,53 @@ const getRowSubtitleName = (row) => {
     return '';
 };
 
+/** Digits in rank (without #); drives font + column width so rank never overlaps the avatar. */
+const leaderboardRankDigitCount = (rank) => {
+    const n = Number(rank);
+    if (!Number.isFinite(n) || n < 1) {
+        return 1;
+    }
+    return String(Math.floor(n)).length;
+};
+
+/** Tailwind classes for the rank cell to the left of the head. */
+const leaderboardRankCellClass = (rank) => {
+    const d = leaderboardRankDigitCount(rank);
+    const base =
+        'shrink-0 select-none pt-0.5 text-right font-black tabular-nums tracking-tight text-neutral-400/90 leading-none';
+    if (d <= 1) {
+        return `${base} w-12 text-4xl sm:w-14 sm:text-5xl`;
+    }
+    if (d === 2) {
+        return `${base} w-[3.75rem] text-3xl sm:w-16 sm:text-4xl`;
+    }
+    if (d === 3) {
+        return `${base} w-16 text-2xl sm:w-[4.25rem] sm:text-3xl`;
+    }
+    if (d === 4) {
+        return `${base} w-[4.25rem] text-xl sm:w-24 sm:text-2xl`;
+    }
+    return `${base} min-w-[4.5rem] max-w-[6rem] text-lg sm:min-w-[5.5rem] sm:max-w-[7rem] sm:text-xl`;
+};
+
+/** Personal rank headline — same idea, smaller scale in the summary card. */
+const leaderboardPersonalRankClass = (rank) => {
+    const d = leaderboardRankDigitCount(rank);
+    if (d <= 1) {
+        return 'text-3xl';
+    }
+    if (d === 2) {
+        return 'text-2xl';
+    }
+    if (d === 3) {
+        return 'text-xl';
+    }
+    if (d === 4) {
+        return 'text-lg';
+    }
+    return 'text-base';
+};
+
 const setSortMetric = (key) => {
     if (activeSort.value !== key) {
         activeSort.value = key;
@@ -680,7 +727,9 @@ onBeforeUnmount(() => {
                     </div>
                     <div class="text-right">
                         <span class="text-[10px] font-semibold uppercase tracking-wide text-text-tertiary">{{ t('leaderboards.personalRank') }}</span>
-                        <div class="mt-0.5 text-3xl font-black tabular-nums text-neutral-400/90">#{{ leaderboardData.personal.rank }}</div>
+                        <div class="mt-0.5 font-black tabular-nums leading-none text-neutral-400/90" :class="leaderboardPersonalRankClass(leaderboardData.personal.rank)">
+                            #{{ leaderboardData.personal.rank }}
+                        </div>
                     </div>
                 </div>
             </section>
@@ -712,9 +761,7 @@ onBeforeUnmount(() => {
                     >
                         <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
                             <div class="flex min-w-0 gap-3 sm:gap-4">
-                                <span
-                                    class="w-14 shrink-0 pt-0.5 text-right text-4xl font-black tabular-nums tracking-tight text-neutral-400/90 sm:w-16 sm:text-5xl"
-                                >
+                                <span :class="leaderboardRankCellClass(row.rank)">
                                     #{{ row.rank }}
                                 </span>
                                 <img
