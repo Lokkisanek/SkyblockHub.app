@@ -7,7 +7,10 @@ import { preloadAllTextures, setEnabledPacks, getSkinUrl, getHeadUrl, getRarityC
 import ItemSlot from '@/Components/SkyBlock/ItemSlot.vue';
 import InventoryGrid from '@/Components/SkyBlock/InventoryGrid.vue';
 import PackSelector from '@/Components/SkyBlock/PackSelector.vue';
-import PlayerModel from '@/Components/SkyBlock/PlayerModel.vue';
+import ProfilePlayerPreview from '@/Components/SkyBlock/ProfilePlayerPreview.vue';
+import { loadEnabledPacks, loadPerformanceMode } from '@/utils/profileViewerSettings';
+import McText from '@/Components/SkyBlock/McText.vue';
+import { skillAvgColorCode } from '@/utils/minecraftColors';
 
 const { t } = useI18n();
 
@@ -105,10 +108,17 @@ const displayUniquePets = computed(() => {
 
 /* ── Texture pack version key ──────────────────────────────── */
 const textureVersion = ref(0);
+const performanceMode = ref(loadPerformanceMode());
 provide('textureVersion', textureVersion);
+provide('profilePerformanceMode', performanceMode);
 
 async function onPacksChanged(packIds) {
     await setEnabledPacks(packIds);
+    textureVersion.value++;
+}
+
+function onPerformanceChanged(enabled) {
+    performanceMode.value = enabled;
     textureVersion.value++;
 }
 
@@ -544,6 +554,7 @@ const statColors = {
 function getStatColor(key) { return statColors[key] ?? '#AAAAAA'; }
 
 onMounted(async () => {
+    await setEnabledPacks(loadEnabledPacks());
     preloadAllTextures();
     if (username.value) fetchProfile();
 });
@@ -562,7 +573,7 @@ onMounted(async () => {
                 profileStatsScrimEntered && 'profile-stats-bg-scrim--visible',
             ]"
         />
-        <div class="relative z-20" :class="hasLoadedProfile ? 'py-4' : ''">
+        <div class="relative z-20" :class="[hasLoadedProfile ? 'py-4' : '', performanceMode && 'profile-stats--perf']">
             <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                 <div class="flex w-full flex-col">
                     <!-- Top spacer: height animates (flex-grow does not interpolate in browsers). -->
@@ -638,25 +649,46 @@ onMounted(async () => {
                     <div v-if="hasLoadedProfile" class="w-full">
 
                     <!-- ═══ STATS SUMMARY BAR ═══ -->
-                    <div v-if="currentData" class="border border-profit/30 bg-profit/5 rounded px-3 py-2 mb-4 sm:px-4">
-                        <div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] sm:gap-x-4 sm:text-xs">
-                            <span class="text-neutral">{{ t('profileStats.joined') }} <b class="text-white">{{ timeAgo(currentData.first_join) }}</b></span>
-                            <span class="text-border-light">·</span>
-                            <span class="text-neutral">{{ t('profileStats.purse') }} <b class="text-rarity-legendary">{{ fNum(currentData.networth?.purse) }} {{ t('profileStats.coins') }}</b></span>
-                            <span class="text-border-light">·</span>
-                            <span class="text-neutral">{{ t('profileStats.bank') }} <b class="text-rarity-legendary">{{ fNum(currentData.networth?.bank) }} {{ t('profileStats.coins') }}</b></span>
-                            <span class="text-border-light">·</span>
-                            <span class="text-neutral">{{ t('profileStats.skillAvg') }} <b class="text-white">{{ currentData.average_skill_level }}</b></span>
-                            <span class="text-border-light">·</span>
-                            <span class="text-neutral">{{ t('profileStats.fairySouls') }} <b class="text-white">{{ currentData.fairy_souls ?? '—' }} {{ t('profileStats.fairySoulsMax') }}</b></span>
-                            <span class="text-border-light">·</span>
-                            <span class="text-neutral">{{ t('profileStats.networth') }} <b class="text-rarity-legendary">{{ fNum(currentData.networth?.networth) }}</b></span>
+                    <dl v-if="currentData" class="profile-stat-strip profile-stat-strip--summary">
+                        <div class="profile-stat-cell">
+                            <dt>{{ t('profileStats.joined') }}</dt>
+                            <dd><McText :text="`§f${timeAgo(currentData.first_join)}`" /></dd>
                         </div>
-                    </div>
+                        <div class="profile-stat-cell">
+                            <dt>{{ t('profileStats.purse') }}</dt>
+                            <dd>
+                                <McText :text="`§6${fNum(currentData.networth?.purse)}§7 ${t('profileStats.coins')}`" />
+                            </dd>
+                        </div>
+                        <div class="profile-stat-cell">
+                            <dt>{{ t('profileStats.bank') }}</dt>
+                            <dd>
+                                <McText :text="`§6${fNum(currentData.networth?.bank)}§7 ${t('profileStats.coins')}`" />
+                            </dd>
+                        </div>
+                        <div class="profile-stat-cell">
+                            <dt>{{ t('profileStats.skillAvg') }}</dt>
+                            <dd>
+                                <McText
+                                    :text="`§${skillAvgColorCode(currentData.average_skill_level)}${currentData.average_skill_level}`"
+                                />
+                            </dd>
+                        </div>
+                        <div class="profile-stat-cell">
+                            <dt>{{ t('profileStats.fairySouls') }}</dt>
+                            <dd>
+                                <McText :text="`§d${currentData.fairy_souls ?? '—'}§8 / §f267`" />
+                            </dd>
+                        </div>
+                        <div class="profile-stat-cell">
+                            <dt>{{ t('profileStats.networth') }}</dt>
+                            <dd><McText :text="`§6${fNum(currentData.networth?.networth)}`" /></dd>
+                        </div>
+                    </dl>
 
                     <!-- ═══ PROFILE SELECTOR + HEADER ═══ -->
                     <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-                        <div class="profile-pill-group flex flex-wrap gap-1.5" role="tablist" aria-label="Profiles">
+                        <div class="profile-pill-group" role="tablist" aria-label="Profiles">
                             <button
                                 v-for="(profile, key) in profileData.profiles"
                                 :key="key"
@@ -670,7 +702,10 @@ onMounted(async () => {
                             </button>
                         </div>
                         <div class="flex shrink-0 items-center gap-2 sm:justify-end">
-                            <PackSelector @update:packs="onPacksChanged" />
+                            <PackSelector
+                                @update:packs="onPacksChanged"
+                                @update:performance="onPerformanceChanged"
+                            />
                         </div>
                     </div>
 
@@ -709,7 +744,7 @@ onMounted(async () => {
                                         </template>
                                         <span v-else class="player-username" style="color: #AAAAAA">{{ profileData?.username }}</span>
                                     </div>
-                                    <PlayerModel :uuid="profileData?.uuid" :width="208" :height="400" />
+                                    <ProfilePlayerPreview :uuid="profileData?.uuid" :width="208" :height="400" />
                                 </div>
                             </div>
 
@@ -726,7 +761,7 @@ onMounted(async () => {
                                     </template>
                                     <span v-else class="player-username" style="color: #AAAAAA">{{ profileData?.username }}</span>
                                 </div>
-                                <PlayerModel :uuid="profileData?.uuid" :width="144" :height="280" />
+                                <ProfilePlayerPreview :uuid="profileData?.uuid" :width="144" :height="280" />
                             </div>
 
                             <div class="flex-1 min-w-0 space-y-8 lg:space-y-10">
@@ -1167,7 +1202,7 @@ onMounted(async () => {
                                         </template>
                                         <span v-else class="player-username" style="color: #AAAAAA">{{ profileData?.username }}</span>
                                     </div>
-                                    <PlayerModel :uuid="profileData?.uuid" :width="208" :height="400" />
+                                    <ProfilePlayerPreview :uuid="profileData?.uuid" :width="208" :height="400" />
                                 </div>
                             </div>
 
@@ -1183,7 +1218,7 @@ onMounted(async () => {
                                     </template>
                                     <span v-else class="player-username" style="color: #AAAAAA">{{ profileData?.username }}</span>
                                 </div>
-                                <PlayerModel :uuid="profileData?.uuid" :width="144" :height="280" />
+                                <ProfilePlayerPreview :uuid="profileData?.uuid" :width="144" :height="280" />
                             </div>
 
                             <div class="flex-1 min-w-0 ps-skills-panel">

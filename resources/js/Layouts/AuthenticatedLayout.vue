@@ -21,18 +21,12 @@ const page = usePage();
 const onboarding = computed(() => page.props.onboarding ?? null);
 
 const user = computed(() => page.props.auth?.user ?? null);
-const currentMayor = computed(() => page.props.currentMayor ?? null);
 const isTestingAdmin = computed(() => Boolean(page.props.auth?.testing_admin));
 const experimentalModules = computed(() => page.props.navigation?.experimental_modules ?? {});
 const canAccessCrafting = computed(() => isTestingAdmin.value && Boolean(experimentalModules.value.crafting));
 const canAccessDungeonParty = computed(() => isTestingAdmin.value && Boolean(experimentalModules.value.dungeon_party));
 const canAccessPortfolio = computed(() => isTestingAdmin.value && Boolean(experimentalModules.value.portfolio));
 const canAccessBinSniper = computed(() => isTestingAdmin.value && Boolean(experimentalModules.value.bin_sniper));
-const mayorPerkSummary = computed(() => {
-    const count = Number(currentMayor.value?.active_perk_count ?? 0);
-    return count === 1 ? '1 active perk' : `${count} active perks`;
-});
-const mayorPerks = computed(() => Array.isArray(currentMayor.value?.perks) ? currentMayor.value.perks : []);
 
 const displayName = computed(() => {
     if (!user.value) return '';
@@ -51,6 +45,10 @@ function isActive(routeName) {
 
 function isBazaarActive() {
     return route().current('bazaar') || route().current('npc-flips') || (canAccessCrafting.value && route().current('crafting'));
+}
+
+function isMiscActive() {
+    return route().current('event-timer') || route().current('mayors');
 }
 
 function logout() {
@@ -116,10 +114,10 @@ watch(
                 </div>
 
                 <div class="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                    <div class="flex h-14 items-center justify-between">
+                    <div class="relative flex h-14 items-center">
 
                         <!-- Left: Logo -->
-                        <div class="flex shrink-0 items-center">
+                        <div class="relative z-10 flex shrink-0 items-center">
                             <Link href="/" class="flex items-center gap-2">
                                 <ApplicationLogo tone="light" class="h-7 w-7 shrink-0" />
                                 <span class="text-sm font-bold tracking-wide text-white">SkyblockHub</span>
@@ -127,7 +125,7 @@ watch(
                         </div>
 
                         <!-- Center: Navigation -->
-                        <div class="hidden items-center gap-1 md:flex">
+                        <div class="absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 items-center gap-1 md:flex">
                                 <Link
                                     :href="route('dashboard')"
                                     class="nav-link"
@@ -163,13 +161,23 @@ watch(
                                     {{ $t('nav.profileStats') }}
                                 </Link>
 
-                                <Link
-                                    :href="route('event-timer')"
-                                    class="nav-link"
-                                    :class="{ active: isActive('event-timer') }"
-                                >
-                                    {{ $t('nav.eventTimer') }}
-                                </Link>
+                                <Dropdown align="left" width="48">
+                                    <template #trigger>
+                                        <button
+                                            class="nav-link inline-flex items-center gap-1"
+                                            :class="{ active: isMiscActive() }"
+                                        >
+                                            {{ $t('nav.misc') }}
+                                            <svg class="h-3 w-3 opacity-50" viewBox="0 0 20 20" fill="currentColor">
+                                                <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                            </svg>
+                                        </button>
+                                    </template>
+                                    <template #content>
+                                        <DropdownLink :href="route('mayors')">{{ $t('nav.mayors') }}</DropdownLink>
+                                        <DropdownLink :href="route('event-timer')">{{ $t('nav.eventTimer') }}</DropdownLink>
+                                    </template>
+                                </Dropdown>
 
                                 <Link
                                     :href="route('leaderboards')"
@@ -201,52 +209,17 @@ watch(
                                 </template>
                             </div>
 
-                        <!-- Right: Mayor + Auth -->
-                        <div class="hidden items-center gap-4 md:flex">
-                            <!-- Mayor info -->
-                            <Dropdown v-if="currentMayor?.name" align="right" width="96">
-                                <template #trigger>
-                                    <button class="hidden text-right text-[11px] leading-tight text-neutral transition hover:text-white lg:block">
-                                        <div class="font-semibold text-white">{{ currentMayor.name }}</div>
-                                        <div>{{ mayorPerkSummary }}</div>
-                                    </button>
-                                </template>
-                                <template #content>
-                                    <div class="px-4 pt-3 pb-2">
-                                        <div class="text-[10px] font-bold uppercase tracking-[0.22em] text-white/70">Current mayor</div>
-                                        <div class="mt-1 text-sm font-semibold text-white">{{ currentMayor.name }}</div>
-                                        <div class="mt-1 text-xs text-white">{{ mayorPerkSummary }}</div>
-                                    </div>
-
-                                    <div class="border-t border-white/[0.06] px-4 py-3">
-                                        <div class="mb-2 text-[10px] font-bold uppercase tracking-[0.22em] text-white/70">Perks</div>
-
-                                        <div v-if="mayorPerks.length" class="mayor-perk-list">
-                                            <div v-for="(perk, index) in mayorPerks" :key="`${perk.name}-${index}`" class="mayor-perk-item">
-                                                <div class="mayor-perk-name">{{ perk.name }}</div>
-                                                <div v-if="perk.description" class="mayor-perk-description">{{ perk.description }}</div>
-                                            </div>
-                                        </div>
-                                        <div v-else class="text-xs text-white">No perk details available yet.</div>
-
-                                        <Link
-                                            :href="route('mayors')"
-                                            class="mt-3 inline-flex text-[11px] font-semibold text-profit transition hover:text-white"
-                                        >
-                                            See more information
-                                        </Link>
-                                    </div>
-                                </template>
-                            </Dropdown>
-
+                        <!-- Right: Auth -->
+                        <div class="relative z-10 ms-auto hidden items-center gap-4 md:flex">
                             <!-- GitHub Star -->
                             <a
                                 href="https://github.com/Lokkisanek/SkyblockHub.play"
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                class="text-white/50 transition hover:text-white"
+                                class="inline-flex items-center gap-1.5 text-xs font-medium text-white/50 transition hover:text-white"
                             >
-                                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                {{ $t('nav.starOnGithub') }}
+                                <svg class="h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                                     <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
                                 </svg>
                             </a>
@@ -295,7 +268,7 @@ watch(
                         </div>
 
                         <!-- Hamburger (mobile) -->
-                        <div class="flex items-center md:hidden">
+                        <div class="relative z-10 ms-auto flex items-center md:hidden">
                             <button
                                 @click="showingNavigationDropdown = !showingNavigationDropdown"
                                 class="inline-flex items-center justify-center rounded-lg p-2 text-neutral transition hover:bg-white/10 hover:text-white focus:outline-none"
@@ -331,7 +304,11 @@ watch(
                         <Link :href="route('profile-stats')" class="mobile-link" :class="{ 'mobile-link-active': isActive('profile-stats') }">
                             {{ $t('nav.profileStats') }}
                         </Link>
-                        <Link :href="route('event-timer')" class="mobile-link" :class="{ 'mobile-link-active': isActive('event-timer') }">
+                        <div class="px-2 pb-1 pt-3 text-[10px] font-semibold uppercase tracking-widest text-neutral">{{ $t('nav.misc') }}</div>
+                        <Link :href="route('mayors')" class="mobile-link ps-6" :class="{ 'mobile-link-active': isActive('mayors') }">
+                            {{ $t('nav.mayors') }}
+                        </Link>
+                        <Link :href="route('event-timer')" class="mobile-link ps-6" :class="{ 'mobile-link-active': isActive('event-timer') }">
                             {{ $t('nav.eventTimer') }}
                         </Link>
                         <Link :href="route('leaderboards')" class="mobile-link" :class="{ 'mobile-link-active': isActive('leaderboards') }">
@@ -495,32 +472,4 @@ watch(
     background: rgba(255, 255, 255, 0.06);
 }
 
-/* ── Mayor dropdown perks (aligned with Mayors page style) ── */
-.mayor-perk-list {
-    display: grid;
-    gap: 14px;
-}
-
-.mayor-perk-item {
-    border: 0;
-    border-radius: 0;
-    background: transparent;
-    padding: 0;
-    font-family: 'Courier New', monospace;
-    letter-spacing: 0.15px;
-}
-
-.mayor-perk-name {
-    color: #e879f9;
-    font-size: 13px;
-    font-weight: 700;
-    margin-bottom: 2px;
-    text-shadow: 0 0 8px rgba(232, 121, 249, 0.15);
-}
-
-.mayor-perk-description {
-    color: #ffffff;
-    font-size: 12px;
-    line-height: 1.25rem;
-}
 </style>

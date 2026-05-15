@@ -12,6 +12,7 @@ const pinned      = ref(false);
 const tooltipPos  = ref({ x: 0, y: 0 });
 const tooltipRef  = ref(null);
 const textureVersion = inject('textureVersion', ref(0));
+const performanceMode = inject('profilePerformanceMode', ref(false));
 
 const textureUrl = computed(() => {
     void textureVersion.value;
@@ -55,12 +56,13 @@ const rarityFgClass = computed(() => {
 
 const RARITY_ORDER = ['common','uncommon','rare','epic','legendary','mythic','divine','special','very_special'];
 const showShine = computed(() => {
-    if (!props.item?.rarity) return false;
+    if (performanceMode.value || !props.item?.rarity) return false;
     const idx = RARITY_ORDER.indexOf(props.item.rarity.toLowerCase());
     return idx >= 0 && idx <= 4;
 });
 
 function onMouseEnter(e) {
+    if (performanceMode.value) return;
     if (props.item && !pinned.value) {
         showTooltip.value = true;
         updatePos(e);
@@ -68,10 +70,12 @@ function onMouseEnter(e) {
 }
 
 function onMouseMove(e) {
+    if (performanceMode.value) return;
     if (!pinned.value) updatePos(e);
 }
 
 function onMouseLeave() {
+    if (performanceMode.value) return;
     if (!pinned.value) showTooltip.value = false;
 }
 
@@ -110,7 +114,7 @@ function updatePos(e) {
 
 /* Click to pin/unpin tooltip for text selection */
 function onItemClick(e) {
-    if (!props.item) return;
+    if (performanceMode.value || !props.item) return;
 
     if (pinned.value) {
         // Unpin

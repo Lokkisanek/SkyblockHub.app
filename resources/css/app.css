@@ -260,6 +260,53 @@
     line-height: 1.35;
 }
 
+.profile-stat-strip--summary {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    text-align: center;
+}
+
+.profile-stat-strip--summary .profile-stat-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    max-width: 12rem;
+}
+
+.profile-stat-strip--summary .profile-stat-cell dd {
+    display: flex;
+    justify-content: center;
+}
+
+@media (min-width: 640px) {
+    .profile-stat-strip--summary {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (min-width: 900px) {
+    .profile-stat-strip--summary {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+@media (min-width: 1280px) {
+    .profile-stat-strip--summary {
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+        gap: 0 1rem;
+    }
+
+    .profile-stat-strip--summary .profile-stat-cell {
+        max-width: none;
+    }
+
+    .profile-stat-strip--summary .profile-stat-cell:not(:first-child) {
+        border-left: 1px solid rgba(255, 255, 255, 0.08);
+        padding-left: 1rem;
+    }
+}
+
 .profile-stat-strip--accessories {
     grid-template-columns: 1fr;
 }
@@ -319,14 +366,19 @@
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.06em;
-    color: rgba(163, 163, 163, 0.95);
+    color: var(--mc-7);
 }
 
 .profile-stat-cell dd {
     margin: 0.35rem 0 0;
     font-weight: 600;
     font-variant-numeric: tabular-nums;
-    color: #fff;
+    color: var(--mc-f);
+}
+
+.profile-stat-cell dd .mc-text {
+    font-weight: inherit;
+    font-variant-numeric: inherit;
 }
 
 .profile-stat-muted {
@@ -349,6 +401,10 @@
     color: #ff55ff;
 }
 
+.profile-stat-dd-legendary {
+    color: #ffaa00;
+}
+
 .profile-stat-meta {
     margin-left: 0.25rem;
     font-size: 0.75rem;
@@ -357,54 +413,102 @@
     opacity: 0.95;
 }
 
-/* ── Profile selector pills ────────────────────────────────── */
+.profile-player-static {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: 0.5rem;
+}
+
+.profile-player-static__img {
+    width: 64px;
+    height: 64px;
+    flex-shrink: 0;
+    object-fit: contain;
+    image-rendering: pixelated;
+    image-rendering: -moz-crisp-edges;
+    filter: drop-shadow(2px 4px 6px rgba(0, 0, 0, 0.45));
+}
+
+/* Profile stats — performance mode (low GPU / CPU) */
+.profile-stats--perf .profile-stats-bg-scrim {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    transition: opacity 0.2s ease, background-color 0.2s ease;
+}
+
+.profile-stats--perf .piece {
+    transition: none;
+    content-visibility: auto;
+    contain-intrinsic-size: 52px 52px;
+}
+
+.profile-stats--perf .piece:hover {
+    transform: none;
+    box-shadow: none;
+}
+
+.profile-stats--perf .piece:hover .piece-hover-overlay {
+    background-color: transparent;
+}
+
+.profile-stats--perf .pieces .piece {
+    will-change: auto;
+}
+
+/* ── Profile selector (flat tabs, matches main nav) ─────────── */
 .profile-pill-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0;
     max-width: 100%;
+    border-bottom: 1px solid #303030;
 }
 
 .profile-pill-btn {
     appearance: none;
+    position: relative;
     display: inline-flex;
     align-items: center;
-    gap: 0.35rem;
-    padding: 0.35rem 0.65rem;
-    border-radius: 0.5rem;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    background: rgba(0, 0, 0, 0.25);
-    font-size: 12px;
+    gap: 0.4rem;
+    margin: 0;
+    padding: 0.5rem 0.85rem;
+    border: none;
+    border-bottom: 2px solid transparent;
+    border-radius: 0;
+    background: transparent;
+    font-size: 11px;
     font-weight: 600;
-    color: rgba(255, 255, 255, 0.55);
+    letter-spacing: 0.04em;
+    color: #aaaaaa;
     cursor: pointer;
+    white-space: nowrap;
     transition:
-        border-color 0.15s ease,
-        background 0.15s ease,
-        color 0.15s ease;
+        color 0.15s ease,
+        border-color 0.15s ease;
 }
 
 .profile-pill-btn:hover {
-    border-color: rgba(255, 255, 255, 0.14);
-    color: rgba(255, 255, 255, 0.92);
-    background: rgba(255, 255, 255, 0.04);
+    color: #ffffff;
 }
 
 .profile-pill-btn--active {
-    border-color: rgba(11, 202, 81, 0.45);
-    background: rgba(11, 202, 81, 0.1);
-    color: #0bca51;
+    border-bottom-color: #55ff55;
+    color: #55ff55;
     cursor: default;
 }
 
 .profile-pill-btn:focus-visible {
-    outline: 2px solid rgba(11, 202, 81, 0.4);
-    outline-offset: 2px;
+    outline: 2px solid rgba(85, 255, 85, 0.35);
+    outline-offset: -2px;
 }
 
 .profile-pill-dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 9999px;
-    background: #0bca51;
-    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
+    width: 5px;
+    height: 5px;
+    border-radius: 1px;
+    background: #55ff55;
+    flex-shrink: 0;
 }
 
 /* ── Inventory sub-tab buttons (no outer chrome; larger tap targets) ─ */
@@ -886,15 +990,19 @@
 .ps-skill-icon-ring {
     grid-column: 1;
     grid-row: 1 / span 2;
-    width: 36px;
-    height: 36px;
+    width: 40px;
+    height: 40px;
+    box-sizing: border-box;
     border-radius: 50%;
     border: 2px solid #2eb85a;
     background: rgba(0, 0, 0, 0.45);
-    display: grid;
-    place-items: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     overflow: hidden;
     align-self: center;
+    justify-self: center;
+    flex-shrink: 0;
 }
 
 .ps-skill-icon-ring--amber {
@@ -908,19 +1016,22 @@
 }
 
 .ps-skill-icon-img {
-    width: 24px;
-    height: 24px;
+    width: 26px;
+    height: 26px;
     object-fit: contain;
+    display: block;
+    flex-shrink: 0;
     image-rendering: pixelated;
     image-rendering: -moz-crisp-edges;
-    transform: translate(2px, 2px);
 }
 
 .ps-skill-icon-emoji {
-    font-size: 18px;
+    font-size: 20px;
     line-height: 1;
-    transform: translate(2px, 2px);
-    display: block;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
 }
 
 .ps-skill-head {

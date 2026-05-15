@@ -40,7 +40,6 @@ const modulesSubtitleKey = computed(() => (isLoggedIn.value ? 'welcome.loggedInC
 
 const searchUsername = ref('');
 const searchError = ref('');
-const supportModalOpen = ref(false);
 const siteOrigin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:8000';
 const canonicalUrl = `${siteOrigin}/`;
 const pageTitle = 'Hypixel SkyBlock Tools - Bazaar Flips, NPC Arbitrage, Profiles';
@@ -212,15 +211,6 @@ function clearSearchError() {
     }
 }
 
-function openSupportModal() {
-    supportModalOpen.value = true;
-    trackLandingCta('support_modal_open');
-}
-
-function closeSupportModal() {
-    supportModalOpen.value = false;
-}
-
 function trackLandingCta(cta) {
     trackFunnelEvent('landing_cta_click', {
         cta,
@@ -253,15 +243,10 @@ function cardAccentClass(accent) {
     </Head>
 
     <AuthenticatedLayout>
-        <div class="pt-14 pb-20 sm:pt-16 sm:pb-24 lg:pt-20 lg:pb-28">
-            <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                <section class="animate-rise-up animate-delay-1 mb-12">
-                    <div class="mx-auto mb-6 flex w-fit items-center gap-3 rounded-full border border-white/10 bg-white/5 px-4 py-2 backdrop-blur-sm">
-                        <ApplicationLogo tone="light" class="h-7 w-7 shrink-0" />
-                        <span class="text-[10px] font-bold uppercase tracking-[0.24em] text-white/75">SkyblockHub</span>
-                    </div>
-
-                    <div v-if="isLoggedIn" class="mx-auto mb-5 max-w-2xl text-center">
+        <div class="pt-16 pb-28 sm:pt-20 sm:pb-32 lg:pt-24 lg:pb-40">
+            <div class="mx-auto max-w-7xl space-y-16 px-4 sm:space-y-20 sm:px-6 lg:space-y-24 lg:px-8">
+                <section class="animate-rise-up animate-delay-1">
+                    <div v-if="isLoggedIn" class="mx-auto mb-8 max-w-2xl text-center">
                         <p class="text-[11px] font-bold uppercase tracking-[0.22em] text-profit/80">{{ t('welcome.loggedInKicker') }}</p>
                         <p v-if="welcomeDisplayName" class="mt-2 text-xl font-semibold tracking-tight text-white sm:text-2xl">
                             {{ welcomeDisplayName }}
@@ -272,11 +257,11 @@ function cardAccentClass(accent) {
                         {{ $t('welcome.hero') }}
                     </h1>
 
-                    <p class="mx-auto mt-6 max-w-3xl text-center text-lg leading-relaxed text-white/80 sm:text-xl lg:text-2xl">
+                    <p class="mx-auto mt-8 max-w-3xl text-center text-lg leading-relaxed text-white/80 sm:mt-10 sm:text-xl lg:text-2xl">
                         {{ t(heroSubtitleKey) }}
                     </p>
 
-                    <div class="mx-auto mt-8 w-full max-w-3xl rounded-2xl border border-border/80 bg-surface-900/75 p-3 shadow-[0_16px_40px_rgba(0,0,0,0.35)] backdrop-blur-sm">
+                    <div class="mx-auto mt-10 w-full max-w-3xl rounded-2xl border border-border/80 bg-surface-900/75 p-3 shadow-[0_16px_40px_rgba(0,0,0,0.35)] backdrop-blur-sm sm:mt-12">
                         <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
                             <div class="flex-1">
                                 <input
@@ -308,10 +293,10 @@ function cardAccentClass(accent) {
                     >
                         {{ searchError }}
                     </p>
-                    <p class="mt-2 text-center text-sm text-white/65">{{ t(searchHelperKey) }}</p>
+                    <p class="mt-3 text-center text-sm text-white/65">{{ t(searchHelperKey) }}</p>
 
                     <!-- One secondary CTA above the fold: Discord (guests) or Dashboard (signed in). Join server = text link. -->
-                    <div class="mt-6 flex flex-col items-center gap-3 sm:flex-row sm:flex-wrap sm:justify-center sm:gap-x-6 sm:gap-y-3">
+                    <div class="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:flex-wrap sm:justify-center sm:gap-x-8 sm:gap-y-4">
                         <template v-if="canLogin">
                             <a
                                 :href="route('auth.discord', { redirect: page.url || '/' })"
@@ -352,13 +337,17 @@ function cardAccentClass(accent) {
                     </div>
                 </section>
 
-                <section class="animate-rise-up animate-delay-3 mb-12">
-                    <p class="mb-4 text-center text-sm font-semibold leading-snug text-white/70 sm:text-base">
+                <section class="animate-rise-up animate-delay-3">
+                    <p class="mb-8 text-center text-sm font-semibold leading-snug text-white/70 sm:mb-10 sm:text-base">
                         <span class="text-emerald-200/90">{{ $t('welcome.social.trustLine') }}</span>
                     </p>
 
-                    <div class="grid gap-4 md:grid-cols-3">
-                        <article v-for="item in socialStats" :key="item.label" class="rounded-2xl border border-border/80 bg-surface-900/75 p-5 shadow-[0_16px_40px_rgba(0,0,0,0.35)] backdrop-blur-sm">
+                    <div class="grid gap-10 md:grid-cols-3 md:gap-12">
+                        <article
+                            v-for="item in socialStats"
+                            :key="item.label"
+                            class="rounded-2xl border border-border/80 bg-surface-900/75 p-5 text-center shadow-[0_16px_40px_rgba(0,0,0,0.35)] backdrop-blur-sm"
+                        >
                             <p class="text-3xl font-black text-white">{{ item.value }}</p>
                             <p class="mt-2 text-xs font-semibold uppercase tracking-[0.16em] text-white/55">{{ item.label }}</p>
                         </article>
@@ -366,14 +355,14 @@ function cardAccentClass(accent) {
                 </section>
 
                 <section class="animate-rise-up animate-delay-4">
-                    <div class="mb-8 text-center sm:mb-10">
+                    <div class="mb-10 text-center sm:mb-14">
                         <h2 class="text-2xl font-bold tracking-tight text-white sm:text-3xl">{{ t(modulesTitleKey) }}</h2>
-                        <p class="mx-auto mt-3 max-w-lg text-sm leading-relaxed text-white/55 sm:text-base">{{ t(modulesSubtitleKey) }}</p>
+                        <p class="mx-auto mt-4 max-w-lg text-sm leading-relaxed text-white/55 sm:mt-5 sm:text-base">{{ t(modulesSubtitleKey) }}</p>
                     </div>
 
-                    <div class="grid grid-cols-1 gap-5 lg:grid-cols-[2fr_1fr] lg:gap-6">
+                    <div class="grid grid-cols-1 gap-7 lg:grid-cols-[2fr_1fr] lg:gap-8">
                         <!-- Left column: 2 large cards -->
-                        <div class="grid grid-cols-1 gap-5 lg:gap-6">
+                        <div class="grid grid-cols-1 gap-7 lg:gap-8">
                             <Link
                                 v-if="featureCardsById.bazaar"
                                 :key="featureCardsById.bazaar.id"
@@ -428,7 +417,7 @@ function cardAccentClass(accent) {
                         </div>
 
                         <!-- Right column: 3 smaller cards -->
-                        <div class="grid grid-cols-1 gap-5 lg:gap-6">
+                        <div class="grid grid-cols-1 gap-7 lg:gap-8">
                             <Link
                                 v-if="featureCardsById.npc"
                                 :key="featureCardsById.npc.id"
@@ -509,12 +498,12 @@ function cardAccentClass(accent) {
             </div>
         </div>
 
-        <footer class="footer-wrapper relative">
+        <footer class="footer-wrapper relative mt-16 sm:mt-20 lg:mt-24">
             <div class="slime-glow-footer-container">
                 <div class="slime-glow-footer"></div>
             </div>
 
-            <div class="relative z-10 mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+            <div class="relative z-10 mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-14 lg:px-8">
                 <div class="grid grid-cols-2 gap-8 sm:grid-cols-5">
                     <div class="col-span-2 sm:col-span-1">
                         <Link :href="route('dashboard')" class="flex items-center gap-2 text-sm font-bold tracking-wide text-white">
@@ -563,11 +552,6 @@ function cardAccentClass(accent) {
                             <li><Link :href="route('about')" class="text-xs text-white/35 transition hover:text-white">{{ $t('welcome.footer.about') }}</Link></li>
                             <li v-if="isTestingAdmin"><Link :href="route('admin.index')" class="text-xs text-white/35 transition hover:text-white">Admin</Link></li>
                             <li><a href="https://github.com/Lokkisanek/SkyblockHub.play" target="_blank" rel="noopener noreferrer" class="text-xs text-white/35 transition hover:text-white">{{ $t('welcome.footer.github') }}</a></li>
-                            <li>
-                                <button type="button" class="text-left text-xs text-white/35 transition hover:text-white" @click="openSupportModal">
-                                    {{ $t('welcome.footer.supportProject') }}
-                                </button>
-                            </li>
                             <li><a href="https://buymeacoffee.com/lokkisan" target="_blank" rel="noopener noreferrer" class="text-xs text-white/35 transition hover:text-white">{{ $t('welcome.footer.patreon') }}</a></li>
                         </ul>
                     </div>
@@ -587,42 +571,6 @@ function cardAccentClass(accent) {
                 </div>
             </div>
         </footer>
-
-        <Teleport to="body">
-            <div
-                v-if="supportModalOpen"
-                class="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
-                role="dialog"
-                aria-modal="true"
-                :aria-label="$t('welcome.support.title')"
-                @click.self="closeSupportModal"
-            >
-                <div class="relative w-full max-w-md rounded-2xl border border-white/10 bg-surface-900 p-6 shadow-2xl">
-                    <button
-                        type="button"
-                        class="absolute right-3 top-3 rounded-lg px-2 py-1 text-xs font-medium text-white/50 transition hover:bg-white/10 hover:text-white"
-                        @click="closeSupportModal"
-                    >
-                        {{ t('dashboard.close') }}
-                    </button>
-                    <p class="text-[10px] font-bold uppercase tracking-[0.24em] text-amber-300/80">{{ $t('welcome.support.kicker') }}</p>
-                    <h3 class="mt-2 pr-10 text-xl font-bold text-white">{{ $t('welcome.support.title') }}</h3>
-                    <p class="mt-3 text-sm leading-relaxed text-white/70">{{ $t('welcome.support.body') }}</p>
-                    <div class="mt-6 flex flex-wrap items-center gap-3">
-                        <a
-                            href="https://buymeacoffee.com/lokkisan"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            class="inline-flex items-center justify-center rounded-xl border border-amber-400/30 bg-amber-500/15 px-5 py-2.5 text-sm font-semibold text-amber-200 transition hover:bg-amber-500/25 hover:text-amber-100"
-                            @click="trackLandingCta('support_bmac')"
-                        >
-                            {{ $t('welcome.support.cta') }}
-                        </a>
-                        <span class="text-xs text-white/35">{{ $t('welcome.support.note') }}</span>
-                    </div>
-                </div>
-            </div>
-        </Teleport>
     </AuthenticatedLayout>
 </template>
 
