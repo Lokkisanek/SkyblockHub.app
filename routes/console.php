@@ -101,3 +101,8 @@ Schedule::command('leaderboard:rebuild-snapshot')
     ->name('leaderboard:rebuild-snapshot')
     ->hourly()
     ->withoutOverlapping(180);
+
+Schedule::command('networth:warm-cache')
+    ->name('networth:warm-cache')
+    ->hourly()
+    ->withoutOverlapping(30);

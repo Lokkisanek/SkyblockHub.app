@@ -44,7 +44,7 @@ return [
     | (no enchants, stars, gems, etc.).
     |
     */
-    'networth_node_timeout_sec' => (float) env('HYPIXEL_NETWORTH_NODE_TIMEOUT_SEC', 30),
+    'networth_node_timeout_sec' => (float) env('HYPIXEL_NETWORTH_NODE_TIMEOUT_SEC', 60),
 
     /*
     | Absolute path to the Node binary for scripts/networth.cjs. Leave empty to

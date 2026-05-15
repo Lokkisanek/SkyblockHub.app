@@ -784,7 +784,11 @@ class HypixelProfileController extends Controller
             // cached locally so the subprocess finishes in ~1-3s.
             // Falls back to DB-backed pricing on failure.
             if ($profileId === $primaryProfileId) {
-                $networthData = $this->calculateNetworth($member, null, (float) $bankBalance);
+                $museumForNetworth = $museumDataByProfile[$profileId]
+                    ?? $profile['museum']
+                    ?? $member['museum']
+                    ?? null;
+                $networthData = $this->calculateNetworth($member, is_array($museumForNetworth) ? $museumForNetworth : null, (float) $bankBalance);
             } else {
                 $networthData = $this->fallbackNetworth($purse, (float) $bankBalance);
             }
