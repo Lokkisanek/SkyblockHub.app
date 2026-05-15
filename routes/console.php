@@ -96,3 +96,8 @@ Schedule::command('profiles:ingest-scheduled')
     ->everyTwoHours()
     ->withoutOverlapping(120)
     ->when(fn (): bool => (bool) config('hypixel.profile_ingest.enabled'));
+
+Schedule::command('leaderboard:rebuild-snapshot')
+    ->name('leaderboard:rebuild-snapshot')
+    ->hourly()
+    ->withoutOverlapping(180);
