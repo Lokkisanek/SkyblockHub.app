@@ -40,8 +40,6 @@ class LeaderboardController extends Controller
         'non_app_users',
     ];
 
-    private const RANK_MAP_LIMIT = 1000;
-
     /**
      * @return array<int, array{key: string, label: string, format: string, align: string}>
      */
@@ -448,24 +446,30 @@ class LeaderboardController extends Controller
     }
 
     /**
-     * @return array<string, int>
+     * Global board rank (1-based) for one UUID; one small result row instead of scanning the top-N map client-side.
      */
-    private function buildRankMap(string $sortType, string $direction, string $filter, ?Carbon $from, ?Carbon $to): array
-    {
-        $query = $this->buildBaseQuery($filter, $from, $to);
-        $this->applyOrdering($query, $sortType, $direction);
+    private function resolveBoardRankForUuid(
+        string $normalizedUuid,
+        string $sortType,
+        string $direction,
+        string $filter
+    ): ?int {
+        $base = $this->buildBaseQuery($filter, null, null);
+        $this->applyOrdering($base, $sortType, $direction);
 
-        $rows = $query->limit(self::RANK_MAP_LIMIT)->get();
-        $rankMap = [];
+        $windowOrder = $this->leaderboardWindowOrderSql('lb', $sortType, $direction);
 
-        foreach ($rows as $index => $row) {
-            $uuid = $this->normalizeUuid((string) ($row->minecraft_uuid ?? ''));
-            if ($uuid !== '') {
-                $rankMap[$uuid] = $index + 1;
-            }
-        }
+        $ranked = DB::query()
+            ->fromSub($base, 'lb')
+            ->select(['lb.minecraft_uuid'])
+            ->selectRaw("ROW_NUMBER() OVER (ORDER BY {$windowOrder}) AS board_rank");
 
-        return $rankMap;
+        $rank = DB::query()
+            ->fromSub($ranked, 'r')
+            ->whereRaw('LOWER(REPLACE(r.minecraft_uuid, \'-\', \'\')) = ?', [$normalizedUuid])
+            ->value('board_rank');
+
+        return $rank !== null ? (int) $rank : null;
     }
 
     /**
@@ -488,28 +492,39 @@ class LeaderboardController extends Controller
             return null;
         }
 
-        $query = $this->buildBaseQuery($filter, null, null);
-        $query->whereRaw("LOWER(REPLACE(profile_data.minecraft_uuid, '-', '')) = ?", [$normalizedUuid]);
+        $cacheKey = 'leaderboard:personal:v1:'
+            .((string) $user->getAuthIdentifier())
+            .':'
+            .hash('xxh128', implode("\0", [$sortType, $direction, $filter, $normalizedUuid]));
 
-        $row = $query->first();
-        if (! $row) {
-            return null;
-        }
+        return Cache::remember($cacheKey, self::CACHE_TTL, function () use (
+            $normalizedUuid,
+            $sortType,
+            $direction,
+            $filter,
+            $previousRankMap
+        ): ?array {
+            $query = $this->buildBaseQuery($filter, null, null);
+            $query->whereRaw("LOWER(REPLACE(profile_data.minecraft_uuid, '-', '')) = ?", [$normalizedUuid]);
 
-        $rankMap = $this->buildRankMap($sortType, $direction, $filter, null, null);
-        $rank = $rankMap[$normalizedUuid] ?? null;
+            $row = $query->first();
+            if (! $row) {
+                return null;
+            }
 
-        if (! $rank) {
-            return null;
-        }
+            $rank = $this->resolveBoardRankForUuid($normalizedUuid, $sortType, $direction, $filter);
+            if ($rank === null || $rank < 1) {
+                return null;
+            }
 
-        $profileVisitCounts = $this->profileSearchCountsByUsernameLower(
-            ! empty($row->profile_username)
-                ? [mb_strtolower((string) $row->profile_username)]
-                : []
-        );
+            $profileVisitCounts = $this->profileSearchCountsByUsernameLower(
+                ! empty($row->profile_username)
+                    ? [mb_strtolower((string) $row->profile_username)]
+                    : []
+            );
 
-        return $this->formatLeaderboardRow($row, $rank, $previousRankMap, $profileVisitCounts);
+            return $this->formatLeaderboardRow($row, $rank, $previousRankMap, $profileVisitCounts);
+        });
     }
 
     /**
