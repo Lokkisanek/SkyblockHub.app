@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\BazaarController;
 use App\Http\Controllers\BinSniperController;
+use App\Http\Controllers\AdminGuildCrawlController;
 use App\Http\Controllers\AnaliticsController;
 use App\Http\Controllers\CookieConsentController;
 use App\Http\Controllers\CraftingArbitrageController;
@@ -104,6 +105,13 @@ Route::middleware('auth')->group(function () {
     Route::middleware('testing.admin')->group(function () {
         Route::get('/admin', [AnaliticsController::class, 'index'])->name('admin.index');
         Route::get('/analitics', fn () => redirect()->route('admin.index'))->name('analitics.index');
+
+        Route::get('/admin/guild-crawl/status', [AdminGuildCrawlController::class, 'status'])
+            ->name('admin.guild-crawl.status');
+        Route::post('/admin/guild-crawl/start', [AdminGuildCrawlController::class, 'start'])
+            ->name('admin.guild-crawl.start');
+        Route::post('/admin/guild-crawl/cancel', [AdminGuildCrawlController::class, 'cancel'])
+            ->name('admin.guild-crawl.cancel');
 
         Route::get('/dungeon-party', [DungeonPartyController::class, 'index'])->name('dungeon-party');
         Route::post('/dungeon-party', [DungeonPartyController::class, 'store'])->name('dungeon-party.store');

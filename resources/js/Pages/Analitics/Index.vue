@@ -1,4 +1,5 @@
 <script setup>
+import GuildCrawlPanel from '@/Components/Admin/GuildCrawlPanel.vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, router } from '@inertiajs/vue3';
 import { computed } from 'vue';
@@ -37,6 +38,7 @@ const props = defineProps({
     topSources: { type: Object, default: () => ({}) },
     onboardingExperimentVariants: { type: Array, default: () => [] },
     aiSummary: { type: Object, default: () => ({}) },
+    guildCrawl: { type: Object, default: () => ({}) },
 });
 
 const dayOptions = [7, 30, 90];
@@ -183,6 +185,8 @@ const ctaChart = computed(() => {
                         </button>
                     </div>
                 </section>
+
+                <GuildCrawlPanel :initial="guildCrawl" />
 
                 <section class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
                     <article class="kpi-card">

@@ -307,6 +307,34 @@
     }
 }
 
+/* Dungeons tab: centered summary row, extra top spacing */
+.profile-stat-strip--dungeons {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 1rem 1.75rem;
+    margin-top: 1.25rem;
+    margin-bottom: 1.75rem;
+    text-align: center;
+}
+
+.profile-stat-strip--dungeons .profile-stat-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 0 1 auto;
+    min-width: 8.5rem;
+    max-width: 12rem;
+    border: none;
+    padding-left: 0;
+}
+
+.profile-stat-strip--dungeons .profile-stat-cell dd {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
 .profile-stat-strip--accessories {
     grid-template-columns: 1fr;
 }
@@ -511,70 +539,21 @@
     flex-shrink: 0;
 }
 
-/* ── Inventory sub-tab buttons (no outer chrome; larger tap targets) ─ */
-.inv-tabs {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px 10px;
-    margin-bottom: 16px;
-    padding: 0;
-    border: none;
-    border-radius: 0;
-    background: transparent;
+.profile-pill-btn--icon {
+    gap: 0.5rem;
 }
 
-.inv-tab {
-    appearance: none;
-    position: relative;
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    min-height: 38px;
-    padding: 0 14px;
-    border: none;
-    border-radius: 8px;
-    font-size: 11px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    cursor: pointer;
-    background: transparent;
-    color: rgba(255, 255, 255, 0.5);
-    white-space: nowrap;
-    transition:
-        color 0.15s ease,
-        background 0.15s ease;
-    flex-shrink: 0;
-}
-
-.inv-tab:hover {
-    background: rgba(255, 255, 255, 0.04);
-    color: rgba(255, 255, 255, 0.88);
-}
-
-.inv-tab.active-tab {
-    background: transparent;
-    color: #0bca51;
-    font-weight: 700;
-    cursor: default;
-    box-shadow: inset 0 -2px 0 0 rgba(11, 202, 81, 0.85);
-}
-
-.inv-tab:focus-visible {
-    outline: 2px solid rgba(11, 202, 81, 0.35);
-    outline-offset: 2px;
-}
-
-.inv-tab-icon {
-    width: 24px;
-    height: 24px;
+.profile-pill-icon {
+    width: 20px;
+    height: 20px;
     image-rendering: pixelated;
     image-rendering: -moz-crisp-edges;
     border-radius: 2px;
-    opacity: 0.92;
+    opacity: 0.85;
+    flex-shrink: 0;
 }
 
-.inv-tab.active-tab .inv-tab-icon {
+.profile-pill-btn--active .profile-pill-icon {
     opacity: 1;
 }
 
@@ -957,62 +936,109 @@
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.75);
 }
 
-/* ── Profile Stats: Skills tab (flat colors, simple bars) ── */
+/* ── Profile Stats: skill / dungeon progress bars ── */
+.ps-skills-panel,
+.ps-skill-bars-grid {
+    --ps-skill-bar: #3aab3a;
+    --ps-skill-bar-max: #c9781a;
+    --ps-skill-bar-gold: #c99212;
+}
+
 .ps-skills-panel {
     font-family: Inter, ui-sans-serif, system-ui, sans-serif;
 }
 
-.ps-skills-grid {
+.ps-skill-bars-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px 22px;
+    gap: 16px 32px;
     align-items: start;
 }
 
 @media (max-width: 768px) {
-    .ps-skills-grid {
+    .ps-skill-bars-grid {
         grid-template-columns: 1fr;
+        gap: 14px;
     }
 }
 
-.ps-skill-block {
-    display: grid;
-    grid-template-columns: 40px minmax(0, 1fr);
-    column-gap: 10px;
-    row-gap: 5px;
-    align-items: start;
+.ps-skill-row {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
 }
 
-.ps-skill-block--level {
+.ps-skill-row--level {
     margin-bottom: 18px;
 }
 
-.ps-skill-icon-ring {
-    grid-column: 1;
-    grid-row: 1 / span 2;
+.ps-skill-row__label {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.4em;
+    padding-left: 38px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #e8e8e8;
+    line-height: 1.2;
+}
+
+.ps-skill-row--level .ps-skill-row__lvl {
+    color: #e6b24a;
+}
+
+.ps-skill-row__lvl {
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: #e8e8e8;
+}
+
+.ps-skill-row__bar-row {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    min-width: 0;
+}
+
+.ps-skill-row .ps-skill-icon-ring {
+    flex-shrink: 0;
     width: 40px;
     height: 40px;
-    box-sizing: border-box;
-    border-radius: 50%;
-    border: 2px solid #2eb85a;
-    background: rgba(0, 0, 0, 0.45);
+    margin-right: -15px;
+    z-index: 2;
     display: flex;
     align-items: center;
     justify-content: center;
+    box-sizing: border-box;
+    border-radius: 50%;
+    border: 2px solid var(--ps-skill-bar);
+    background: var(--ps-skill-bar);
     overflow: hidden;
-    align-self: center;
-    justify-self: center;
-    flex-shrink: 0;
 }
 
-.ps-skill-icon-ring--amber {
-    border-color: #c9952d;
-    background: rgba(0, 0, 0, 0.45);
+/* Ring + fill share accent from row modifier (beats base .ps-skill-row rules) */
+.ps-skill-row.ps-skill-row--max .ps-skill-icon-ring {
+    border-color: var(--ps-skill-bar-max);
+    background: var(--ps-skill-bar-max);
 }
 
-.ps-skill-icon-ring--max {
-    border-color: #c9781a;
-    background: rgba(0, 0, 0, 0.45);
+.ps-skill-row.ps-skill-row--gold .ps-skill-icon-ring {
+    border-color: var(--ps-skill-bar-gold);
+    background: var(--ps-skill-bar-gold);
+}
+
+.ps-skill-row .ps-skill-pill-fill {
+    background: var(--ps-skill-bar);
+}
+
+.ps-skill-row.ps-skill-row--max .ps-skill-pill-fill {
+    background: var(--ps-skill-bar-max);
+}
+
+.ps-skill-row.ps-skill-row--gold .ps-skill-pill-fill {
+    background: var(--ps-skill-bar-gold);
 }
 
 .ps-skill-icon-img {
@@ -1034,38 +1060,20 @@
     flex-shrink: 0;
 }
 
-.ps-skill-head {
-    grid-column: 2;
-    grid-row: 1;
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    gap: 0.4em;
+.ps-skill-row .ps-skill-pill {
+    flex: 1;
     min-width: 0;
-    font-size: 13px;
-    font-weight: 600;
-    color: #e8e8e8;
-    letter-spacing: 0;
-    line-height: 1.2;
-}
-
-.ps-skill-head--level .ps-skill-head-lvl {
-    color: #e6b24a;
-}
-
-.ps-skill-head-lvl {
-    font-weight: 600;
-    color: #e8e8e8;
-    font-variant-numeric: tabular-nums;
+    height: 24px;
+    position: relative;
+    border-radius: 9999px;
+    background: rgba(0, 0, 0, 0.55);
+    overflow: hidden;
 }
 
 .ps-skill-pill {
-    grid-column: 2;
-    grid-row: 2;
     position: relative;
-    height: 22px;
     border-radius: 9999px;
-    background: rgba(0, 0, 0, 0.5);
+    background: rgba(0, 0, 0, 0.55);
     overflow: hidden;
 }
 
@@ -1075,18 +1083,10 @@
     top: 0;
     bottom: 0;
     border-radius: 9999px;
-    background: #3aab3a;
+    background: var(--ps-skill-bar);
     transition: width 0.2s ease;
     min-width: 0;
     box-sizing: border-box;
-}
-
-.ps-skill-pill-fill--gold {
-    background: #c99212;
-}
-
-.ps-skill-pill-fill--max {
-    background: #c9781a;
 }
 
 .ps-skill-pill-xp {
@@ -1103,6 +1103,22 @@
     text-shadow: 0 1px 1px rgba(0, 0, 0, 0.85);
     pointer-events: none;
     padding: 0 8px;
+}
+
+.ps-skill-row .ps-skill-icon-img {
+    width: 26px;
+    height: 26px;
+    object-fit: contain;
+    object-position: center;
+}
+
+.ps-skill-row .ps-skill-icon-emoji {
+    font-size: 18px;
+    line-height: 1;
+}
+
+.ps-skill-bars-grid--dungeons {
+    margin-bottom: 24px;
 }
 
 .ps-stats-grid {
@@ -1170,50 +1186,8 @@
 }
 
 
-.dungeon-skill-bars {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 6px 24px;
-    margin-bottom: 20px;
-}
-@media (max-width: 768px) {
-    .dungeon-skill-bars { grid-template-columns: 1fr; }
-}
-
-.skill-level-selected {
-    color: #0bca51;
-}
-
 .text-gold {
     color: #FFD700 !important;
-}
-
-/* -- Dungeon summary info -- */
-.dungeon-summary {
-    margin-bottom: 24px;
-    padding: 12px 16px;
-    background: rgba(255, 255, 255, 0.03);
-    border-radius: 6px;
-    border: 1px solid rgba(255, 255, 255, 0.06);
-}
-
-.dungeon-summary-row {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 6px;
-    padding: 3px 0;
-    font-size: 13px;
-}
-
-.dungeon-stat-label {
-    color: rgba(255, 255, 255, 0.6);
-    font-weight: 600;
-}
-
-.dungeon-stat-value {
-    color: #fff;
-    font-weight: 700;
 }
 
 .dungeon-stat-note {
@@ -1250,45 +1224,90 @@
 }
 
 
+.slayer-cards-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    min-width: 0;
+}
+
+@media (min-width: 768px) {
+    .slayer-cards-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 1.25rem;
+    }
+}
+
+@media (min-width: 1280px) {
+    .slayer-cards-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
 .slayer-card {
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.10);
-    border-top: 3px solid #0bca51;
-    border-radius: 6px;
-    padding: 16px;
     display: flex;
     flex-direction: column;
-    gap: 10px;
     min-width: 0;
+    overflow: hidden;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    background: transparent;
+    box-shadow: none;
 }
 
 .slayer-header {
     display: flex;
     align-items: center;
-    gap: 8px;
-    font-weight: 700;
-    font-size: 13px;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: #fff;
+    gap: 10px;
+    padding: 14px 16px 12px;
+    border-bottom: 2px solid var(--ps-skill-bar, #3aab3a);
+}
+
+.slayer-header-icon {
+    width: 28px;
+    height: 28px;
+    object-fit: contain;
+    image-rendering: pixelated;
+    image-rendering: -moz-crisp-edges;
+    flex-shrink: 0;
+}
+
+.slayer-header-emoji {
+    font-size: 22px;
+    line-height: 1;
+    flex-shrink: 0;
 }
 
 .slayer-boss-name {
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #fff;
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.slayer-body {
+    padding: 12px 14px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    flex: 1;
 }
 
 .slayer-tiers {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px 4px;
-    justify-content: space-between;
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 6px 4px;
+    text-align: center;
 }
 
 .slayer-tier-col {
     display: flex;
     flex-direction: column;
     align-items: center;
-    flex: 1 1 52px;
     min-width: 0;
 }
 
@@ -1296,42 +1315,46 @@
     font-size: 9px;
     font-weight: 700;
     letter-spacing: 0.05em;
-    color: rgba(255, 255, 255, 0.45);
+    color: rgba(255, 255, 255, 0.42);
     text-transform: uppercase;
-    margin-bottom: 2px;
+    margin-bottom: 4px;
+    white-space: nowrap;
 }
 
 .slayer-tier-value {
-    font-size: 14px;
+    font-size: 15px;
     font-weight: 700;
     color: #fff;
     font-variant-numeric: tabular-nums;
+    line-height: 1.1;
 }
 
 .slayer-level-label {
     text-align: center;
     font-size: 12px;
-    color: rgba(255, 255, 255, 0.6);
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.55);
 }
 
 .slayer-xp-bar-track {
     position: relative;
-    height: 20px;
-    background: rgba(255, 170, 0, 0.15);
-    border-radius: 4px;
+    height: 26px;
+    margin-top: auto;
+    background: rgba(255, 255, 255, 0.04);
     overflow: hidden;
 }
 
 .slayer-xp-bar-fill {
-    height: 100%;
-    background: #c99212;
-    border-radius: 4px;
-    transition: width 0.5s ease;
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    background: var(--ps-skill-bar, #3aab3a);
+    transition: width 0.35s ease;
 }
 
-.slayer-xp-bar-fill.bar-maxed {
-    background: #0b9d45;
-    width: 100% !important;
+.slayer-xp-bar-fill--max {
+    background: var(--ps-skill-bar-max, #c9781a);
 }
 
 .slayer-xp-bar-text {
@@ -1340,11 +1363,13 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 600;
-    color: #fff;
-    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.55);
+    color: rgba(255, 255, 255, 0.95);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85);
     font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    padding: 0 8px;
 }
 
 .dungeon-floor-master {
@@ -1438,10 +1463,10 @@ details[open] > .dungeon-details-toggle::before {
 
 
 .collection-category {
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.10);
-    border-radius: 6px;
-    padding: 14px;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    padding: 0;
 }
 
 .collection-category-header {
@@ -1491,7 +1516,8 @@ details[open] > .dungeon-details-toggle::before {
     gap: 12px;
     padding: 10px 14px;
     border-radius: 8px;
-    background: #1a1a1a;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    background: rgba(255, 255, 255, 0.03);
 }
 
 .collection-row-card--locked {

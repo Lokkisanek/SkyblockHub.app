@@ -4,6 +4,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head } from '@inertiajs/vue3';
 import { useI18n } from '@/strings/useI18n';
 import { preloadAllTextures, setEnabledPacks, getSkinUrl, getHeadUrl, getRarityColor, getItemTextureUrl, RARITY_COLORS, SKILL_ICONS, SLAYER_ICONS, CLASS_ICONS } from '@/utils/textures';
+import { DASHBOARD_SLAYER_ICON_ITEMS } from '@/lib/dashboardProfileIcons';
 import ItemSlot from '@/Components/SkyBlock/ItemSlot.vue';
 import InventoryGrid from '@/Components/SkyBlock/InventoryGrid.vue';
 import PackSelector from '@/Components/SkyBlock/PackSelector.vue';
@@ -246,9 +247,6 @@ const allSkills = computed(() => {
         .map(n => ({ name: n, ...currentData.value.skills[n] }));
 });
 
-const leftSkills = computed(() => allSkills.value.filter((_, i) => i % 2 === 0));
-const rightSkills = computed(() => allSkills.value.filter((_, i) => i % 2 === 1));
-
 // ── Gear: Armor stats sum ───────────────────────────────
 const armorStats = computed(() => {
     const armor = currentData.value?.armor ?? [];
@@ -393,6 +391,17 @@ function formatSlayerXP(slayer) {
     return `${Number(lvl.xpCurrent).toLocaleString()} / ${Number(lvl.xpForNext).toLocaleString()} ${t('profileStats.xp')}`;
 }
 
+function slayerTextureUrl(key) {
+    const item = DASHBOARD_SLAYER_ICON_ITEMS[key];
+    return item ? getItemTextureUrl(item) : null;
+}
+
+function slayerBarFillClass(slayer) {
+    const lvl = slayer.level;
+    if (lvl?.currentLevel >= lvl?.maxLevel) return 'slayer-xp-bar-fill--max';
+    return '';
+}
+
 /* ── Formatting helpers ──────────────────────────────────── */
 function fNum(num, decimals = 2) {
     if (num === null || num === undefined) return '—';
@@ -404,8 +413,26 @@ function fNum(num, decimals = 2) {
     return num.toFixed(decimals);
 }
 
+/** In-game level caps (API may still expose a higher maxLevel). */
+const SKILL_LEVEL_CAPS = {
+    alchemy: 50,
+};
+
+function skillLevelCap(skill) {
+    return SKILL_LEVEL_CAPS[skill.name] ?? skill.maxLevel;
+}
+
+function skillIsMaxed(skill) {
+    return skill.level >= skillLevelCap(skill);
+}
+
+function skillBarProgress(skill) {
+    if (skillIsMaxed(skill)) return 1;
+    return skill.progress ?? 0;
+}
+
 function formatXP(skill) {
-    if (skill.level >= skill.maxLevel) return `${fNum(skill.xp)} ${t('profileStats.xp')}`;
+    if (skillIsMaxed(skill)) return `${fNum(skill.xp)} ${t('profileStats.xp')}`;
     return `${fNum(skill.xpCurrent)} / ${fNum(skill.xpForNext)} ${t('profileStats.xp')}`;
 }
 
@@ -427,6 +454,19 @@ const SKILL_TEXTURE_PATHS = {
 
 const SB_LEVEL_TEXTURE_ITEM = { texture_path: '/item/experience_bottle' };
 
+/** Dungeon class / catacombs icons (2-col grid, screenshot layout). */
+const DUNGEON_TEXTURE_PATHS = {
+    catacombs: '/item/skull',
+    healer: '/item/potion',
+    mage: '/item/blaze_rod',
+    berserk: '/item/diamond_sword',
+    archer: '/item/bow',
+    tank: '/item/iron_chestplate',
+};
+
+/** Row-major 2-column order: L Catacombs, Berserk, Mage | R Archer, Healer, Tank */
+const DUNGEON_DISPLAY_ORDER = ['catacombs', 'archer', 'berserk', 'healer', 'mage', 'tank'];
+
 function skillTextureItem(skillName) {
     const path = SKILL_TEXTURE_PATHS[skillName];
     return path ? { texture_path: path } : null;
@@ -436,9 +476,14 @@ function skillTextureUrl(skillName) {
     return getItemTextureUrl(skillTextureItem(skillName));
 }
 
-/** Pill fill modifier classes for the Skills tab (green in progress, orange when maxed — matches in-game list UI). */
-function skillPillFillClass(skill) {
-    if (skill.level >= skill.maxLevel) return 'ps-skill-pill-fill--max';
+/** Row accent matches pill + icon ring (green default, orange max, gold SB level). */
+function skillRowAccentClass(skill) {
+    if (skillIsMaxed(skill)) return 'ps-skill-row--max';
+    return '';
+}
+
+function dungeonRowAccentClass(row) {
+    if (row.level >= row.maxLevel) return 'ps-skill-row--max';
     return '';
 }
 
@@ -481,35 +526,44 @@ function formatDungeonClassXP(cls) {
     return `${fNum(cls.xpCurrent)} / ${fNum(cls.xpForNext)} ${t('profileStats.xp')}`;
 }
 
-function dungeonLevelClass(level) {
-    if (!level) return '';
-    if (level.level >= (level.maxLevel || 50)) return 'skill-level-max';
-    if (level.level >= 40) return 'skill-level-gold';
-    return '';
+function dungeonTextureUrl(key) {
+    const path = DUNGEON_TEXTURE_PATHS[key];
+    return path ? getItemTextureUrl({ texture_path: path }) : null;
 }
 
-function dungeonBarClass(level) {
-    if (!level) return '';
-    if (level.level >= (level.maxLevel || 50)) return 'skill-bar-fill-max';
-    if (level.level >= 40) return 'skill-bar-fill-gold';
-    return '';
-}
+const dungeonDisplayRows = computed(() => {
+    const dungeons = currentData.value?.dungeons;
+    if (!dungeons) return [];
 
-function dungeonClassLevelClass(cls, name) {
-    if (!cls) return '';
-    const selected = currentData.value?.dungeons?.selected_class === name;
-    if (cls.level >= (cls.maxLevel || 50)) return 'skill-level-max';
-    if (cls.level >= 40) return 'skill-level-gold';
-    if (selected) return 'skill-level-selected';
-    return '';
-}
+    return DUNGEON_DISPLAY_ORDER.flatMap((key) => {
+        if (key === 'catacombs') {
+            const level = dungeons.catacombs?.level;
+            if (!level) return [];
+            const maxLevel = level.maxLevel || 50;
+            const lvl = level.level ?? 0;
+            return [{
+                key,
+                name: t('profileStats.catacombs'),
+                level: lvl,
+                maxLevel,
+                progress: level.progress ?? 0,
+                xpLabel: formatDungeonXP(level),
+            }];
+        }
 
-function dungeonClassBarClass(cls) {
-    if (!cls) return '';
-    if (cls.level >= (cls.maxLevel || 50)) return 'skill-bar-fill-max';
-    if (cls.level >= 40) return 'skill-bar-fill-gold';
-    return '';
-}
+        const cls = dungeons.classes?.[key];
+        if (!cls) return [];
+        const maxLevel = cls.maxLevel || 50;
+        return [{
+            key,
+            name: capitalize(key),
+            level: cls.level,
+            maxLevel,
+            progress: cls.progress ?? 0,
+            xpLabel: formatDungeonClassXP(cls),
+        }];
+    });
+});
 
 const allClassesMaxed = computed(() => {
     const classes = currentData.value?.dungeons?.classes;
@@ -890,16 +944,18 @@ onMounted(async () => {
                     <!-- ═══════════════════════════════════════════════════ -->
                     <div v-if="activeTab === 'inventory'" class="profile-inventory">
                         <!-- Inventory sub-tab headers -->
-                        <div class="inv-tabs">
+                        <div class="profile-pill-group mb-4" role="tablist" :aria-label="t('profileStats.tabInventory')">
                             <button
                                 v-for="subTab in inventorySubTabs"
                                 :key="subTab.id"
                                 type="button"
+                                role="tab"
+                                :aria-selected="activeInventorySubTab === subTab.id"
                                 @click="activeInventorySubTab = subTab.id; expandedBackpack = null; expandedEnderPage = null; expandedRiftEnderPage = null"
-                                class="inv-tab"
-                                :class="{ 'active-tab': activeInventorySubTab === subTab.id }"
+                                class="profile-pill-btn profile-pill-btn--icon"
+                                :class="{ 'profile-pill-btn--active': activeInventorySubTab === subTab.id }"
                             >
-                                <img v-if="subTab.icon" :src="subTab.icon" class="inv-tab-icon" loading="lazy" alt="" />
+                                <img v-if="subTab.icon" :src="subTab.icon" class="profile-pill-icon" loading="lazy" alt="" />
                                 <span>{{ subTab.name }}</span>
                             </button>
                         </div>
@@ -1223,90 +1279,66 @@ onMounted(async () => {
 
                             <div class="flex-1 min-w-0 ps-skills-panel">
                                 <!-- SkyBlock Level (full width) -->
-                                <div v-if="currentData?.skyblock_level" class="ps-skill-block ps-skill-block--level">
-                                    <div class="ps-skill-icon-ring ps-skill-icon-ring--amber">
-                                        <img
-                                            v-if="getItemTextureUrl(SB_LEVEL_TEXTURE_ITEM)"
-                                            :src="getItemTextureUrl(SB_LEVEL_TEXTURE_ITEM)"
-                                            class="ps-skill-icon-img"
-                                            alt=""
-                                            loading="lazy"
-                                            draggable="false"
-                                        />
-                                        <span v-else class="ps-skill-icon-emoji" aria-hidden="true">✫</span>
-                                    </div>
-                                    <div class="ps-skill-head ps-skill-head--level">
+                                <div
+                                    v-if="currentData?.skyblock_level"
+                                    class="ps-skill-row ps-skill-row--level ps-skill-row--gold"
+                                >
+                                    <div class="ps-skill-row__label">
                                         {{ t('profileStats.level') }}
-                                        <span class="ps-skill-head-lvl">{{ currentData.skyblock_level.level }}</span>
+                                        <span class="ps-skill-row__lvl">{{ currentData.skyblock_level.level }}</span>
                                     </div>
-                                    <div class="ps-skill-pill">
-                                        <div
-                                            class="ps-skill-pill-fill ps-skill-pill-fill--gold"
-                                            :style="{ width: (currentData.skyblock_level.progress * 100) + '%' }"
-                                        />
-                                        <span class="ps-skill-pill-xp">{{ formatSkyblockLevelXP(currentData.skyblock_level) }}</span>
+                                    <div class="ps-skill-row__bar-row">
+                                        <div class="ps-skill-icon-ring">
+                                            <img
+                                                v-if="getItemTextureUrl(SB_LEVEL_TEXTURE_ITEM)"
+                                                :src="getItemTextureUrl(SB_LEVEL_TEXTURE_ITEM)"
+                                                class="ps-skill-icon-img"
+                                                alt=""
+                                                loading="lazy"
+                                                draggable="false"
+                                            />
+                                            <span v-else class="ps-skill-icon-emoji" aria-hidden="true">✫</span>
+                                        </div>
+                                        <div class="ps-skill-pill">
+                                            <div
+                                                class="ps-skill-pill-fill"
+                                                :style="{ width: (currentData.skyblock_level.progress * 100) + '%' }"
+                                            />
+                                            <span class="ps-skill-pill-xp">{{ formatSkyblockLevelXP(currentData.skyblock_level) }}</span>
+                                        </div>
                                     </div>
                                 </div>
 
-                                <div class="skills-grid ps-skills-grid">
-                                    <div v-for="skill in leftSkills" :key="skill.name" class="ps-skill-block">
-                                        <div
-                                            class="ps-skill-icon-ring"
-                                            :class="{
-                                                'ps-skill-icon-ring--max': skill.level >= skill.maxLevel,
-                                            }"
-                                        >
-                                            <img
-                                                v-if="skillTextureUrl(skill.name)"
-                                                :src="skillTextureUrl(skill.name)"
-                                                class="ps-skill-icon-img"
-                                                alt=""
-                                                loading="lazy"
-                                                draggable="false"
-                                            />
-                                            <span v-else class="ps-skill-icon-emoji" aria-hidden="true">{{ SKILL_ICONS[skill.name] || '❓' }}</span>
-                                        </div>
-                                        <div class="ps-skill-head">
+                                <div class="ps-skill-bars-grid">
+                                    <div
+                                        v-for="skill in allSkills"
+                                        :key="skill.name"
+                                        class="ps-skill-row"
+                                        :class="skillRowAccentClass(skill)"
+                                    >
+                                        <div class="ps-skill-row__label">
                                             {{ capitalize(skill.name) }}
-                                            <span class="ps-skill-head-lvl">{{ skill.level >= skill.maxLevel ? skill.maxLevel : skill.level }}</span>
+                                            <span class="ps-skill-row__lvl">{{ skillIsMaxed(skill) ? skillLevelCap(skill) : skill.level }}</span>
                                         </div>
-                                        <div class="ps-skill-pill">
-                                            <div
-                                                class="ps-skill-pill-fill"
-                                                :class="skillPillFillClass(skill)"
-                                                :style="{ width: (skill.level >= skill.maxLevel ? 100 : skill.progress * 100) + '%' }"
-                                            />
-                                            <span class="ps-skill-pill-xp">{{ formatXP(skill) }}</span>
-                                        </div>
-                                    </div>
-                                    <div v-for="skill in rightSkills" :key="skill.name" class="ps-skill-block">
-                                        <div
-                                            class="ps-skill-icon-ring"
-                                            :class="{
-                                                'ps-skill-icon-ring--max': skill.level >= skill.maxLevel,
-                                            }"
-                                        >
-                                            <img
-                                                v-if="skillTextureUrl(skill.name)"
-                                                :src="skillTextureUrl(skill.name)"
-                                                class="ps-skill-icon-img"
-                                                alt=""
-                                                loading="lazy"
-                                                draggable="false"
-                                            />
-                                            <span v-else class="ps-skill-icon-emoji" aria-hidden="true">{{ SKILL_ICONS[skill.name] || '❓' }}</span>
-                                        </div>
-                                        <div class="ps-skill-head">
-                                            {{ capitalize(skill.name) }}
-                                            <span class="ps-skill-head-lvl">{{ skill.level >= skill.maxLevel ? skill.maxLevel : skill.level }}</span>
-                                        </div>
-                                        <div class="ps-skill-pill">
-                                            <div
-                                                class="ps-skill-pill-fill"
-                                                :class="skillPillFillClass(skill)"
-                                                :style="{ width: (skill.level >= skill.maxLevel ? 100 : skill.progress * 100) + '%' }"
-                                            />
-                                            <span class="ps-skill-pill-xp">{{ formatXP(skill) }}</span>
+                                        <div class="ps-skill-row__bar-row">
+                                            <div class="ps-skill-icon-ring">
+                                                <img
+                                                    v-if="skillTextureUrl(skill.name)"
+                                                    :src="skillTextureUrl(skill.name)"
+                                                    class="ps-skill-icon-img"
+                                                    alt=""
+                                                    loading="lazy"
+                                                    draggable="false"
+                                                />
+                                                <span v-else class="ps-skill-icon-emoji" aria-hidden="true">{{ SKILL_ICONS[skill.name] || '❓' }}</span>
+                                            </div>
+                                            <div class="ps-skill-pill">
+                                                <div
+                                                    class="ps-skill-pill-fill"
+                                                    :style="{ width: (skillBarProgress(skill) * 100) + '%' }"
+                                                />
+                                                <span class="ps-skill-pill-xp">{{ formatXP(skill) }}</span>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -1337,37 +1369,58 @@ onMounted(async () => {
                                 {{ t('profileStats.totalSlayerXP') }} <b class="text-white">{{ Number(slayerData.total_slayer_xp).toLocaleString() }}</b>
                             </div>
 
-                            <div class="grid grid-cols-1 gap-3 min-w-0 md:grid-cols-2 md:gap-4 lg:grid-cols-3">
-                                <div v-for="(slayer, key) in slayerData.slayers" :key="key"
-                                     class="slayer-card">
-                                    <!-- Header: icon + boss name -->
+                            <div class="slayer-cards-grid">
+                                <div
+                                    v-for="(slayer, key) in slayerData.slayers"
+                                    :key="key"
+                                    class="slayer-card"
+                                >
                                     <div class="slayer-header">
-                                        <span class="text-lg">{{ SLAYER_ICONS[key] || '💀' }}</span>
+                                        <img
+                                            v-if="slayerTextureUrl(key)"
+                                            :src="slayerTextureUrl(key)"
+                                            class="slayer-header-icon"
+                                            alt=""
+                                            loading="lazy"
+                                            draggable="false"
+                                        />
+                                        <span v-else class="slayer-header-emoji" aria-hidden="true">{{ SLAYER_ICONS[key] || '💀' }}</span>
                                         <span class="slayer-boss-name">{{ slayer.name }}</span>
                                     </div>
 
-                                    <!-- Tier kills table -->
-                                    <div class="slayer-tiers">
-                                        <div v-for="tier in slayerMaxTier(key)" :key="tier" class="slayer-tier-col">
-                                            <span class="slayer-tier-label">{{ t('profileStats.tier') }} {{ romanNumeral(tier) }}</span>
-                                            <span class="slayer-tier-value">{{ (slayer.kills?.[tier] ?? 0).toLocaleString() }}</span>
+                                    <div class="slayer-body">
+                                        <div class="slayer-tiers">
+                                            <div
+                                                v-for="tier in slayerMaxTier(key)"
+                                                :key="tier"
+                                                class="slayer-tier-col"
+                                            >
+                                                <span class="slayer-tier-label">{{ t('profileStats.tier') }} {{ romanNumeral(tier) }}</span>
+                                                <span class="slayer-tier-value">{{ (slayer.kills?.[tier] ?? 0).toLocaleString() }}</span>
+                                            </div>
+                                            <div class="slayer-tier-col">
+                                                <span class="slayer-tier-label">{{ t('profileStats.total') }}</span>
+                                                <span class="slayer-tier-value">{{ (slayer.total_kills ?? 0).toLocaleString() }}</span>
+                                            </div>
                                         </div>
-                                        <div class="slayer-tier-col">
-                                            <span class="slayer-tier-label">{{ t('profileStats.total') }}</span>
-                                            <span class="slayer-tier-value">{{ (slayer.total_kills ?? 0).toLocaleString() }}</span>
+
+                                        <div class="slayer-level-label">
+                                            {{ capitalize(key) }} {{ t('profileStats.level') }} {{ slayer.level?.currentLevel ?? 0 }}
                                         </div>
                                     </div>
 
-                                    <!-- Level label -->
-                                    <div class="slayer-level-label">
-                                        {{ capitalize(key) }} {{ t('profileStats.level') }} {{ slayer.level?.currentLevel ?? 0 }}
-                                    </div>
-
-                                    <!-- XP progress bar -->
                                     <div class="slayer-xp-bar-track">
-                                        <div class="slayer-xp-bar-fill"
-                                             :class="slayer.level?.currentLevel >= slayer.level?.maxLevel ? 'bar-maxed' : ''"
-                                             :style="{ width: ((slayer.level?.progress ?? 0) * 100) + '%' }"></div>
+                                        <div
+                                            class="slayer-xp-bar-fill"
+                                            :class="slayerBarFillClass(slayer)"
+                                            :style="{
+                                                width: (
+                                                    slayer.level?.currentLevel >= slayer.level?.maxLevel
+                                                        ? 100
+                                                        : (slayer.level?.progress ?? 0) * 100
+                                                ) + '%',
+                                            }"
+                                        />
                                         <span class="slayer-xp-bar-text">{{ formatSlayerXP(slayer) }}</span>
                                     </div>
                                 </div>
@@ -1380,68 +1433,72 @@ onMounted(async () => {
                     <!--  DUNGEONS TAB                                      -->
                     <!-- ═══════════════════════════════════════════════════ -->
                     <div v-if="activeTab === 'dungeons'">
-                        <div v-if="currentData?.dungeons && Object.keys(currentData.dungeons).length > 0">
-                            <!-- ── Catacombs + Classes skill bars (SkyBlock UI style) ── -->
-                            <div class="dungeon-skill-bars">
-                                <!-- Catacombs main level -->
-                                <div class="skill-row">
-                                    <div class="skill-label">
-                                        <span class="skill-icon">💀</span>
-                                        <span class="skill-name">{{ t('profileStats.catacombs') }}</span>
-                                        <span class="skill-level" :class="dungeonLevelClass(currentData.dungeons.catacombs?.level)">
-                                            {{ currentData.dungeons.catacombs?.level?.level ?? 0 }}
-                                        </span>
-                                    </div>
-                                    <div class="skill-bar-track">
-                                        <div class="skill-bar-fill"
-                                             :class="dungeonBarClass(currentData.dungeons.catacombs?.level)"
-                                             :style="{ width: ((currentData.dungeons.catacombs?.level?.progress ?? 0) * 100) + '%' }"></div>
-                                        <span class="skill-bar-text">{{ formatDungeonXP(currentData.dungeons.catacombs?.level) }}</span>
-                                    </div>
-                                </div>
-
-                                <!-- Class skill bars -->
-                                <template v-for="(cls, name) in currentData.dungeons.classes" :key="name">
-                                    <div class="skill-row">
-                                        <div class="skill-label">
-                                            <span class="skill-icon">{{ CLASS_ICONS[name] || '🎮' }}</span>
-                                            <span class="skill-name">{{ capitalize(name) }}</span>
-                                            <span class="skill-level" :class="dungeonClassLevelClass(cls, name)">
-                                                {{ cls.level }}
-                                            </span>
-                                        </div>
-                                        <div class="skill-bar-track">
-                                            <div class="skill-bar-fill"
-                                                 :class="dungeonClassBarClass(cls)"
-                                                 :style="{ width: (cls.level >= 50 ? 100 : cls.progress * 100) + '%' }"></div>
-                                            <span class="skill-bar-text">{{ formatDungeonClassXP(cls) }}</span>
-                                        </div>
-                                    </div>
-                                </template>
-                            </div>
-
+                        <div v-if="currentData?.dungeons && Object.keys(currentData.dungeons).length > 0" class="ps-skills-panel">
                             <!-- ── Dungeon summary info ── -->
-                            <div class="dungeon-summary">
-                                <div class="dungeon-summary-row">
-                                    <span class="dungeon-stat-label">{{ t('profileStats.selectedClass') }}</span>
-                                    <span class="dungeon-stat-value">{{ capitalize(currentData.dungeons.selected_class || t('profileStats.none')) }}</span>
+                            <dl class="profile-stat-strip profile-stat-strip--summary profile-stat-strip--dungeons">
+                                <div class="profile-stat-cell">
+                                    <dt>{{ t('profileStats.selectedClass') }}</dt>
+                                    <dd>{{ capitalize(currentData.dungeons.selected_class || t('profileStats.none')) }}</dd>
                                 </div>
-                                <div class="dungeon-summary-row">
-                                    <span class="dungeon-stat-label" :class="{ 'text-gold': allClassesMaxed }">{{ t('profileStats.classAverage') }}</span>
-                                    <span class="dungeon-stat-value" :class="{ 'text-gold': allClassesMaxed }">{{ currentData.dungeons.class_average?.toFixed(2) ?? '0.00' }}</span>
+                                <div class="profile-stat-cell">
+                                    <dt :class="{ 'text-gold': allClassesMaxed }">{{ t('profileStats.classAverage') }}</dt>
+                                    <dd :class="{ 'text-gold': allClassesMaxed }">{{ currentData.dungeons.class_average?.toFixed(2) ?? '0.00' }}</dd>
                                 </div>
-                                <div class="dungeon-summary-row">
-                                    <span class="dungeon-stat-label" :class="{ 'text-gold': currentData.dungeons.highest_floor === 7 }">{{ t('profileStats.highestFloorNormal') }}</span>
-                                    <span class="dungeon-stat-value" :class="{ 'text-gold': currentData.dungeons.highest_floor === 7 }">{{ currentData.dungeons.highest_floor !== null ? currentData.dungeons.highest_floor : '—' }}</span>
+                                <div class="profile-stat-cell">
+                                    <dt :class="{ 'text-gold': currentData.dungeons.highest_floor === 7 }">{{ t('profileStats.highestFloorNormal') }}</dt>
+                                    <dd :class="{ 'text-gold': currentData.dungeons.highest_floor === 7 }">
+                                        {{ currentData.dungeons.highest_floor !== null ? currentData.dungeons.highest_floor : '—' }}
+                                    </dd>
                                 </div>
-                                <div v-if="currentData.dungeons.highest_master !== null" class="dungeon-summary-row">
-                                    <span class="dungeon-stat-label" :class="{ 'text-gold': currentData.dungeons.highest_master === 7 }">{{ t('profileStats.highestFloorMaster') }}</span>
-                                    <span class="dungeon-stat-value" :class="{ 'text-gold': currentData.dungeons.highest_master === 7 }">{{ currentData.dungeons.highest_master }}</span>
+                                <div v-if="currentData.dungeons.highest_master !== null" class="profile-stat-cell">
+                                    <dt :class="{ 'text-gold': currentData.dungeons.highest_master === 7 }">{{ t('profileStats.highestFloorMaster') }}</dt>
+                                    <dd :class="{ 'text-gold': currentData.dungeons.highest_master === 7 }">{{ currentData.dungeons.highest_master }}</dd>
                                 </div>
-                                <div class="dungeon-summary-row">
-                                    <span class="dungeon-stat-label">{{ t('profileStats.secretsFound') }}</span>
-                                    <span class="dungeon-stat-value">{{ (currentData.dungeons.secrets_found ?? 0).toLocaleString() }}</span>
-                                    <span class="dungeon-stat-note">({{ currentData.dungeons.secrets_per_run ?? 0 }} {{ t('profileStats.secretsPerRun') }})</span>
+                                <div class="profile-stat-cell">
+                                    <dt>{{ t('profileStats.secretsFound') }}</dt>
+                                    <dd>
+                                        {{ (currentData.dungeons.secrets_found ?? 0).toLocaleString() }}
+                                        <span class="profile-stat-meta">
+                                            ({{ currentData.dungeons.secrets_per_run ?? 0 }} {{ t('profileStats.secretsPerRun') }})
+                                        </span>
+                                    </dd>
+                                </div>
+                            </dl>
+
+                            <!-- ── Catacombs + class levels (2-col grid, screenshot layout) ── -->
+                            <div v-if="dungeonDisplayRows.length" class="ps-skill-bars-grid ps-skill-bars-grid--dungeons">
+                                <div
+                                    v-for="row in dungeonDisplayRows"
+                                    :key="row.key"
+                                    class="ps-skill-row"
+                                    :class="dungeonRowAccentClass(row)"
+                                >
+                                    <div class="ps-skill-row__label">
+                                        {{ row.name }}
+                                        <span class="ps-skill-row__lvl">{{ row.level >= row.maxLevel ? row.maxLevel : row.level }}</span>
+                                    </div>
+                                    <div class="ps-skill-row__bar-row">
+                                        <div class="ps-skill-icon-ring">
+                                            <img
+                                                v-if="dungeonTextureUrl(row.key)"
+                                                :src="dungeonTextureUrl(row.key)"
+                                                class="ps-skill-icon-img"
+                                                alt=""
+                                                loading="lazy"
+                                                draggable="false"
+                                            />
+                                            <span v-else class="ps-skill-icon-emoji" aria-hidden="true">{{ CLASS_ICONS[row.key] || '💀' }}</span>
+                                        </div>
+                                        <div class="ps-skill-pill">
+                                            <div
+                                                class="ps-skill-pill-fill"
+                                                :style="{
+                                                    width: (row.level >= row.maxLevel ? 100 : row.progress * 100) + '%',
+                                                }"
+                                            />
+                                            <span class="ps-skill-pill-xp">{{ row.xpLabel }}</span>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 

@@ -221,7 +221,8 @@ final class GuildCrawlService
             return [];
         }
 
-        $parts = preg_split('/\s*,\s*/', trim($optionValue)) ?: [];
+        $normalized = str_replace(["\r\n", "\r"], "\n", trim($optionValue));
+        $parts = preg_split('/[\n,]+/', $normalized) ?: [];
 
         return array_values(array_filter(array_map('trim', $parts), static fn (string $n): bool => $n !== ''));
     }

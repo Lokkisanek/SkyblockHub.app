@@ -986,7 +986,11 @@ class HypixelProfileController extends Controller
             $key = 'SKILL_'.strtoupper($name);
             $xp = $experience[$key] ?? 0;
 
-            $maxLevel = in_array($name, ['runecrafting', 'social', 'hunting']) ? 25 : 60;
+            $maxLevel = match ($name) {
+                'runecrafting', 'social', 'hunting' => 25,
+                'alchemy' => 50,
+                default => 60,
+            };
             $detail = $this->xpToLevelDetailed($xp, self::SKILL_XP_TABLE, $maxLevel);
 
             $skills[$name] = [
