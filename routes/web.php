@@ -3,6 +3,7 @@
 use App\Http\Controllers\BazaarController;
 use App\Http\Controllers\BinSniperController;
 use App\Http\Controllers\AdminGuildCrawlController;
+use App\Http\Controllers\AdminOperationsController;
 use App\Http\Controllers\AnaliticsController;
 use App\Http\Controllers\CookieConsentController;
 use App\Http\Controllers\CraftingArbitrageController;
@@ -112,6 +113,9 @@ Route::middleware('auth')->group(function () {
             ->name('admin.guild-crawl.start');
         Route::post('/admin/guild-crawl/cancel', [AdminGuildCrawlController::class, 'cancel'])
             ->name('admin.guild-crawl.cancel');
+
+        Route::post('/admin/operations/refresh-hypixel', [AdminOperationsController::class, 'refreshHypixelHealth'])
+            ->name('admin.operations.refresh-hypixel');
 
         Route::get('/dungeon-party', [DungeonPartyController::class, 'index'])->name('dungeon-party');
         Route::post('/dungeon-party', [DungeonPartyController::class, 'store'])->name('dungeon-party.store');

@@ -1,16 +1,16 @@
 <script setup>
+import AdminOperationsPanel from '@/Components/Admin/AdminOperationsPanel.vue';
 import GuildCrawlPanel from '@/Components/Admin/GuildCrawlPanel.vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, router } from '@inertiajs/vue3';
 import { computed } from 'vue';
-import { Doughnut, Line } from 'vue-chartjs';
+import { Line } from 'vue-chartjs';
 import {
     CategoryScale,
     Chart as ChartJS,
     Filler,
     Legend,
     LinearScale,
-    ArcElement,
     LineElement,
     PointElement,
     Tooltip,
@@ -21,7 +21,6 @@ ChartJS.register(
     LinearScale,
     PointElement,
     LineElement,
-    ArcElement,
     Tooltip,
     Legend,
     Filler,
@@ -34,31 +33,27 @@ const props = defineProps({
     eventCounts: { type: Object, default: () => ({}) },
     dailyLabels: { type: Array, default: () => [] },
     dailySeries: { type: Object, default: () => ({}) },
-    topCtas: { type: Object, default: () => ({}) },
-    topSources: { type: Object, default: () => ({}) },
     onboardingExperimentVariants: { type: Array, default: () => [] },
     aiSummary: { type: Object, default: () => ({}) },
+    operations: { type: Object, default: () => ({}) },
     guildCrawl: { type: Object, default: () => ({}) },
 });
 
 const dayOptions = [7, 30, 90];
 
 const eventOrder = [
-    'landing_cta_click',
     'onboarding_view',
     'onboarding_step_complete',
     'onboarding_dismiss',
 ];
 
 const eventTitles = {
-    landing_cta_click: 'Landing CTA Click',
-    onboarding_view: 'Onboarding View',
-    onboarding_step_complete: 'Onboarding Step Complete',
-    onboarding_dismiss: 'Onboarding Dismiss',
+    onboarding_view: 'Onboarding view',
+    onboarding_step_complete: 'Step complete',
+    onboarding_dismiss: 'Dismiss',
 };
 
 const eventColors = {
-    landing_cta_click: '#60A5FA',
     onboarding_view: '#A78BFA',
     onboarding_step_complete: '#34D399',
     onboarding_dismiss: '#F59E0B',
@@ -125,36 +120,6 @@ const volumeChart = computed(() => {
         },
     };
 });
-
-
-const ctaChart = computed(() => {
-    const labels = Object.keys(props.topCtas || {});
-    const values = Object.values(props.topCtas || {}).map((v) => Number(v || 0));
-
-    return {
-        data: {
-            labels,
-            datasets: [
-                {
-                    data: values,
-                    backgroundColor: ['#60A5FA', '#A78BFA', '#F472B6', '#22C55E', '#F59E0B', '#38BDF8', '#94A3B8', '#FB7185'],
-                    borderColor: '#0f172a',
-                    borderWidth: 2,
-                },
-            ],
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: 'bottom',
-                    labels: { color: '#d4d8e3', boxWidth: 12 },
-                },
-            },
-        },
-    };
-});
 </script>
 
 <template>
@@ -165,10 +130,10 @@ const ctaChart = computed(() => {
             <div class="mx-auto max-w-7xl">
                 <section class="hero-card mb-6">
                     <div>
-                        <p class="hero-kicker">Admin Intelligence</p>
-                        <h1 class="hero-title">Admin Command Center</h1>
+                        <p class="hero-kicker">Admin</p>
+                        <h1 class="hero-title">Operations &amp; product</h1>
                         <p class="hero-copy">
-                            Firemni growth dashboard pro rozhodovani nad aktivaci, onboardingem a engagementem.
+                            Hypixel API, profile ingest, guild crawl, leaderboard coverage, and onboarding metrics.
                         </p>
                         <p class="mt-3 text-xs uppercase tracking-[0.18em] text-white/45">Owner: {{ owner }}</p>
                     </div>
@@ -186,62 +151,52 @@ const ctaChart = computed(() => {
                     </div>
                 </section>
 
+                <AdminOperationsPanel :operations="operations" />
+
                 <GuildCrawlPanel :initial="guildCrawl" />
 
-                <section class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-                    <article class="kpi-card">
-                        <p class="kpi-label">Total Events</p>
-                        <p class="kpi-value">{{ numberFmt(kpis.totalEvents) }}</p>
-                    </article>
-                    <article class="kpi-card">
-                        <p class="kpi-label">Unique Users</p>
-                        <p class="kpi-value">{{ numberFmt(kpis.uniqueUsers) }}</p>
-                    </article>
-                    <article class="kpi-card">
-                        <p class="kpi-label">Unique Sessions</p>
-                        <p class="kpi-value">{{ numberFmt(kpis.uniqueSessions) }}</p>
-                    </article>
-                    <article class="kpi-card">
-                        <p class="kpi-label">CTA Clicks</p>
-                        <p class="kpi-value">{{ numberFmt(kpis.landingCtaClicks) }}</p>
-                    </article>
-                    <article class="kpi-card">
-                        <p class="kpi-label">Onboarding Views</p>
-                        <p class="kpi-value">{{ numberFmt(eventCounts?.onboarding_view || 0) }}</p>
-                    </article>
-                    <article class="kpi-card">
-                        <p class="kpi-label">Onboarding Completion</p>
-                        <p class="kpi-value">{{ safeRate(kpis.onboardingCompletionRatePct) }}</p>
-                    </article>
+                <section class="mt-6">
+                    <header class="admin-section-head">
+                        <h2 class="admin-section-title">Onboarding analytics</h2>
+                        <p class="admin-section-sub">Funnel events in the selected period ({{ rangeDays }}d)</p>
+                    </header>
+
+                    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                        <article class="kpi-card">
+                            <p class="kpi-label">Onboarding events</p>
+                            <p class="kpi-value">{{ numberFmt(kpis.totalEvents) }}</p>
+                        </article>
+                        <article class="kpi-card">
+                            <p class="kpi-label">Unique users</p>
+                            <p class="kpi-value">{{ numberFmt(kpis.uniqueUsers) }}</p>
+                        </article>
+                        <article class="kpi-card">
+                            <p class="kpi-label">Onboarding views</p>
+                            <p class="kpi-value">{{ numberFmt(eventCounts?.onboarding_view || 0) }}</p>
+                        </article>
+                        <article class="kpi-card">
+                            <p class="kpi-label">Completion rate</p>
+                            <p class="kpi-value">{{ safeRate(kpis.onboardingCompletionRatePct) }}</p>
+                        </article>
+                    </div>
                 </section>
 
-                <section class="mt-6 grid gap-6 lg:grid-cols-2">
+                <section class="mt-6">
                     <article class="panel-card">
                         <header class="panel-head">
-                            <h2>Event Volume Trend</h2>
-                            <p>Daily timeline across tracked growth events</p>
+                            <h2>Onboarding event trend</h2>
+                            <p>Daily views, completions, and dismissals</p>
                         </header>
                         <div class="chart-lg">
                             <Line :data="volumeChart.data" :options="volumeChart.options" />
                         </div>
-                    </article>
-
-                    <article class="panel-card">
-                        <header class="panel-head">
-                            <h2>Top Landing CTAs</h2>
-                            <p>Best performing click targets</p>
-                        </header>
-                        <div class="chart-md" v-if="Object.keys(topCtas || {}).length">
-                            <Doughnut :data="ctaChart.data" :options="ctaChart.options" />
-                        </div>
-                        <p v-else class="empty-note">No CTA data in selected range.</p>
                     </article>
                 </section>
 
                 <section class="mt-6">
                     <article class="panel-card">
                         <header class="panel-head">
-                            <h2>Onboarding Copy Performance</h2>
+                            <h2>Onboarding copy performance</h2>
                             <p>View, completion and dismiss signals split by copy variant</p>
                         </header>
 
@@ -335,13 +290,12 @@ const ctaChart = computed(() => {
                         </ul>
                     </article>
 
-                    <article class="panel-card">
-                        <header class="panel-head">
-                            <h2>AI Summary Payload</h2>
-                            <p>Structured context for AI copilots and reporting agents</p>
-                        </header>
+                    <details class="panel-card admin-advanced">
+                        <summary class="admin-advanced__summary">
+                            <span>Advanced: AI summary JSON</span>
+                        </summary>
                         <pre class="ai-json">{{ JSON.stringify(aiSummary, null, 2) }}</pre>
-                    </article>
+                    </details>
                 </section>
             </div>
         </div>
@@ -717,6 +671,36 @@ const ctaChart = computed(() => {
     margin-top: 1rem;
     color: rgba(148, 163, 184, 0.86);
     font-size: 0.85rem;
+}
+
+.admin-section-head {
+    margin-bottom: 0.85rem;
+}
+
+.admin-section-title {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #f8fafc;
+}
+
+.admin-section-sub {
+    margin: 0.25rem 0 0;
+    font-size: 0.8rem;
+    color: rgba(148, 163, 184, 0.88);
+}
+
+.admin-advanced__summary {
+    cursor: pointer;
+    list-style: none;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: rgba(226, 232, 240, 0.9);
+    padding: 0.25rem 0;
+}
+
+.admin-advanced__summary::-webkit-details-marker {
+    display: none;
 }
 
 @media (max-width: 640px) {

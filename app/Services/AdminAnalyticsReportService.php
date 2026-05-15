@@ -7,12 +7,7 @@ use Carbon\Carbon;
 
 class AdminAnalyticsReportService
 {
-    private const SOURCE_TRACKED_EVENTS = [
-        'landing_cta_click',
-    ];
-
     private const TRACKED_EVENTS = [
-        'landing_cta_click',
         'onboarding_view',
         'onboarding_step_complete',
         'onboarding_dismiss',
@@ -37,8 +32,6 @@ class AdminAnalyticsReportService
             $counts[$eventName] = 0;
         }
 
-        $ctaCounts = [];
-        $sourceCounts = [];
         $dailyBuckets = $this->makeDailyBuckets($days);
         $seriesByEvent = [];
 
@@ -71,25 +64,7 @@ class AdminAnalyticsReportService
                 $seriesByEvent[$eventName][$bucketIndex]++;
             }
 
-            $properties = is_array($event->properties) ? $event->properties : [];
-
-            if (in_array($eventName, self::SOURCE_TRACKED_EVENTS, true)) {
-                $source = $this->normalizeSource($properties, $event->referrer);
-                $sourceCounts[$source] = ($sourceCounts[$source] ?? 0) + 1;
-            }
-
-            if ($eventName === 'landing_cta_click') {
-                $cta = trim((string) ($properties['cta'] ?? 'unknown'));
-                if ($cta === '') {
-                    $cta = 'unknown';
-                }
-
-                $ctaCounts[$cta] = ($ctaCounts[$cta] ?? 0) + 1;
-            }
         }
-
-        arsort($ctaCounts);
-        arsort($sourceCounts);
 
         $onboardingExperimentVariants = $this->buildOnboardingExperiment($from, $to);
         $owner = (string) config('ops.owners.growth', 'growth');
@@ -99,7 +74,6 @@ class AdminAnalyticsReportService
             ->first();
 
         $totalEvents = array_sum($counts);
-        $landingCtaClicks = $counts['landing_cta_click'] ?? 0;
         $onboardingCompletionRate = $this->rate(
             $counts['onboarding_step_complete'] ?? 0,
             $counts['onboarding_view'] ?? 0,
@@ -112,20 +86,15 @@ class AdminAnalyticsReportService
                 'total_events' => $totalEvents,
                 'unique_users' => count($uniqueUsers),
                 'unique_sessions' => count($uniqueSessions),
-                'landing_cta_clicks' => $landingCtaClicks,
                 'onboarding_completion_rate_pct' => $onboardingCompletionRate,
             ],
-            'top_cta' => array_slice($ctaCounts, 0, 5, true),
-            'top_sources' => array_slice($sourceCounts, 0, 5, true),
             'onboarding_experiment' => $onboardingExperimentVariants,
             'plain_english' => [
-                sprintf('Tracked %d events in the last %d days.', $totalEvents, $days),
-                sprintf('Landing CTA clicks: %d.', $landingCtaClicks),
+                sprintf('Tracked %d onboarding events in the last %d days.', $totalEvents, $days),
                 sprintf(
                     'Onboarding completion rate: %s%%.',
                     $onboardingCompletionRate === null ? 'n/a' : number_format((float) $onboardingCompletionRate, 1),
                 ),
-                sprintf('Most clicked landing CTA: %s.', array_key_first($ctaCounts) ?? 'n/a'),
                 sprintf(
                     'Onboarding winner: variant %s at %s%% completion.',
                     strtoupper((string) ($onboardingWinner['variant'] ?? '?')),
@@ -141,14 +110,11 @@ class AdminAnalyticsReportService
                 'totalEvents' => $totalEvents,
                 'uniqueUsers' => count($uniqueUsers),
                 'uniqueSessions' => count($uniqueSessions),
-                'landingCtaClicks' => $landingCtaClicks,
                 'onboardingCompletionRatePct' => $onboardingCompletionRate,
             ],
             'eventCounts' => $counts,
             'dailyLabels' => $dailyBuckets,
             'dailySeries' => $seriesByEvent,
-            'topCtas' => array_slice($ctaCounts, 0, 8, true),
-            'topSources' => array_slice($sourceCounts, 0, 8, true),
             'onboardingExperimentVariants' => $onboardingExperimentVariants,
             'aiSummary' => $aiSummary,
         ];
@@ -166,62 +132,6 @@ class AdminAnalyticsReportService
         }
 
         return $labels;
-    }
-
-    /**
-     * @param array<string, mixed> $properties
-     */
-    private function normalizeSource(array $properties, ?string $referrer): string
-    {
-        $source = $properties['source'] ?? null;
-        if (is_string($source) && trim($source) !== '') {
-            return $this->normalizeSourceLabel($source);
-        }
-
-        $utmSource = $properties['utm_source'] ?? null;
-        if (is_string($utmSource) && trim($utmSource) !== '') {
-            return $this->normalizeSourceLabel($utmSource);
-        }
-
-        if (! $referrer) {
-            return 'direct';
-        }
-
-        $host = strtolower((string) (parse_url($referrer, PHP_URL_HOST) ?? ''));
-        if ($host === '') {
-            return 'direct';
-        }
-
-        $map = [
-            'discord.com' => 'discord',
-            'discord.gg' => 'discord',
-            't.co' => 'twitter',
-            'twitter.com' => 'twitter',
-            'x.com' => 'twitter',
-            'reddit.com' => 'reddit',
-            'youtube.com' => 'youtube',
-            'youtu.be' => 'youtube',
-            'google.' => 'google',
-            'bing.com' => 'bing',
-            'hypixel.net' => 'hypixel',
-        ];
-
-        foreach ($map as $needle => $label) {
-            if (str_contains($host, $needle)) {
-                return $label;
-            }
-        }
-
-        return $this->normalizeSourceLabel($host);
-    }
-
-    private function normalizeSourceLabel(string $value): string
-    {
-        $normalized = strtolower(trim($value));
-        $normalized = preg_replace('/[^a-z0-9._-]+/', '-', $normalized) ?? '';
-        $normalized = trim($normalized, '-');
-
-        return $normalized !== '' ? $normalized : 'unknown';
     }
 
     /**

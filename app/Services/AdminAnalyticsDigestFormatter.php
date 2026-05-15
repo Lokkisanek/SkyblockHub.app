@@ -14,20 +14,16 @@ class AdminAnalyticsDigestFormatter
             ->filter(fn ($row) => isset($row['completion_rate_pct']))
             ->sortByDesc('completion_rate_pct')
             ->first();
-        $topCta = array_key_first((array) ($report['topCtas'] ?? [])) ?? 'n/a';
-
         $lines = [
             '**SkyblockHub weekly review**',
             'Owner: ' . ($report['owner'] ?? 'growth'),
-            sprintf('Total events: %s', number_format((int) ($kpis['totalEvents'] ?? 0))),
-            sprintf('CTA clicks: %s', number_format((int) ($kpis['landingCtaClicks'] ?? 0))),
+            sprintf('Onboarding events: %s', number_format((int) ($kpis['totalEvents'] ?? 0))),
             sprintf(
                 'Onboarding completion: %s%%',
                 isset($kpis['onboardingCompletionRatePct'])
                     ? number_format((float) $kpis['onboardingCompletionRatePct'], 1)
                     : 'n/a',
             ),
-            sprintf('Top CTA: %s', $topCta),
         ];
 
         if ($onboardingWinner) {
