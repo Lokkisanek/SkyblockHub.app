@@ -61,8 +61,11 @@ class AdminOperationsService
                 $response = Http::timeout((int) config('hypixel.timeout', 8))
                     ->connectTimeout((int) config('hypixel.connect_timeout', 3))
                     ->acceptJson()
-                    ->withHeaders(['User-Agent' => (string) config('hypixel.user_agent', 'SkyblockHub/1.0')])
-                    ->get('https://api.hypixel.net/v2/playerCount', ['key' => $key]);
+                    ->withHeaders([
+                        'API-Key' => $key,
+                        'User-Agent' => (string) config('hypixel.user_agent', 'SkyblockHub/1.0'),
+                    ])
+                    ->get('https://api.hypixel.net/v2/counts');
 
                 $json = $response->json() ?? [];
                 $success = ($json['success'] ?? false) === true;

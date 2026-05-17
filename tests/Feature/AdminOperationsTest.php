@@ -32,7 +32,7 @@ class AdminOperationsTest extends TestCase
         config(['hypixel.api_key' => 'test-key']);
 
         Http::fake([
-            'api.hypixel.net/v2/playerCount*' => Http::response([
+            'api.hypixel.net/v2/counts' => Http::response([
                 'success' => false,
                 'cause' => 'Daily developer key throttle',
             ], 429),
@@ -49,7 +49,7 @@ class AdminOperationsTest extends TestCase
         config(['hypixel.api_key' => 'test-key']);
 
         Http::fake([
-            'api.hypixel.net/v2/playerCount*' => Http::response([
+            'api.hypixel.net/v2/counts' => Http::response([
                 'success' => true,
                 'playerCount' => 42000,
             ]),

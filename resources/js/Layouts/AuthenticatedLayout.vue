@@ -48,7 +48,10 @@ function isBazaarActive() {
 }
 
 function isMiscActive() {
-    return route().current('event-timer') || route().current('mayors');
+    return route().current('event-timer')
+        || route().current('mayors')
+        || route().current('guides')
+        || route().current('guides.show');
 }
 
 function logout() {
@@ -176,6 +179,7 @@ watch(
                                     <template #content>
                                         <DropdownLink :href="route('mayors')">{{ $t('nav.mayors') }}</DropdownLink>
                                         <DropdownLink :href="route('event-timer')">{{ $t('nav.eventTimer') }}</DropdownLink>
+                                        <DropdownLink :href="route('guides')">{{ $t('nav.guides') }}</DropdownLink>
                                     </template>
                                 </Dropdown>
 
@@ -194,6 +198,14 @@ watch(
                                     :class="{ active: isActive('admin.index') }"
                                 >
                                     Admin
+                                </Link>
+                                <Link
+                                    v-if="isTestingAdmin"
+                                    :href="route('admin.guides.submissions')"
+                                    class="nav-link"
+                                    :class="{ active: route().current('admin.guides.submissions*') }"
+                                >
+                                    Guide Queue
                                 </Link>
 
                                 <template v-if="canAccessDungeonParty || canAccessPortfolio || canAccessBinSniper">
@@ -311,6 +323,9 @@ watch(
                         <Link :href="route('event-timer')" class="mobile-link ps-6" :class="{ 'mobile-link-active': isActive('event-timer') }">
                             {{ $t('nav.eventTimer') }}
                         </Link>
+                        <Link :href="route('guides')" class="mobile-link ps-6" :class="{ 'mobile-link-active': isActive('guides') || route().current('guides.show') }">
+                            {{ $t('nav.guides') }}
+                        </Link>
                         <Link :href="route('leaderboards')" class="mobile-link" :class="{ 'mobile-link-active': isActive('leaderboards') }">
                             {{ $t('nav.leaderboards') }}
                         </Link>
@@ -321,6 +336,14 @@ watch(
                             :class="{ 'mobile-link-active': isActive('admin.index') }"
                         >
                             Admin
+                        </Link>
+                        <Link
+                            v-if="isTestingAdmin"
+                            :href="route('admin.guides.submissions')"
+                            class="mobile-link"
+                            :class="{ 'mobile-link-active': route().current('admin.guides.submissions*') }"
+                        >
+                            Guide Queue
                         </Link>
                         <template v-if="canAccessDungeonParty || canAccessPortfolio || canAccessBinSniper">
                             <Link v-if="canAccessDungeonParty" :href="route('dungeon-party')" class="mobile-link" :class="{ 'mobile-link-active': isActive('dungeon-party') }">{{ $t('nav.partyFinder') }}</Link>

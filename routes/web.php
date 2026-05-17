@@ -1,23 +1,25 @@
 <?php
 
-use App\Http\Controllers\BazaarController;
-use App\Http\Controllers\BinSniperController;
+use App\Http\Controllers\AdminGuideSubmissionController;
 use App\Http\Controllers\AdminGuildCrawlController;
 use App\Http\Controllers\AdminOperationsController;
 use App\Http\Controllers\AnaliticsController;
+use App\Http\Controllers\Api\SocialProofMetricsController;
+use App\Http\Controllers\BazaarController;
+use App\Http\Controllers\BinSniperController;
 use App\Http\Controllers\CookieConsentController;
 use App\Http\Controllers\CraftingArbitrageController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DungeonPartyController;
 use App\Http\Controllers\EventsController;
 use App\Http\Controllers\FunnelAnalyticsController;
+use App\Http\Controllers\GuidesController;
 use App\Http\Controllers\LeaderboardsController;
 use App\Http\Controllers\MayorController;
 use App\Http\Controllers\NpcFlipsController;
 use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\PortfolioController;
 use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\Api\SocialProofMetricsController;
 use App\Http\Controllers\ProfileStatsController;
 use App\Services\SocialProofMetricsService;
 use Illuminate\Foundation\Application;
@@ -29,7 +31,7 @@ Route::get('/', function () {
     $socialProofMetrics = app(SocialProofMetricsService::class)->getMetrics();
 
     return Inertia::render('Welcome', [
-        'canLogin' => !auth()->check(),
+        'canLogin' => ! auth()->check(),
         'socialProofMetrics' => $socialProofMetrics,
         'laravelVersion' => Application::VERSION,
         'phpVersion' => PHP_VERSION,
@@ -74,6 +76,12 @@ Route::get('/npc-flips', [NpcFlipsController::class, 'index'])->name('npc-flips'
 Route::get('/profile-stats', [ProfileStatsController::class, 'index'])->name('profile-stats');
 Route::get('/event-timer', [EventsController::class, 'index'])->name('event-timer');
 Route::get('/mayors', [MayorController::class, 'index'])->name('mayors');
+Route::get('/guides', [GuidesController::class, 'index'])->name('guides');
+Route::get('/guides/submit', [GuidesController::class, 'createSubmission'])->name('guides.submit');
+Route::post('/guides/submissions', [GuidesController::class, 'storeSubmission'])->middleware('throttle:8,1')->name('guides.submissions.store');
+Route::get('/guides/{slug}/suggest-edit', [GuidesController::class, 'suggestEdit'])->name('guides.suggest-edit');
+Route::post('/guides/{slug}/suggest-edit', [GuidesController::class, 'storeEditSuggestion'])->middleware('throttle:8,1')->name('guides.suggest-edit.store');
+Route::get('/guides/{slug}', [GuidesController::class, 'show'])->name('guides.show');
 Route::get('/leaderboards', [LeaderboardsController::class, 'index'])->name('leaderboards');
 
 Route::get('/about', function () {
@@ -106,6 +114,11 @@ Route::middleware('auth')->group(function () {
     Route::middleware('testing.admin')->group(function () {
         Route::get('/admin', [AnaliticsController::class, 'index'])->name('admin.index');
         Route::get('/analitics', fn () => redirect()->route('admin.index'))->name('analitics.index');
+        Route::get('/admin/guides/submissions', [AdminGuideSubmissionController::class, 'index'])->name('admin.guides.submissions');
+        Route::get('/admin/guides/submissions/{submission}', [AdminGuideSubmissionController::class, 'show'])->name('admin.guides.submissions.show');
+        Route::patch('/admin/guides/submissions/{submission}', [AdminGuideSubmissionController::class, 'update'])->name('admin.guides.submissions.update');
+        Route::post('/admin/guides/submissions/{submission}/approve', [AdminGuideSubmissionController::class, 'approve'])->name('admin.guides.submissions.approve');
+        Route::post('/admin/guides/submissions/{submission}/reject', [AdminGuideSubmissionController::class, 'reject'])->name('admin.guides.submissions.reject');
 
         Route::get('/admin/guild-crawl/status', [AdminGuildCrawlController::class, 'status'])
             ->name('admin.guild-crawl.status');
@@ -150,6 +163,7 @@ Route::get('/sitemap.xml', function () {
         ['url' => url('/npc-flips'), 'changefreq' => 'daily', 'priority' => '0.8'],
         ['url' => url('/profile-stats'), 'changefreq' => 'weekly', 'priority' => '0.7'],
         ['url' => url('/event-timer'), 'changefreq' => 'daily', 'priority' => '0.8'],
+        ['url' => url('/guides'), 'changefreq' => 'weekly', 'priority' => '0.8'],
         ['url' => url('/leaderboards'), 'changefreq' => 'weekly', 'priority' => '0.7'],
     ];
 

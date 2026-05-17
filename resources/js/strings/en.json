@@ -9,6 +9,7 @@
         "misc": "Misc",
         "eventTimer": "Event Timer",
         "mayors": "Mayors",
+        "guides": "Guides",
         "leaderboards": "Leaderboards",
         "partyFinder": "Party Finder",
         "portfolio": "Portfolio",
@@ -628,6 +629,9 @@
         "notifyMe": "Notify me",
         "notifyConfirm": "✓ You'll be notified 5 min before this event.",
         "notifyBlocked": "Notifications are blocked. Enable them in your browser's site settings."
+    },
+    "guides": {
+        "title": "Guides"
     },
     "mayors": {
         "title": "Mayors",
