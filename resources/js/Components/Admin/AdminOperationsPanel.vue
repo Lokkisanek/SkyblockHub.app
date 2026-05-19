@@ -121,7 +121,15 @@ function formatDate(value) {
                     <li><span>Bazaar products</span><strong>{{ numberFmt(operations.bazaar?.products) }}</strong></li>
                     <li><span>Bazaar updated</span><strong>{{ formatDate(operations.bazaar?.latest_updated_at) }}</strong></li>
                     <li><span>Failed jobs</span><strong>{{ numberFmt(operations.queue?.failed_jobs) }}</strong></li>
+                    <li><span>Queue driver</span><strong>{{ operations.queue_runtime?.connection || '—' }}</strong></li>
+                    <li><span>Pending jobs</span><strong>{{ numberFmt(operations.queue_runtime?.pending_jobs) }}</strong></li>
                 </ul>
+                <p
+                    class="admin-ops-hint"
+                    :class="operations.queue_runtime?.guild_crawl_ready ? 'admin-ops-hint--ok' : 'admin-ops-hint--warn'"
+                >
+                    {{ operations.queue_runtime?.hint }}
+                </p>
                 <ul class="admin-ops-list admin-ops-list--spaced">
                     <li><span>Scheduled ingest</span><strong>{{ operations.ingest?.enabled ? 'On' : 'Off' }}</strong></li>
                     <li><span>Ingest / run</span><strong>{{ numberFmt(operations.ingest?.max_per_run) }}</strong></li>
@@ -285,6 +293,15 @@ function formatDate(value) {
     margin: 0.55rem 0 0;
     font-size: 0.68rem;
     color: rgba(148, 163, 184, 0.85);
+    line-height: 1.45;
+}
+
+.admin-ops-hint--ok {
+    color: rgba(134, 239, 172, 0.9);
+}
+
+.admin-ops-hint--warn {
+    color: rgba(252, 211, 77, 0.95);
 }
 
 .admin-ops-hint code {

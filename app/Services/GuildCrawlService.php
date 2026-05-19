@@ -48,6 +48,8 @@ final class GuildCrawlService
                 break;
             }
 
+            AdminGuildCrawlStatus::heartbeat();
+
             if (count($guildsById) >= $maxGuilds) {
                 break;
             }

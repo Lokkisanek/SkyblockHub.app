@@ -207,6 +207,18 @@ final class AdminGuildCrawlStatus
         return (bool) (self::readRaw()['cancel_requested'] ?? false);
     }
 
+    /** Keep updated_at fresh during long guild discovery (avoids false stale cancel). */
+    public static function heartbeat(): void
+    {
+        $raw = self::readRaw();
+        if (! self::isRunningStatus((string) ($raw['status'] ?? ''))) {
+            return;
+        }
+
+        $raw['updated_at'] = now()->toIso8601String();
+        Cache::put(self::CACHE_KEY, $raw, now()->addDays(7));
+    }
+
     /**
      * @return array<string, mixed>
      */

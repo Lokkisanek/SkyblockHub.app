@@ -27,6 +27,7 @@ class AdminOperationsService
             'users' => $this->userStats(),
             'bazaar' => $this->bazaarStats(),
             'queue' => $this->queueStats(),
+            'queue_runtime' => $this->queueRuntimeInfo(),
             'ingest' => $this->ingestConfig(),
             'guild_crawl' => AdminGuildCrawlStatus::snapshot(),
         ];
@@ -222,6 +223,43 @@ class AdminOperationsService
         return [
             'failed_jobs' => (int) DB::table('failed_jobs')->count(),
             'available' => true,
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function queueRuntimeInfo(): array
+    {
+        $connection = (string) config('queue.default', 'sync');
+        $jobsTable = (string) config('queue.connections.database.table', 'jobs');
+        $hasJobsTable = Schema::hasTable($jobsTable);
+        $pending = 0;
+
+        if ($hasJobsTable) {
+            $pending = (int) DB::table($jobsTable)->count();
+        }
+
+        $retryAfter = (int) config('queue.connections.database.retry_after', 90);
+        $sync = $connection === 'sync';
+        $ready = ! $sync && $hasJobsTable && $retryAfter >= 7200;
+
+        $hint = match (true) {
+            $sync => 'QUEUE_CONNECTION=sync — crawls run inside the web request and die ~2 min in. Set QUEUE_CONNECTION=database in .env, then php artisan config:clear.',
+            ! $hasJobsTable => 'Missing jobs table — run: php artisan migrate',
+            $retryAfter < 7200 => 'DB_QUEUE_RETRY_AFTER must be ≥ 7200 for guild crawls (current: '.$retryAfter.').',
+            $pending > 0 => $pending.' job(s) waiting — run: php artisan queue:work --timeout=7200',
+            default => 'Queue OK. Start a crawl, then keep queue:work running (supervisor recommended).',
+        };
+
+        return [
+            'connection' => $connection,
+            'pending_jobs' => $pending,
+            'jobs_table' => $jobsTable,
+            'jobs_table_exists' => $hasJobsTable,
+            'retry_after_sec' => $retryAfter,
+            'guild_crawl_ready' => $ready,
+            'hint' => $hint,
         ];
     }
 

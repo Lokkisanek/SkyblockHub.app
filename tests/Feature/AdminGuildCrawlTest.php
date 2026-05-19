@@ -48,10 +48,33 @@ class AdminGuildCrawlTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_start_rejects_sync_queue_driver(): void
+    {
+        config([
+            'hypixel.api_key' => 'test-key',
+            'queue.default' => 'sync',
+        ]);
+
+        $response = $this->actingAs($this->adminUser())
+            ->postJson(route('admin.guild-crawl.start'), [
+                'guild_list' => 'Test Guild',
+            ])
+            ->assertStatus(422);
+
+        $this->assertStringContainsString(
+            'QUEUE_CONNECTION',
+            (string) $response->json('message'),
+        );
+    }
+
     public function test_admin_can_start_guild_crawl_and_poll_status(): void
     {
         Bus::fake();
-        config(['hypixel.api_key' => 'test-key']);
+        config([
+            'hypixel.api_key' => 'test-key',
+            'queue.default' => 'database',
+            'queue.connections.database.retry_after' => 7500,
+        ]);
 
         $this->actingAs($this->adminUser())
             ->postJson(route('admin.guild-crawl.start'), [
@@ -79,7 +102,11 @@ class AdminGuildCrawlTest extends TestCase
 
     public function test_start_rejects_empty_guild_list(): void
     {
-        config(['hypixel.api_key' => 'test-key']);
+        config([
+            'hypixel.api_key' => 'test-key',
+            'queue.default' => 'database',
+            'queue.connections.database.retry_after' => 7500,
+        ]);
 
         $this->actingAs($this->adminUser())
             ->postJson(route('admin.guild-crawl.start'), [

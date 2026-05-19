@@ -32,6 +32,13 @@ class AdminGuildCrawlController extends Controller
             ], 409);
         }
 
+        $queueError = self::queueConfigurationError();
+        if ($queueError !== null) {
+            return response()->json([
+                'message' => $queueError,
+            ], 422);
+        }
+
         $validated = $request->validate([
             'guild_list' => ['required', 'string', 'max:50000'],
             'max_guilds' => ['nullable', 'integer', 'min:1', 'max:200'],
@@ -79,5 +86,26 @@ class AdminGuildCrawlController extends Controller
                 : 'No crawl is running.',
             'guild_crawl' => $snapshot,
         ]);
+    }
+
+    private static function queueConfigurationError(): ?string
+    {
+        $connection = (string) config('queue.default', 'sync');
+
+        if ($connection === 'sync') {
+            return 'QUEUE_CONNECTION is "sync". Guild crawls cannot run in the browser — set QUEUE_CONNECTION=database in .env, run php artisan migrate && php artisan config:clear, then php artisan queue:work --timeout=7200. Or use SSH: php artisan profiles:crawl-guilds --guild="Your Guild"';
+        }
+
+        $jobsTable = (string) config('queue.connections.database.table', 'jobs');
+        if (! \Illuminate\Support\Facades\Schema::hasTable($jobsTable)) {
+            return 'Queue jobs table is missing. Run: php artisan migrate';
+        }
+
+        $retryAfter = (int) config('queue.connections.database.retry_after', 90);
+        if ($retryAfter < 7200) {
+            return 'DB_QUEUE_RETRY_AFTER is too low ('.$retryAfter.'s). Set DB_QUEUE_RETRY_AFTER=7500 in .env and php artisan config:clear.';
+        }
+
+        return null;
     }
 }

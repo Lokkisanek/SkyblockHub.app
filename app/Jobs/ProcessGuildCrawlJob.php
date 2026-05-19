@@ -19,6 +19,8 @@ class ProcessGuildCrawlJob implements ShouldQueue
     /** Long guild crawls run in a queue worker, not inside the HTTP request lifecycle. */
     public int $timeout = 7200;
 
+    public int $tries = 1;
+
     /**
      * @param  array<int, string>  $guildNames
      * @param  array{max_guilds: int, seed_limit: int, member_limit: int, delay_ms: int, new_only: bool}  $options
