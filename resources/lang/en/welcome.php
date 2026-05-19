@@ -73,7 +73,7 @@ return [
     ],
     
     'footer' => [
-        'tagline' => 'Your complete Hypixel SkyBlock trading dashboard',
+        'tagline' => 'Hypixel SkyBlock trading dashboard',
         'modules' => 'Modules',
         'comingSoon' => 'Coming Soon',
         'project' => 'Project',

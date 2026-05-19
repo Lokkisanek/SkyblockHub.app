@@ -100,4 +100,22 @@ class AdminGuildCrawlTest extends TestCase
             ->assertOk()
             ->assertJsonPath('guild_crawl.cancel_requested', true);
     }
+
+    public function test_cancel_clears_stale_running_crawl(): void
+    {
+        Cache::put(AdminGuildCrawlStatus::CACHE_KEY, [
+            'status' => 'ingesting',
+            'message' => 'Stuck',
+            'processed' => 123,
+            'total_members' => 1433,
+            'updated_at' => now()->subMinutes(30)->toIso8601String(),
+        ], now()->addDay());
+
+        $this->actingAs($this->adminUser())
+            ->postJson(route('admin.guild-crawl.cancel'))
+            ->assertOk()
+            ->assertJsonPath('guild_crawl.status', 'cancelled');
+
+        $this->assertFalse(AdminGuildCrawlStatus::isRunning());
+    }
 }

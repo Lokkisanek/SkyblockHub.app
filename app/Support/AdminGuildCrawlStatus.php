@@ -15,10 +15,31 @@ final class AdminGuildCrawlStatus
 
     private const RUNNING_STATUSES = ['queued', 'discovering', 'ingesting'];
 
+    /** No status update for this long ⇒ treat the crawl as dead (PHP timeout, crashed worker). */
+    private const STALE_MINUTES = 8;
+
     /**
      * @return array<string, mixed>
      */
     public static function snapshot(): array
+    {
+        $snapshot = self::readRaw();
+
+        if (self::isStaleRun($snapshot)) {
+            return self::writeFinished(
+                $snapshot,
+                'cancelled',
+                'Crawl stopped (no progress for '.self::STALE_MINUTES.'+ minutes). Start again or check queue worker.',
+            );
+        }
+
+        return $snapshot;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private static function readRaw(): array
     {
         $data = Cache::get(self::CACHE_KEY);
 
@@ -31,7 +52,33 @@ final class AdminGuildCrawlStatus
 
     public static function isRunning(): bool
     {
-        return in_array((string) (self::snapshot()['status'] ?? ''), self::RUNNING_STATUSES, true);
+        return self::isRunningStatus((string) (self::snapshot()['status'] ?? ''));
+    }
+
+    private static function isRunningStatus(string $status): bool
+    {
+        return in_array($status, self::RUNNING_STATUSES, true);
+    }
+
+    /**
+     * @param  array<string, mixed>  $snapshot
+     */
+    private static function isStaleRun(array $snapshot): bool
+    {
+        if (! self::isRunningStatus((string) ($snapshot['status'] ?? ''))) {
+            return false;
+        }
+
+        $updatedAt = $snapshot['updated_at'] ?? null;
+        if (! is_string($updatedAt) || $updatedAt === '') {
+            return true;
+        }
+
+        try {
+            return \Illuminate\Support\Carbon::parse($updatedAt)->lte(now()->subMinutes(self::STALE_MINUTES));
+        } catch (\Throwable) {
+            return true;
+        }
     }
 
     /**
@@ -40,7 +87,7 @@ final class AdminGuildCrawlStatus
      */
     public static function merge(array $patch): array
     {
-        $next = array_merge(self::snapshot(), $patch, [
+        $next = array_merge(self::readRaw(), $patch, [
             'updated_at' => now()->toIso8601String(),
         ]);
         Cache::put(self::CACHE_KEY, $next, now()->addDays(7));
@@ -81,8 +128,18 @@ final class AdminGuildCrawlStatus
 
     public static function requestCancel(): array
     {
-        if (! self::isRunning()) {
-            return self::snapshot();
+        $snapshot = self::snapshot();
+
+        if (! self::isRunningStatus((string) ($snapshot['status'] ?? ''))) {
+            return $snapshot;
+        }
+
+        if (self::isStaleRun($snapshot)) {
+            return self::writeFinished(
+                $snapshot,
+                'cancelled',
+                'Crawl was stuck — status cleared. Ensure a queue worker is running for long crawls.',
+            );
         }
 
         return self::merge([
@@ -91,21 +148,50 @@ final class AdminGuildCrawlStatus
         ]);
     }
 
-    public static function finish(string $status, string $message): array
+    public static function forceReset(string $message = 'Crawl cleared manually.'): array
     {
         Cache::forget(self::LOCK_KEY);
 
         return self::merge([
-            'status' => $status,
+            'status' => 'cancelled',
             'message' => $message,
+            'cancel_requested' => false,
             'finished_at' => now()->toIso8601String(),
             'current_uuid' => null,
         ]);
     }
 
+    public static function finish(string $status, string $message): array
+    {
+        Cache::forget(self::LOCK_KEY);
+
+        return self::writeFinished(self::readRaw(), $status, $message);
+    }
+
+    /**
+     * @param  array<string, mixed>  $base
+     * @return array<string, mixed>
+     */
+    private static function writeFinished(array $base, string $status, string $message): array
+    {
+        Cache::forget(self::LOCK_KEY);
+
+        $next = array_merge($base, [
+            'status' => $status,
+            'message' => $message,
+            'finished_at' => now()->toIso8601String(),
+            'current_uuid' => null,
+            'cancel_requested' => false,
+            'updated_at' => now()->toIso8601String(),
+        ]);
+        Cache::put(self::CACHE_KEY, $next, now()->addDays(7));
+
+        return $next;
+    }
+
     public static function appendLog(string $line): void
     {
-        $snap = self::snapshot();
+        $snap = self::readRaw();
         $log = is_array($snap['recent_log'] ?? null) ? $snap['recent_log'] : [];
         array_unshift($log, [
             'at' => now()->toIso8601String(),
@@ -118,7 +204,7 @@ final class AdminGuildCrawlStatus
 
     public static function shouldCancel(): bool
     {
-        return (bool) (self::snapshot()['cancel_requested'] ?? false);
+        return (bool) (self::readRaw()['cancel_requested'] ?? false);
     }
 
     /**

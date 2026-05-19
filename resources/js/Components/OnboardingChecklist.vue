@@ -2,8 +2,6 @@
 import { Link, router, usePage } from '@inertiajs/vue3';
 import { computed, onMounted, ref, watch } from 'vue';
 import { useI18n } from '@/strings/useI18n';
-import { trackFunnelEvent } from '@/lib/funnelAnalytics';
-
 const { t, te } = useI18n();
 const page = usePage();
 
@@ -34,28 +32,7 @@ const routeStepMap = [
     { routeName: 'leaderboards', step: 'explore_module' },
 ];
 
-function trackOnboardingEvent(action, properties = {}) {
-    if (!props.onboarding?.show) {
-        return;
-    }
-
-    trackFunnelEvent(`onboarding_${action}`, {
-        segment: segment.value,
-        variant: copyVariant.value,
-        completed_count: Number(props.onboarding?.completedCount || 0),
-        total_count: Number(props.onboarding?.totalCount || 0),
-        ...properties,
-    }, {
-        path: page.url || undefined,
-    });
-}
-
 function markStepDone(step, source = 'manual') {
-    trackOnboardingEvent('step_complete', {
-        step,
-        source,
-    });
-
     router.post(route('onboarding.complete-step'), { step }, {
         preserveScroll: true,
         preserveState: true,
@@ -63,8 +40,6 @@ function markStepDone(step, source = 'manual') {
 }
 
 function dismissChecklist() {
-    trackOnboardingEvent('dismiss');
-
     router.post(route('onboarding.dismiss'), {}, {
         preserveScroll: true,
         preserveState: true,
@@ -117,7 +92,6 @@ onMounted(() => {
         collapsed.value = window.localStorage.getItem(collapseStorageKey.value) === '1';
     }
 
-    trackOnboardingEvent('view');
     maybeCompleteCurrentRouteStep();
 });
 

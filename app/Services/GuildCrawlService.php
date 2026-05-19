@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\ProfileCache;
+use App\Support\AdminGuildCrawlStatus;
 
 /**
  * Discover Hypixel guilds from seed player UUIDs and collect member UUIDs for profile ingest.
@@ -43,6 +44,10 @@ final class GuildCrawlService
         $requestedNames = array_values(array_filter(array_map('trim', $guildNames), static fn (string $n): bool => $n !== ''));
 
         foreach ($requestedNames as $index => $guildName) {
+            if (AdminGuildCrawlStatus::shouldCancel()) {
+                break;
+            }
+
             if (count($guildsById) >= $maxGuilds) {
                 break;
             }

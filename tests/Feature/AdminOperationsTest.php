@@ -27,12 +27,29 @@ class AdminOperationsTest extends TestCase
         ]);
     }
 
+    public function test_hypixel_health_reports_invalid_key_via_query_param(): void
+    {
+        config(['hypixel.api_key' => 'bad-key']);
+
+        Http::fake([
+            'api.hypixel.net/v2/counts*' => Http::response([
+                'success' => false,
+                'cause' => 'Invalid API key',
+            ], 200),
+        ]);
+
+        $health = app(AdminOperationsService::class)->hypixelApiHealth(true);
+
+        $this->assertSame('invalid_key', $health['status']);
+        $this->assertStringContainsString('Invalid API key', (string) $health['label']);
+    }
+
     public function test_hypixel_health_reports_throttle(): void
     {
         config(['hypixel.api_key' => 'test-key']);
 
         Http::fake([
-            'api.hypixel.net/v2/counts' => Http::response([
+            'api.hypixel.net/v2/counts*' => Http::response([
                 'success' => false,
                 'cause' => 'Daily developer key throttle',
             ], 429),
@@ -49,7 +66,7 @@ class AdminOperationsTest extends TestCase
         config(['hypixel.api_key' => 'test-key']);
 
         Http::fake([
-            'api.hypixel.net/v2/counts' => Http::response([
+            'api.hypixel.net/v2/counts*' => Http::response([
                 'success' => true,
                 'playerCount' => 42000,
             ]),

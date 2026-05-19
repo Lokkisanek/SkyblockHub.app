@@ -15,6 +15,7 @@ const hypixelStatusClass = computed(() => {
         ok: 'admin-ops-hypixel--ok',
         throttled: 'admin-ops-hypixel--warn',
         no_key: 'admin-ops-hypixel--error',
+        invalid_key: 'admin-ops-hypixel--error',
         error: 'admin-ops-hypixel--error',
     };
     return map[hypixel.value?.status] || '';

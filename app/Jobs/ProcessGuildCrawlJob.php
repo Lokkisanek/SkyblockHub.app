@@ -5,13 +5,19 @@ namespace App\Jobs;
 use App\Http\Controllers\Api\HypixelProfileController;
 use App\Services\GuildCrawlService;
 use App\Support\AdminGuildCrawlStatus;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 
-class ProcessGuildCrawlJob
+class ProcessGuildCrawlJob implements ShouldQueue
 {
-    use Dispatchable, SerializesModels;
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+    /** Long guild crawls run in a queue worker, not inside the HTTP request lifecycle. */
+    public int $timeout = 7200;
 
     /**
      * @param  array<int, string>  $guildNames
@@ -54,6 +60,12 @@ class ProcessGuildCrawlJob
                 $this->guildNames,
                 $guildLookupDelayMs,
             );
+
+            if (AdminGuildCrawlStatus::shouldCancel()) {
+                AdminGuildCrawlStatus::finish('cancelled', 'Cancelled during guild discovery.');
+
+                return;
+            }
 
             $members = array_slice($result['member_uuids'], 0, $memberLimit);
             $guildLookups = is_array($result['guild_lookups'] ?? null) ? $result['guild_lookups'] : [];

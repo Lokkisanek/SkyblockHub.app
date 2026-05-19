@@ -161,7 +161,7 @@ onBeforeUnmount(stopPolling);
     <section class="panel-card guild-crawl-panel">
         <header class="panel-head">
             <h2>Guild profile crawl</h2>
-            <p>Fetch Hypixel guild rosters and ingest member SkyBlock profiles (lightweight leaderboard data).</p>
+            <p>Fetch Hypixel guild rosters and ingest member SkyBlock profiles (lightweight leaderboard data). Long crawls need a queue worker (<code class="text-white/50">php artisan queue:work</code>).</p>
         </header>
 
         <div class="guild-crawl-status" :class="statusClass">

@@ -203,7 +203,7 @@ class HypixelApiProxy
         $maxRetries = (int) config('hypixel.max_retries', 2);
         $timeout = (int) config('hypixel.timeout', 8);
         $connectTimeout = (int) config('hypixel.connect_timeout', 3);
-        $apiKey = $needsKey ? (string) config('hypixel.api_key', '') : '';
+        $apiKey = $needsKey ? trim((string) config('hypixel.api_key', '')) : '';
 
         if ($needsKey && empty($apiKey)) {
             Log::error('HypixelApiProxy: API key not configured');

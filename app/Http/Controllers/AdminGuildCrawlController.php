@@ -61,7 +61,7 @@ class AdminGuildCrawlController extends Controller
 
         $snapshot = AdminGuildCrawlStatus::beginRun($guildNames, $options);
 
-        ProcessGuildCrawlJob::dispatch($guildNames, $options)->afterResponse();
+        ProcessGuildCrawlJob::dispatch($guildNames, $options);
 
         return response()->json([
             'message' => 'Guild crawl started.',

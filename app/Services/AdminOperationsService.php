@@ -62,14 +62,27 @@ class AdminOperationsService
                     ->connectTimeout((int) config('hypixel.connect_timeout', 3))
                     ->acceptJson()
                     ->withHeaders([
-                        'API-Key' => $key,
                         'User-Agent' => (string) config('hypixel.user_agent', 'SkyblockHub/1.0'),
                     ])
-                    ->get('https://api.hypixel.net/v2/counts');
+                    ->get('https://api.hypixel.net/v2/counts', [
+                        'key' => $key,
+                    ]);
 
                 $json = $response->json() ?? [];
                 $success = ($json['success'] ?? false) === true;
                 $cause = isset($json['cause']) ? (string) $json['cause'] : null;
+
+                if ($cause && stripos($cause, 'invalid api key') !== false && stripos($cause, 'throttle') === false) {
+                    return [
+                        'status' => 'invalid_key',
+                        'label' => 'Invalid API key',
+                        'message' => 'Hypixel rejected this key. Regenerate at developer.hypixel.net, set HYPIXEL_API_KEY in .env (no quotes/spaces), then run php artisan config:clear.',
+                        'http_status' => $response->status(),
+                        'cause' => $cause,
+                        'player_count' => null,
+                        'checked_at' => $checkedAt,
+                    ];
+                }
 
                 if ($response->status() === 429 || ($cause && stripos($cause, 'throttle') !== false)) {
                     return [
