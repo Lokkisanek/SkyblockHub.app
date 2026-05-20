@@ -1454,14 +1454,19 @@ class HypixelProfileController extends Controller
         $purse = $member['currencies']['coin_purse'] ?? 0;
 
         // Prepare input for Node.js script
+        // Hypixel member payloads can exceed PHP's default json_encode depth (512) once
+        // backpacks / nested items are included — that forces fallback "base BIN" pricing.
         $input = json_encode([
             'profileData' => $member,
             'museumData' => $museumData,
             'bankBalance' => $bankBalance,
-        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE, 16_384);
 
         if ($input === false) {
-            return $this->networthNodeFailed($purse, $bankBalance, $member, 'json_encode_failed', []);
+            return $this->networthNodeFailed($purse, $bankBalance, $member, 'json_encode_failed', [
+                'json_error' => json_last_error_msg(),
+                'json_error_code' => json_last_error(),
+            ]);
         }
 
         $scriptPath = base_path('scripts/networth.cjs');
@@ -1513,8 +1518,20 @@ class HypixelProfileController extends Controller
         $timeoutSec = max(1.0, (float) config('hypixel.networth_node_timeout_sec', 30));
         $deadline = microtime(true) + $timeoutSec;
         $finished = false;
+        $stderr = '';
 
         while (microtime(true) < $deadline) {
+            if (isset($pipes[2]) && is_resource($pipes[2])) {
+                stream_set_blocking($pipes[2], false);
+                $chunk = (string) @stream_get_contents($pipes[2], 16_384);
+                if ($chunk !== '') {
+                    $stderr .= $chunk;
+                    if (strlen($stderr) > 12_000) {
+                        $stderr = '…'.substr($stderr, -8000);
+                    }
+                }
+            }
+
             $status = proc_get_status($process);
             if (! $status['running']) {
                 $finished = true;
@@ -1524,10 +1541,9 @@ class HypixelProfileController extends Controller
         }
 
         // Read any stderr output for logging.
-        $stderr = '';
         if (isset($pipes[2]) && is_resource($pipes[2])) {
             stream_set_blocking($pipes[2], false);
-            $stderr = (string) @stream_get_contents($pipes[2]);
+            $stderr .= (string) @stream_get_contents($pipes[2]);
             fclose($pipes[2]);
         }
 
@@ -1588,7 +1604,7 @@ class HypixelProfileController extends Controller
             @unlink($tmpOutFile);
             if ($filePayload !== false && trim($filePayload) !== '') {
                 try {
-                    $result = json_decode($filePayload, true, 512, JSON_THROW_ON_ERROR | JSON_INVALID_UTF8_SUBSTITUTE);
+                    $result = json_decode($filePayload, true, 8192, JSON_THROW_ON_ERROR | JSON_INVALID_UTF8_SUBSTITUTE);
                 } catch (\Throwable $e) {
                     return $this->networthNodeFailed($purse, $bankBalance, $member, 'output_json_decode_failed', [
                         'error' => $e->getMessage(),
@@ -1613,6 +1629,7 @@ class HypixelProfileController extends Controller
             'categories' => $result['categories'] ?? [],
             'itemPricesByUuid' => $result['itemPricesByUuid'] ?? [],
             'itemPricesById' => $result['itemPricesById'] ?? [],
+            'pricing_mode' => 'skyhelper',
         ];
     }
 
@@ -1649,6 +1666,7 @@ class HypixelProfileController extends Controller
             'categories' => [],
             'itemPricesByUuid' => $fallbackMaps['itemPricesByUuid'],
             'itemPricesById' => $fallbackMaps['itemPricesById'],
+            'pricing_mode' => 'bazaar_fallback',
         ];
     }
 

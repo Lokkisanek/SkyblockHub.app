@@ -702,6 +702,14 @@ onMounted(async () => {
                     <!-- ════════════════════════════════════════════════════════ -->
                     <div v-if="hasLoadedProfile" class="w-full">
 
+                    <p
+                        v-if="currentData?.networth?.pricing_mode === 'bazaar_fallback'"
+                        class="mb-3 rounded-lg border border-amber-500/35 bg-amber-500/10 px-3 py-2 text-xs leading-relaxed text-amber-100/95"
+                        role="status"
+                    >
+                        {{ t('profileStats.networthFallbackNotice') }}
+                    </p>
+
                     <!-- ═══ STATS SUMMARY BAR ═══ -->
                     <dl v-if="currentData" class="profile-stat-strip profile-stat-strip--summary">
                         <div class="profile-stat-cell">
