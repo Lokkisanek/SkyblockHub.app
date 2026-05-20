@@ -83,7 +83,12 @@ class NetworthProbeCommand extends Command
 
         if ($code === 0 && str_starts_with($stdout, 'NODE_OK')) {
             $this->info('proc_open + Node from project cwd: OK ('.$stdout.')');
-            $this->comment('If networth is still wrong on the site, open a profile and check storage/logs for "Networth: skyhelper Node path failed" with a `reason` field.');
+            $this->newLine();
+            $this->comment('CLI passed, but the website uses php-fpm (often www-data). If Profile Stats still shows simplified pricing:');
+            $this->line('  1) Re-run this probe as the web user, e.g. sudo -u www-data bash -lc \'cd '.escapeshellarg($base).' && php artisan networth:probe\'');
+            $this->line('  2) Check the php-fpm pool for php_admin_value[disable_functions] blocking proc_open (CLI php.ini can differ).');
+            $this->line('  3) After fixing, clear the profile HTTP cache key: hypixel:profile:<username> (or wait 5 minutes).');
+            $this->line('  4) Open storage/logs and search for "Networth: skyhelper Node path failed" — the JSON response now includes pricing_failure_reason when fallback runs.');
 
             return self::SUCCESS;
         }

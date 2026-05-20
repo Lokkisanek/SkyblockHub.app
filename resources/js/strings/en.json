@@ -1009,7 +1009,7 @@
         "fairySouls": "Fairy Souls",
         "fairySoulsMax": "/ 267",
         "networth": "Networth",
-        "networthFallbackNotice": "Networth is using simplified Bazaar/BIN base prices (no enchants, books, stars, or gems). Full valuation did not run — usually Node.js is missing for PHP, proc_open is disabled, or the SkyHelper step timed out. On the server run: php artisan networth:probe. Locally ensure Node is installed and set HYPIXEL_NETWORTH_NODE_BINARY if needed.",
+        "networthFallbackNotice": "Networth is using simplified Bazaar/BIN base prices (enchants, books, stars, and gems are not included). Full SkyHelper valuation did not run in this PHP request.",
         "viewerSettings": "Settings",
         "viewerSettingsKicker": "Profile viewer",
         "viewerSettingsClose": "Close",

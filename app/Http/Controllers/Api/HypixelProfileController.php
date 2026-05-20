@@ -1436,7 +1436,23 @@ class HypixelProfileController extends Controller
             'skyhelper_installed' => NetworthEnvironment::skyhelperInstalled(base_path()),
         ], $context));
 
-        return $this->fallbackNetworth($purse, $bankBalance, $member);
+        $payload = $this->fallbackNetworth($purse, $bankBalance, $member);
+        $payload['pricing_failure_reason'] = $reason;
+
+        $detail = null;
+        if (isset($context['stderr']) && is_string($context['stderr']) && trim($context['stderr']) !== '') {
+            $detail = trim(mb_substr($context['stderr'], 0, 400));
+        } elseif (isset($context['json_error']) && is_string($context['json_error']) && $context['json_error'] !== '') {
+            $detail = $context['json_error'];
+        } elseif (isset($context['error']) && is_string($context['error']) && $context['error'] !== '') {
+            $detail = trim(mb_substr($context['error'], 0, 400));
+        }
+
+        if ($detail !== null && $detail !== '') {
+            $payload['pricing_failure_detail'] = $detail;
+        }
+
+        return $payload;
     }
 
     /**
@@ -1515,7 +1531,7 @@ class HypixelProfileController extends Controller
 
         // Poll for process completion instead of stream_select (broken on Windows).
         // Cold starts may download skyhelper items/prices from GitHub (often >4s).
-        $timeoutSec = max(1.0, (float) config('hypixel.networth_node_timeout_sec', 30));
+        $timeoutSec = max(1.0, (float) config('hypixel.networth_node_timeout_sec', 120));
         $deadline = microtime(true) + $timeoutSec;
         $finished = false;
         $stderr = '';

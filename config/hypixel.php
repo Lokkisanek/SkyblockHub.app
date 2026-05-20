@@ -41,10 +41,11 @@ return [
     |
     | Seconds PHP waits for scripts/networth.cjs. If the process times out or
     | Node is missing, item values fall back to bazaar/BIN base prices only
-    | (no enchants, stars, gems, etc.).
+    | (no enchants, stars, gems, etc.). First cold start can exceed 60s on slow
+    | networks while SkyHelper downloads items/prices.
     |
     */
-    'networth_node_timeout_sec' => (float) env('HYPIXEL_NETWORTH_NODE_TIMEOUT_SEC', 60),
+    'networth_node_timeout_sec' => (float) env('HYPIXEL_NETWORTH_NODE_TIMEOUT_SEC', 120),
 
     /*
     | Absolute path to the Node binary for scripts/networth.cjs. Leave empty to

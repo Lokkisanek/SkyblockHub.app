@@ -707,7 +707,16 @@ onMounted(async () => {
                         class="mb-3 rounded-lg border border-amber-500/35 bg-amber-500/10 px-3 py-2 text-xs leading-relaxed text-amber-100/95"
                         role="status"
                     >
-                        {{ t('profileStats.networthFallbackNotice') }}
+                        <span>{{ t('profileStats.networthFallbackNotice') }}</span>
+                        <span
+                            v-if="currentData.networth.pricing_failure_reason"
+                            class="mt-1.5 block font-mono text-[11px] text-amber-200/95"
+                        >
+                            {{ currentData.networth.pricing_failure_reason }}
+                            <template v-if="currentData.networth.pricing_failure_detail">
+                                — {{ currentData.networth.pricing_failure_detail }}
+                            </template>
+                        </span>
                     </p>
 
                     <!-- ═══ STATS SUMMARY BAR ═══ -->
