@@ -3,7 +3,8 @@
     "type": "module",
     "scripts": {
         "build": "vite build && vite build --ssr",
-        "dev": "vite"
+        "dev": "vite",
+        "postinstall": "node scripts/ensure-skyhelper-items-backup-link.cjs"
     },
     "devDependencies": {
         "@inertiajs/vue3": "^2.0.0",

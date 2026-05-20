@@ -30,11 +30,26 @@ class NetworthProbeCommand extends Command
 
         $skyhelperDir = $base.'/node_modules/skyhelper-networth';
         if ($skyhelper && is_dir($skyhelperDir)) {
-            $writable = @is_writable($skyhelperDir);
-            $this->line('node_modules/skyhelper-networth writable (.itemsBackup.json): '.($writable ? 'yes' : 'NO'));
-            if (! $writable) {
-                $this->error('SkyHelper must write .itemsBackup.json here; EACCES breaks full networth. Example fix:');
-                $this->line('  sudo chown -R www-data:www-data '.escapeshellarg($skyhelperDir));
+            if (function_exists('posix_geteuid') && posix_geteuid() === 0) {
+                $this->warn('Running as root: writable checks may not match php-fpm (e.g. www-data). Prefer: sudo -u www-data php artisan networth:probe');
+            }
+
+            $backupPath = $skyhelperDir.'/.itemsBackup.json';
+            $isLink = is_link($backupPath);
+            $linkTarget = $isLink ? (string) readlink($backupPath) : '';
+            $this->line('items backup .itemsBackup.json: '.($isLink ? 'symlink → '.$linkTarget : 'not a symlink (run npm install to link into storage/app/skyhelper-networth/)'));
+
+            // PHP is_writable() on a symlink follows the target file.
+            $backupWritable = (file_exists($backupPath) || $isLink) ? @is_writable($backupPath) : @is_writable($skyhelperDir);
+            if (! $backupWritable && ! file_exists($backupPath)) {
+                $backupWritable = @is_writable($skyhelperDir);
+            }
+
+            $this->line('items backup writable (effective): '.($backupWritable ? 'yes' : 'NO'));
+            if (! $backupWritable) {
+                $this->error('SkyHelper must write .itemsBackup.json; EACCES breaks full networth. Fixes:');
+                $this->line('  • Re-run npm install (postinstall symlinks backup into storage/app/skyhelper-networth/)');
+                $this->line('  • Or: sudo chown -R www-data:www-data '.escapeshellarg($skyhelperDir));
 
                 return self::FAILURE;
             }
@@ -89,6 +104,7 @@ class NetworthProbeCommand extends Command
             $this->line('  2) Check the php-fpm pool for php_admin_value[disable_functions] blocking proc_open (CLI php.ini can differ).');
             $this->line('  3) After fixing, clear the profile HTTP cache key: hypixel:profile:<username> (or wait 5 minutes).');
             $this->line('  4) Open storage/logs and search for "Networth: skyhelper Node path failed" — the JSON response now includes pricing_failure_reason when fallback runs.');
+            $this->line('  5) Ensure postinstall ran (npm install) so .itemsBackup.json is symlinked under storage/ — avoids www-data EACCES in node_modules.');
 
             return self::SUCCESS;
         }
