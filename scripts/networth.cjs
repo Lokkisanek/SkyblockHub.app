@@ -5,7 +5,8 @@
  * (backed by Hypixel items). By default that path lives under node_modules; if `npm ci` ran
  * as root, php-fpm (www-data) may get EACCES. The repo postinstall symlinks that file to
  * `storage/app/skyhelper-networth/.itemsBackup.json` so the web user can write it.
- * If the symlink is missing: `npm install` (postinstall) or
+ * Postinstall as root also `chown`s that storage dir to www-data (override via
+ * SKYHELPER_NETWORTH_CHOWN). If the symlink is missing: `npm ci` (postinstall) or
  * `sudo chown -R www-data:www-data node_modules/skyhelper-networth`
  *
  * Called from PHP via proc_open with argv[2]=output file, argv[3]=input file.

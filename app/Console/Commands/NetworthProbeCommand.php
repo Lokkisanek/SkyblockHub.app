@@ -104,7 +104,9 @@ class NetworthProbeCommand extends Command
             $this->line('  2) Check the php-fpm pool for php_admin_value[disable_functions] blocking proc_open (CLI php.ini can differ).');
             $this->line('  3) After fixing, clear the profile HTTP cache key: hypixel:profile:<username> (or wait 5 minutes).');
             $this->line('  4) Open storage/logs and search for "Networth: skyhelper Node path failed" — the JSON response now includes pricing_failure_reason when fallback runs.');
-            $this->line('  5) Ensure postinstall ran (npm install) so .itemsBackup.json is symlinked under storage/ — avoids www-data EACCES in node_modules.');
+            $this->line('  5) Ensure postinstall ran (npm ci) so .itemsBackup.json is symlinked under storage/; as root, postinstall chowns that dir to www-data.');
+            $this->line('  6) tinker as www-data: use HOME inside the project, e.g. sudo -u www-data env HOME='.escapeshellarg($base).' php artisan tinker (avoids /var/www/.config/psysh errors).');
+            $this->line('  7) git pull blocked by local package.json? On server: git restore package.json package-lock.json && git pull (never commit local edits there).');
 
             return self::SUCCESS;
         }
