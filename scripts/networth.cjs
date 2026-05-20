@@ -30,6 +30,19 @@ if (hasBackup) {
 const pricesCachePath = path.join(__dirname, '..', 'storage', 'app', '.skyhelper-prices-cache.json');
 const PRICES_CACHE_TTL = 60 * 60 * 1000; // 1 hour on disk (skyhelper in-memory cache is separate)
 
+function getSkyhelperVersion() {
+    try {
+        const pkgPath = path.join(__dirname, '..', 'node_modules', 'skyhelper-networth', 'package.json');
+        const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+        const v = pkg?.version;
+        return typeof v === 'string' && v.trim() !== '' ? v.trim() : 'unknown';
+    } catch {
+        return 'unknown';
+    }
+}
+
+const SKYHELPER_VERSION = getSkyhelperVersion();
+
 function loadCachedPrices() {
     try {
         if (!fs.existsSync(pricesCachePath)) {
@@ -40,8 +53,23 @@ function loadCachedPrices() {
             return null;
         }
         const data = JSON.parse(fs.readFileSync(pricesCachePath, 'utf8'));
+        if (!data || typeof data !== 'object') {
+            return null;
+        }
 
-        return data && typeof data === 'object' ? data : null;
+        // If SkyHelper was upgraded/downgraded, cached schema may differ.
+        const metaVersion = data?._meta?.skyhelperVersion;
+        if (typeof metaVersion === 'string' && metaVersion !== SKYHELPER_VERSION) {
+            return null;
+        }
+
+        // Back-compat: older cache files stored the prices object directly.
+        if (data.prices && typeof data.prices === 'object') {
+            return data.prices;
+        }
+
+        // If it's already a plain prices object, accept it.
+        return data;
     } catch {
         return null;
     }
@@ -53,7 +81,14 @@ function savePricesCache(prices) {
         if (!fs.existsSync(dir)) {
             fs.mkdirSync(dir, { recursive: true });
         }
-        fs.writeFileSync(pricesCachePath, JSON.stringify(prices), 'utf8');
+        fs.writeFileSync(
+            pricesCachePath,
+            JSON.stringify({
+                _meta: { skyhelperVersion: SKYHELPER_VERSION, savedAt: new Date().toISOString() },
+                prices,
+            }),
+            'utf8',
+        );
     } catch {
         /* non-fatal */
     }
