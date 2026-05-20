@@ -3,6 +3,7 @@
 use App\Http\Controllers\AdminGuideSubmissionController;
 use App\Http\Controllers\AdminGuildCrawlController;
 use App\Http\Controllers\AdminOperationsController;
+use App\Http\Controllers\AdminTrustIndexSubmissionController;
 use App\Http\Controllers\AnaliticsController;
 use App\Http\Controllers\Api\SocialProofMetricsController;
 use App\Http\Controllers\BazaarController;
@@ -21,6 +22,7 @@ use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\PortfolioController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProfileStatsController;
+use App\Http\Controllers\TrustIndexController;
 use App\Services\SocialProofMetricsService;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
@@ -76,6 +78,18 @@ Route::get('/npc-flips', [NpcFlipsController::class, 'index'])->name('npc-flips'
 Route::get('/profile-stats', [ProfileStatsController::class, 'index'])->name('profile-stats');
 Route::get('/event-timer', [EventsController::class, 'index'])->name('event-timer');
 Route::get('/mayors', [MayorController::class, 'index'])->name('mayors');
+Route::get('/trust-index', [TrustIndexController::class, 'index'])->name('trust-index');
+Route::get('/trust-index/report', [TrustIndexController::class, 'createReport'])->name('trust-index.report');
+Route::get('/trust-index/appeal', [TrustIndexController::class, 'createAppeal'])->name('trust-index.appeal');
+Route::get('/trust-index/lookup', [TrustIndexController::class, 'lookup'])
+    ->middleware('throttle:60,1')
+    ->name('trust-index.lookup');
+Route::post('/trust-index/report', [TrustIndexController::class, 'storeReport'])
+    ->middleware('throttle:6,1')
+    ->name('trust-index.report.store');
+Route::post('/trust-index/appeal', [TrustIndexController::class, 'storeAppeal'])
+    ->middleware('throttle:6,1')
+    ->name('trust-index.appeal.store');
 Route::get('/guides', [GuidesController::class, 'index'])->name('guides');
 Route::get('/guides/submit', [GuidesController::class, 'createSubmission'])->name('guides.submit');
 Route::post('/guides/submissions', [GuidesController::class, 'storeSubmission'])->middleware('throttle:8,1')->name('guides.submissions.store');
@@ -119,6 +133,11 @@ Route::middleware('auth')->group(function () {
         Route::patch('/admin/guides/submissions/{submission}', [AdminGuideSubmissionController::class, 'update'])->name('admin.guides.submissions.update');
         Route::post('/admin/guides/submissions/{submission}/approve', [AdminGuideSubmissionController::class, 'approve'])->name('admin.guides.submissions.approve');
         Route::post('/admin/guides/submissions/{submission}/reject', [AdminGuideSubmissionController::class, 'reject'])->name('admin.guides.submissions.reject');
+
+        Route::get('/admin/trust-index/submissions', [AdminTrustIndexSubmissionController::class, 'index'])->name('admin.trust-index.submissions');
+        Route::get('/admin/trust-index/submissions/{submission}', [AdminTrustIndexSubmissionController::class, 'show'])->name('admin.trust-index.submissions.show');
+        Route::post('/admin/trust-index/submissions/{submission}/approve', [AdminTrustIndexSubmissionController::class, 'approve'])->name('admin.trust-index.submissions.approve');
+        Route::post('/admin/trust-index/submissions/{submission}/reject', [AdminTrustIndexSubmissionController::class, 'reject'])->name('admin.trust-index.submissions.reject');
 
         Route::get('/admin/guild-crawl/status', [AdminGuildCrawlController::class, 'status'])
             ->name('admin.guild-crawl.status');
@@ -164,6 +183,7 @@ Route::get('/sitemap.xml', function () {
         ['url' => url('/profile-stats'), 'changefreq' => 'weekly', 'priority' => '0.7'],
         ['url' => url('/event-timer'), 'changefreq' => 'daily', 'priority' => '0.8'],
         ['url' => url('/guides'), 'changefreq' => 'weekly', 'priority' => '0.8'],
+        ['url' => url('/trust-index'), 'changefreq' => 'weekly', 'priority' => '0.7'],
         ['url' => url('/leaderboards'), 'changefreq' => 'weekly', 'priority' => '0.7'],
     ];
 

@@ -39,6 +39,15 @@ class SeoService
         } elseif ($path === 'leaderboards') {
             $seoData['title'] = 'Leaderboards - SkyblockHub';
             $seoData['description'] = 'Compete with other players. View leaderboards for skills, net worth, wealth, and various SkyBlock achievements.';
+        } elseif ($path === 'trust-index') {
+            $seoData['title'] = 'Scammer List - SkyblockHub';
+            $seoData['description'] = 'Search Hypixel SkyBlock players against the community scammer list and learn common trade, co-op, and Discord scams.';
+        } elseif ($path === 'trust-index/report') {
+            $seoData['title'] = 'Report a Scam - SkyblockHub';
+            $seoData['description'] = 'Submit a scam report with evidence for review on the SkyblockHub community scammer list.';
+        } elseif ($path === 'trust-index/appeal') {
+            $seoData['title'] = 'Appeal Listing - SkyblockHub';
+            $seoData['description'] = 'Appeal a wrongful entry on the SkyblockHub community scammer list.';
         }
 
         return $seoData;

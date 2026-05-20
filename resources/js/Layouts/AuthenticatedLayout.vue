@@ -51,7 +51,16 @@ function isMiscActive() {
     return route().current('event-timer')
         || route().current('mayors')
         || route().current('guides')
-        || route().current('guides.show');
+        || route().current('guides.show')
+        || route().current('trust-index')
+        || route().current('trust-index.report')
+        || route().current('trust-index.appeal');
+}
+
+function isAdminSectionActive() {
+    return isActive('admin.index')
+        || route().current('admin.guides.submissions*')
+        || route().current('admin.trust-index.submissions*');
 }
 
 function logout() {
@@ -180,6 +189,7 @@ watch(
                                         <DropdownLink :href="route('mayors')">{{ $t('nav.mayors') }}</DropdownLink>
                                         <DropdownLink :href="route('event-timer')">{{ $t('nav.eventTimer') }}</DropdownLink>
                                         <DropdownLink :href="route('guides')">{{ $t('nav.guides') }}</DropdownLink>
+                                        <DropdownLink :href="route('trust-index')">{{ $t('nav.trustIndex') }}</DropdownLink>
                                     </template>
                                 </Dropdown>
 
@@ -191,22 +201,25 @@ watch(
                                     {{ $t('nav.leaderboards') }}
                                 </Link>
 
-                                <Link
-                                    v-if="isTestingAdmin"
-                                    :href="route('admin.index')"
-                                    class="nav-link"
-                                    :class="{ active: isActive('admin.index') }"
-                                >
-                                    Admin
-                                </Link>
-                                <Link
-                                    v-if="isTestingAdmin"
-                                    :href="route('admin.guides.submissions')"
-                                    class="nav-link"
-                                    :class="{ active: route().current('admin.guides.submissions*') }"
-                                >
-                                    Guide Queue
-                                </Link>
+                                <Dropdown v-if="isTestingAdmin" align="left" width="80">
+                                    <template #trigger>
+                                        <button
+                                            type="button"
+                                            class="nav-link inline-flex items-center gap-1"
+                                            :class="{ active: isAdminSectionActive() }"
+                                        >
+                                            {{ $t('nav.admin') }}
+                                            <svg class="h-3 w-3 opacity-50" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                                <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                            </svg>
+                                        </button>
+                                    </template>
+                                    <template #content>
+                                        <DropdownLink :href="route('admin.index')">{{ $t('nav.adminOperations') }}</DropdownLink>
+                                        <DropdownLink :href="route('admin.guides.submissions')">{{ $t('nav.adminGuideQueue') }}</DropdownLink>
+                                        <DropdownLink :href="route('admin.trust-index.submissions')">{{ $t('nav.adminTrustQueue') }}</DropdownLink>
+                                    </template>
+                                </Dropdown>
 
                                 <template v-if="canAccessDungeonParty || canAccessPortfolio || canAccessBinSniper">
                                     <Link v-if="canAccessDungeonParty" :href="route('dungeon-party')" class="nav-link" :class="{ active: isActive('dungeon-party') }">
@@ -326,25 +339,31 @@ watch(
                         <Link :href="route('guides')" class="mobile-link ps-6" :class="{ 'mobile-link-active': isActive('guides') || route().current('guides.show') }">
                             {{ $t('nav.guides') }}
                         </Link>
+                        <Link :href="route('trust-index')" class="mobile-link ps-6" :class="{ 'mobile-link-active': isActive('trust-index') }">
+                            {{ $t('nav.trustIndex') }}
+                        </Link>
                         <Link :href="route('leaderboards')" class="mobile-link" :class="{ 'mobile-link-active': isActive('leaderboards') }">
                             {{ $t('nav.leaderboards') }}
                         </Link>
-                        <Link
-                            v-if="isTestingAdmin"
-                            :href="route('admin.index')"
-                            class="mobile-link"
-                            :class="{ 'mobile-link-active': isActive('admin.index') }"
-                        >
-                            Admin
-                        </Link>
-                        <Link
-                            v-if="isTestingAdmin"
-                            :href="route('admin.guides.submissions')"
-                            class="mobile-link"
-                            :class="{ 'mobile-link-active': route().current('admin.guides.submissions*') }"
-                        >
-                            Guide Queue
-                        </Link>
+                        <Dropdown v-if="isTestingAdmin" align="left" width="80" class="block w-full">
+                            <template #trigger>
+                                <button
+                                    type="button"
+                                    class="mobile-link flex w-full items-center justify-between gap-2 text-start"
+                                    :class="{ 'mobile-link-active': isAdminSectionActive() }"
+                                >
+                                    <span>{{ $t('nav.admin') }}</span>
+                                    <svg class="h-3 w-3 shrink-0 opacity-50" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                        <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                    </svg>
+                                </button>
+                            </template>
+                            <template #content>
+                                <DropdownLink :href="route('admin.index')">{{ $t('nav.adminOperations') }}</DropdownLink>
+                                <DropdownLink :href="route('admin.guides.submissions')">{{ $t('nav.adminGuideQueue') }}</DropdownLink>
+                                <DropdownLink :href="route('admin.trust-index.submissions')">{{ $t('nav.adminTrustQueue') }}</DropdownLink>
+                            </template>
+                        </Dropdown>
                         <template v-if="canAccessDungeonParty || canAccessPortfolio || canAccessBinSniper">
                             <Link v-if="canAccessDungeonParty" :href="route('dungeon-party')" class="mobile-link" :class="{ 'mobile-link-active': isActive('dungeon-party') }">{{ $t('nav.partyFinder') }}</Link>
                             <Link v-if="canAccessPortfolio" :href="route('portfolio')" class="mobile-link" :class="{ 'mobile-link-active': isActive('portfolio') }">{{ $t('nav.portfolio') }}</Link>

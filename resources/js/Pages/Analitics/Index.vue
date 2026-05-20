@@ -2,7 +2,7 @@
 import AdminOperationsPanel from '@/Components/Admin/AdminOperationsPanel.vue';
 import GuildCrawlPanel from '@/Components/Admin/GuildCrawlPanel.vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head } from '@inertiajs/vue3';
+import { Head, Link } from '@inertiajs/vue3';
 
 defineProps({
     operations: { type: Object, default: () => ({}) },
@@ -22,6 +22,11 @@ defineProps({
                         <h1 class="hero-title">Operations</h1>
                         <p class="hero-copy">
                             Hypixel API health, profile cache, leaderboard snapshot, and guild profile crawl.
+                        </p>
+                        <p class="admin-quick-links">
+                            <Link class="admin-quick-links__a" :href="route('admin.guides.submissions')">Guide submissions</Link>
+                            <span class="admin-quick-links__sep" aria-hidden="true">·</span>
+                            <Link class="admin-quick-links__a" :href="route('admin.trust-index.submissions')">Trust Index queue</Link>
                         </p>
                     </div>
                 </section>
@@ -69,5 +74,27 @@ defineProps({
     color: rgba(226, 232, 240, 0.82);
     max-width: 70ch;
     font-size: 0.92rem;
+}
+
+.admin-quick-links {
+    margin: 0.85rem 0 0;
+    font-size: 0.875rem;
+    color: rgba(226, 232, 240, 0.75);
+}
+
+.admin-quick-links__a {
+    color: rgba(34, 211, 238, 0.95);
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.admin-quick-links__a:hover {
+    color: #fff;
+    text-decoration: underline;
+}
+
+.admin-quick-links__sep {
+    margin: 0 0.35rem;
+    opacity: 0.45;
 }
 </style>

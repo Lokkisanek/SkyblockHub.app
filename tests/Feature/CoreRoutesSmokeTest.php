@@ -19,6 +19,7 @@ class CoreRoutesSmokeTest extends TestCase
         $this->get('/profile-stats')->assertOk();
         $this->get('/event-timer')->assertOk();
         $this->get('/mayors')->assertOk();
+        $this->get('/trust-index')->assertOk();
         $this->get('/about')->assertOk();
         $this->get('/privacy')->assertOk();
         $this->get('/terms')->assertOk();

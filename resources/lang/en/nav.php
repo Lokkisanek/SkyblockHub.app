@@ -8,6 +8,7 @@ return [
     'eventTimer' => 'Events',
     'leaderboards' => 'Leaderboards',
     'mayors' => 'Mayors',
+    'trustIndex' => 'Trust Index',
     'portfolio' => 'Portfolio',
     'binSniper' => 'BIN Sniper',
     'crafting' => 'Crafting',

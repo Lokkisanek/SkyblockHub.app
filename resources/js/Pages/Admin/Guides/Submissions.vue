@@ -29,7 +29,12 @@ function statusClass(status) {
                         <h1 class="hero-title">Guide submissions</h1>
                         <p class="hero-copy">Review community articles and edit suggestions before they go live.</p>
                     </div>
-                    <Link :href="route('admin.index')" class="guides-action-btn">Admin home</Link>
+                    <div class="flex flex-wrap gap-2">
+                        <Link :href="route('admin.index')" class="guides-action-btn">Admin home</Link>
+                        <Link :href="route('admin.trust-index.submissions')" class="guides-action-btn guides-action-btn--subtle">
+                            Trust queue
+                        </Link>
+                    </div>
                 </section>
 
                 <section class="guide-admin-card">

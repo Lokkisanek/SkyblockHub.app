@@ -7,12 +7,17 @@ use App\Models\User;
 class TestingAdminGate
 {
     private const ADMIN_DISCORD_USERNAME = 'lokkisan';
+
     private const ADMIN_MC_USERNAME = 'Lokkisanecek';
 
     public static function allows(?User $user): bool
     {
         if (! $user) {
             return false;
+        }
+
+        if (app()->environment('local') && $user->discord_id === LocalDevAccount::DISCORD_ID) {
+            return true;
         }
 
         $discord = strtolower((string) ($user->discord_username ?? ''));
