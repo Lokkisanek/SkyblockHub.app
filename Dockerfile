@@ -1,9 +1,15 @@
+FROM composer:2 AS vendor
+WORKDIR /app
+COPY composer.json composer.lock ./
+RUN composer install --no-dev --no-interaction --prefer-dist --no-scripts --ignore-platform-reqs
+
 FROM node:20-bookworm AS assets
 WORKDIR /app
 COPY package.json package-lock.json ./
 COPY scripts/ensure-skyhelper-items-backup-link.cjs scripts/ensure-skyhelper-items-backup-link.cjs
 RUN npm ci
 COPY . .
+COPY --from=vendor /app/vendor ./vendor
 ARG VITE_REVERB_APP_KEY
 ARG VITE_REVERB_HOST
 ARG VITE_REVERB_PORT=443
